@@ -25,7 +25,7 @@ export default async function NuevaVentaPage() {
 
   const { data: items } = await supabase
     .from("inventario_items")
-    .select("id, nombre, precio_venta")
+    .select("id, nombre, precio_venta, marca:atributos->>marca")
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
 

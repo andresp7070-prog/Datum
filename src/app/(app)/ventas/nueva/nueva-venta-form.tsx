@@ -8,11 +8,14 @@ type ItemCatalogo = {
   id: string;
   nombre: string;
   precio_venta: number | null;
+  marca: string | null;
 };
 
 type LineaVenta = {
   key: string;
   itemId: string;
+  busquedaProducto: string;
+  mostrarSugerenciasProducto: boolean;
   cantidad: number;
   precioUnitario: number;
 };
@@ -33,7 +36,25 @@ function ahoraHora() {
 }
 
 function nuevaLinea(): LineaVenta {
-  return { key: crypto.randomUUID(), itemId: "", cantidad: 1, precioUnitario: 0 };
+  return {
+    key: crypto.randomUUID(),
+    itemId: "",
+    busquedaProducto: "",
+    mostrarSugerenciasProducto: false,
+    cantidad: 1,
+    precioUnitario: 0,
+  };
+}
+
+function filtrarItems(items: ItemCatalogo[], query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return items
+    .filter(
+      (item) =>
+        item.nombre.toLowerCase().includes(q) || (item.marca ?? "").toLowerCase().includes(q),
+    )
+    .slice(0, 8);
 }
 
 export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
@@ -50,6 +71,7 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
   const [contactoId, setContactoId] = useState<string | null>(null);
   const [sugerencias, setSugerencias] = useState<ClienteEncontrado[]>([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [busquedaClienteLista, setBusquedaClienteLista] = useState(false);
 
   const [lineas, setLineas] = useState<LineaVenta[]>([nuevaLinea()]);
 
@@ -60,11 +82,13 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
     const timeout = setTimeout(async () => {
       if (contactoId || nombre.trim().length < 2) {
         setSugerencias([]);
+        setBusquedaClienteLista(true);
         return;
       }
       const resultados = await buscarClientes(nombre);
       setSugerencias(resultados);
       setMostrarSugerencias(true);
+      setBusquedaClienteLista(true);
     }, 300);
     return () => clearTimeout(timeout);
   }, [nombre, contactoId]);
@@ -96,9 +120,21 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
     );
   }
 
-  function seleccionarProducto(key: string, itemId: string) {
-    const item = items.find((i) => i.id === itemId);
-    actualizarLinea(key, { itemId, precioUnitario: item?.precio_venta ?? 0 });
+  function buscarProducto(key: string, texto: string) {
+    actualizarLinea(key, {
+      busquedaProducto: texto,
+      itemId: "",
+      mostrarSugerenciasProducto: true,
+    });
+  }
+
+  function seleccionarProducto(key: string, item: ItemCatalogo) {
+    actualizarLinea(key, {
+      itemId: item.id,
+      busquedaProducto: item.marca ? `${item.nombre} — ${item.marca}` : item.nombre,
+      precioUnitario: item.precio_venta ?? 0,
+      mostrarSugerenciasProducto: false,
+    });
   }
 
   const total = lineas.reduce((suma, linea) => suma + linea.cantidad * linea.precioUnitario, 0);
@@ -113,6 +149,14 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
     }
     if (!nombre.trim()) {
       setError("El nombre del cliente es obligatorio.");
+      return;
+    }
+    if (!/^\d+$/.test(telefono.trim())) {
+      setError("El teléfono es obligatorio y solo puede contener números.");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      setError("El correo es obligatorio y debe ser válido.");
       return;
     }
 
@@ -131,7 +175,7 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
           precioUnitario: linea.precioUnitario,
         })),
       });
-      router.push("/ventas");
+      router.push("/ventas?guardada=1");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la venta.");
       setGuardando(false);
@@ -173,13 +217,21 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
           {contactoId && (
             <p className="mt-1 text-xs text-green-600">Cliente existente confirmado</p>
           )}
+          {!contactoId && busquedaClienteLista && nombre.trim().length >= 2 && sugerencias.length === 0 && (
+            <p className="mt-1 text-xs text-gray-400">
+              Cliente nuevo — se registrará automáticamente.
+            </p>
+          )}
         </div>
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Teléfono</label>
           <input
             value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
+            onChange={(e) => setTelefono(e.target.value.replace(/\D/g, ""))}
+            type="tel"
+            inputMode="numeric"
+            required
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
           />
         </div>
@@ -190,6 +242,7 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
+            required
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
           />
         </div>
@@ -203,20 +256,42 @@ export function NuevaVentaForm({ items }: { items: ItemCatalogo[] }) {
       <div className="space-y-3">
         {lineas.map((linea) => (
           <div key={linea.key} className="grid grid-cols-12 items-end gap-2">
-            <div className="col-span-6">
+            <div className="relative col-span-6">
               <label className="mb-1 block text-xs font-medium text-gray-700">Producto</label>
-              <select
-                value={linea.itemId}
-                onChange={(e) => seleccionarProducto(linea.key, e.target.value)}
+              <input
+                value={linea.busquedaProducto}
+                onChange={(e) => buscarProducto(linea.key, e.target.value)}
+                onFocus={() =>
+                  actualizarLinea(linea.key, { mostrarSugerenciasProducto: true })
+                }
+                onBlur={() =>
+                  setTimeout(
+                    () => actualizarLinea(linea.key, { mostrarSugerenciasProducto: false }),
+                    150,
+                  )
+                }
+                placeholder="Busca por nombre o marca"
                 className="w-full rounded border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
-              >
-                <option value="">Selecciona un producto</option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.nombre}
-                  </option>
-                ))}
-              </select>
+              />
+              {linea.mostrarSugerenciasProducto &&
+                filtrarItems(items, linea.busquedaProducto).length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full rounded border border-gray-200 bg-white shadow-sm">
+                    {filtrarItems(items, linea.busquedaProducto).map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onMouseDown={() => seleccionarProducto(linea.key, item)}
+                          className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                        >
+                          {item.nombre}
+                          {item.marca && (
+                            <span className="ml-2 text-gray-400">{item.marca}</span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
             </div>
             <div className="col-span-2">
               <label className="mb-1 block text-xs font-medium text-gray-700">Cantidad</label>

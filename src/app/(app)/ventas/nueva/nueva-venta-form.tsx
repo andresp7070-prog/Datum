@@ -46,13 +46,19 @@ function nuevaLinea(): LineaVenta {
   };
 }
 
+function sinTildes(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 function filtrarItems(items: ItemCatalogo[], query: string) {
-  const q = query.trim().toLowerCase();
+  const q = sinTildes(query.trim());
   if (!q) return [];
   return items
     .filter(
-      (item) =>
-        item.nombre.toLowerCase().includes(q) || (item.marca ?? "").toLowerCase().includes(q),
+      (item) => sinTildes(item.nombre).includes(q) || sinTildes(item.marca ?? "").includes(q),
     )
     .slice(0, 8);
 }

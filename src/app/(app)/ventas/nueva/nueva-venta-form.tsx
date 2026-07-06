@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ahoraFecha, ahoraHora } from "@/lib/fecha";
+import { sinTildes } from "@/lib/texto";
 import { buscarClientes, guardarVenta, type ClienteEncontrado } from "./actions";
 
 type ItemCatalogo = {
@@ -20,21 +22,6 @@ type LineaVenta = {
   precioUnitario: number;
 };
 
-function ahoraFecha() {
-  const ahora = new Date();
-  const yyyy = ahora.getFullYear();
-  const mm = String(ahora.getMonth() + 1).padStart(2, "0");
-  const dd = String(ahora.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function ahoraHora() {
-  const ahora = new Date();
-  const hh = String(ahora.getHours()).padStart(2, "0");
-  const min = String(ahora.getMinutes()).padStart(2, "0");
-  return `${hh}:${min}`;
-}
-
 function nuevaLinea(): LineaVenta {
   return {
     key: crypto.randomUUID(),
@@ -44,13 +31,6 @@ function nuevaLinea(): LineaVenta {
     cantidad: 1,
     precioUnitario: 0,
   };
-}
-
-function sinTildes(texto: string) {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
 }
 
 function filtrarItems(items: ItemCatalogo[], query: string) {

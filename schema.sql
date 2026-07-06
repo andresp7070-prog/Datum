@@ -4,6 +4,7 @@
 -- ============================================================
 
 create extension if not exists "pgcrypto";
+create extension if not exists "unaccent";
 
 -- ------------------------------------------------------------
 -- 1. PLANES — catálogo fijo, no pertenece a ninguna empresa
@@ -628,7 +629,8 @@ create policy "ver items de mis ventas" on ventas_items
 
 -- Buscador de clientes: escribe cualquier parte del nombre, teléfono o placa
 -- y devuelve las coincidencias dentro de la empresa. Si no aparece nada,
--- es un cliente nuevo; si aparece, es recurrente.
+-- es un cliente nuevo; si aparece, es recurrente. unaccent() ignora tildes,
+-- para que "jose" encuentre a "José" y viceversa.
 create or replace function buscar_clientes(p_empresa_id uuid, p_query text)
 returns setof crm_contactos
 language sql stable
@@ -637,9 +639,9 @@ as $$
   from crm_contactos
   where empresa_id = p_empresa_id
     and (
-      nombre ilike '%' || p_query || '%'
+      unaccent(nombre) ilike unaccent('%' || p_query || '%')
       or telefono ilike '%' || p_query || '%'
-      or atributos->>'placa' ilike '%' || p_query || '%'
+      or unaccent(atributos->>'placa') ilike unaccent('%' || p_query || '%')
     )
   order by nombre
   limit 20;

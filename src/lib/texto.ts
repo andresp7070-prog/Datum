@@ -4,3 +4,9 @@ export function sinTildes(texto: string) {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 }
+
+export function primeraMayuscula(texto: string) {
+  const t = texto.trim();
+  if (!t) return t;
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}

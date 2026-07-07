@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { sinTildes } from "@/lib/texto";
+import Link from "next/link";
+import { sinTildes, primeraMayuscula } from "@/lib/texto";
 import { UNIDADES } from "@/lib/unidades";
 import { CampoMoneda } from "@/components/campo-moneda";
 import { RecetaLineas, type LineaRecetaValor } from "../receta-lineas";
@@ -49,9 +50,11 @@ export function NuevoProductoForm({
   const [costo, setCosto] = useState("");
   const [precioVenta, setPrecioVenta] = useState("");
   const [receta, setReceta] = useState<LineaRecetaValor[]>([]);
+  const [reinicios, setReinicios] = useState(0);
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
 
   const sugerenciasNombre = itemExistente
     ? []
@@ -68,6 +71,7 @@ export function NuevoProductoForm({
     setNombre(valor);
     setItemExistente(null);
     setMostrarSugerenciasNombre(true);
+    setMensajeExito(null);
   }
 
   function seleccionarExistente(itemNombre: string) {
@@ -82,8 +86,21 @@ export function NuevoProductoForm({
     setMostrarSugerenciasNombre(false);
   }
 
+  function reiniciarFormulario() {
+    setNombre("");
+    setItemExistente(null);
+    setCategoria("");
+    setUnidad("unidad");
+    setCantidad("");
+    setCosto("");
+    setPrecioVenta("");
+    setReceta([]);
+    setReinicios((n) => n + 1);
+  }
+
   async function guardar() {
     setError(null);
+    setMensajeExito(null);
 
     if (!nombre.trim()) {
       setError("El nombre es obligatorio.");
@@ -111,38 +128,56 @@ export function NuevoProductoForm({
       return;
     }
 
+    const nombreFinal = primeraMayuscula(nombre.trim());
+    const categoriaFinal = primeraMayuscula(categoria.trim());
+
     setGuardando(true);
     try {
       if (itemExistente) {
         await reabastecerProducto({
           itemId: itemExistente.id,
-          categoria: categoria.trim(),
+          categoria: categoriaFinal,
           cantidadAgregada: cantidadNum,
           costo: costoNum,
           precioVenta: precioVentaNum,
           receta,
         });
+        setMensajeExito(`"${nombreFinal}" reabastecido correctamente.`);
       } else {
         await crearProducto({
-          nombre: nombre.trim(),
-          categoria: categoria.trim(),
+          nombre: nombreFinal,
+          categoria: categoriaFinal,
           unidad,
           cantidad: cantidadNum,
           costo: costoNum,
           precioVenta: precioVentaNum,
           receta,
         });
+        setMensajeExito(`"${nombreFinal}" creado correctamente.`);
       }
-      router.push("/inventario?creado=1");
+      reiniciarFormulario();
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el producto.");
+    } finally {
       setGuardando(false);
     }
   }
 
   return (
     <div className="max-w-4xl">
-      <h1 className="mb-6 text-lg font-semibold text-gray-900">Agregar producto</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-gray-900">Agregar producto</h1>
+        <Link href="/inventario" className="text-sm text-gray-500 hover:text-gray-700">
+          Ver inventario
+        </Link>
+      </div>
+
+      {mensajeExito && (
+        <p className="mb-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          {mensajeExito} Puedes seguir agregando otro producto.
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
@@ -278,14 +313,14 @@ export function NuevoProductoForm({
         </div>
 
         <div className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-1 text-sm font-semibold text-gray-900">Receta (opcional)</h2>
+          <h2 className="mb-1 text-sm font-semibold text-gray-900">Receta</h2>
           <p className="mb-4 text-xs text-gray-400">
             Si este producto se arma combinando otros del inventario (ej. un envase + un
             líquido), agrégalos aquí. Se descontarán automáticamente cada vez que uses
             &ldquo;Producir&rdquo;.
           </p>
           <RecetaLineas
-            key={itemExistente?.id ?? "nuevo"}
+            key={`${itemExistente?.id ?? "nuevo"}-${reinicios}`}
             insumosDisponibles={insumosDisponibles}
             valorInicial={itemExistente ? recetasPorItem[itemExistente.id] ?? [] : []}
             onChange={setReceta}

@@ -126,8 +126,6 @@ create table inventario_items (
   cantidad numeric(12,2) default 0,
   costo numeric(12,2),
   precio_venta numeric(12,2),
-  item_origen_id uuid references inventario_items(id),  -- si este ítem sale de trasvasar otro (ej. botellas de 250ml que salen de un galón a granel)
-  factor_conversion numeric(12,4),  -- cuántas unidades de ESTE ítem salen de 1 unidad del item_origen_id
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: fecha de vencimiento, modelo compatible, etc.
   created_at timestamptz default now()
 );
@@ -186,39 +184,58 @@ create trigger trigger_descontar_inventario
 before insert on ventas_items
 for each row execute function descontar_inventario();
 
--- Trasvase: pasar de una unidad a granel (ej. un galón) a la presentación que se vende
--- (ej. botellas de 250ml). El ítem de destino debe tener item_origen_id y factor_conversion
--- ya configurados. Descuenta del origen y agrega al destino en una sola operación.
-create or replace function registrar_trasvase(
-  p_item_origen_id uuid,
-  p_cantidad_origen numeric
+-- Receta: qué insumos (y cuánto de cada uno) necesita un producto para
+-- producirse — ej. "Jabón envasado 500ml" necesita 0.5 litros de "Jabón a
+-- granel" + 1 unidad de "Envase vacío 500ml". Cada insumo es un producto
+-- independiente del inventario con su propia unidad (gramos, mililitros,
+-- metros, unidad, etc.); no hay conversión entre unidades — cada fila se
+-- descuenta en la unidad propia de ese insumo. Se configura una sola vez,
+-- no cada vez que se produce.
+create table inventario_receta (
+  id uuid primary key default gen_random_uuid(),
+  item_resultante_id uuid references inventario_items(id) not null,
+  item_insumo_id uuid references inventario_items(id) not null,
+  cantidad_insumo numeric(12,4) not null,  -- cuánto se consume del insumo por CADA unidad producida del resultado
+  created_at timestamptz default now(),
+  unique (item_resultante_id, item_insumo_id)
+);
+
+-- Registrar producción: dado un producto resultante y cuántas unidades se
+-- produjeron, descuenta automáticamente cada insumo de su receta (en la
+-- unidad propia de cada uno) y suma la cantidad producida al resultante.
+-- Una sola operación — nadie calcula los insumos a mano cada vez.
+create or replace function registrar_produccion(
+  p_item_resultante_id uuid,
+  p_cantidad_producida numeric
 )
-returns uuid
+returns void
 language plpgsql
 as $$
 declare
-  v_destino inventario_items%rowtype;
-  v_cantidad_destino numeric;
+  v_receta record;
 begin
-  select * into v_destino from inventario_items
-  where item_origen_id = p_item_origen_id
-  limit 1;
-
-  if v_destino.id is null then
-    raise exception 'Este ítem no tiene configurado un producto de destino para trasvase';
-  end if;
-
-  v_cantidad_destino := p_cantidad_origen * v_destino.factor_conversion;
+  for v_receta in
+    select item_insumo_id, cantidad_insumo
+    from inventario_receta
+    where item_resultante_id = p_item_resultante_id
+  loop
+    insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+    values (
+      v_receta.item_insumo_id, 'salida', 'trasvase',
+      v_receta.cantidad_insumo * p_cantidad_producida,
+      'Consumido al producir ' || p_cantidad_producida || ' unidad(es) del producto resultante'
+    );
+    update inventario_items
+    set cantidad = cantidad - (v_receta.cantidad_insumo * p_cantidad_producida)
+    where id = v_receta.item_insumo_id;
+  end loop;
 
   insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
-  values (p_item_origen_id, 'salida', 'trasvase', p_cantidad_origen, 'Trasvasado a ' || v_destino.nombre);
-  update inventario_items set cantidad = cantidad - p_cantidad_origen where id = p_item_origen_id;
+  values (p_item_resultante_id, 'entrada', 'trasvase', p_cantidad_producida, 'Producción registrada');
 
-  insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
-  values (v_destino.id, 'entrada', 'trasvase', v_cantidad_destino, 'Trasvasado desde producto a granel');
-  update inventario_items set cantidad = cantidad + v_cantidad_destino where id = v_destino.id;
-
-  return v_destino.id;
+  update inventario_items
+  set cantidad = cantidad + p_cantidad_producida
+  where id = p_item_resultante_id;
 end;
 $$;
 
@@ -582,6 +599,7 @@ alter table crm_contactos enable row level security;
 alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
 alter table inventario_movimientos enable row level security;
+alter table inventario_receta enable row level security;
 alter table finanzas_movimientos enable row level security;
 alter table pasivos enable row level security;
 alter table promociones enable row level security;
@@ -642,6 +660,12 @@ create policy "ver interacciones de mi crm" on crm_interacciones
 create policy "ver movimientos de mi inventario" on inventario_movimientos
   for all using (
     item_id in (select id from inventario_items where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver receta de mi inventario" on inventario_receta
+  for all using (
+    item_resultante_id in (select id from inventario_items where empresa_id = mi_empresa_id())
     or es_admin()
   );
 

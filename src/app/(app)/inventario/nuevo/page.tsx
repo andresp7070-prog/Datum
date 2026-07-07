@@ -29,22 +29,5 @@ export default async function NuevoProductoPage() {
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
 
-  const itemIds = (items ?? []).map((item) => item.id);
-
-  const { data: recetaRows } =
-    itemIds.length > 0
-      ? await supabase
-          .from("inventario_receta")
-          .select("item_resultante_id, item_insumo_id, cantidad_insumo")
-          .in("item_resultante_id", itemIds)
-      : { data: [] as { item_resultante_id: string; item_insumo_id: string; cantidad_insumo: number }[] };
-
-  const recetasPorItem: Record<string, { insumoId: string; cantidad: number }[]> = {};
-  for (const fila of recetaRows ?? []) {
-    const lista = recetasPorItem[fila.item_resultante_id] ?? [];
-    lista.push({ insumoId: fila.item_insumo_id, cantidad: fila.cantidad_insumo });
-    recetasPorItem[fila.item_resultante_id] = lista;
-  }
-
-  return <NuevoProductoForm items={items ?? []} recetasPorItem={recetasPorItem} />;
+  return <NuevoProductoForm items={items ?? []} />;
 }

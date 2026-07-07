@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { sinTildes } from "@/lib/texto";
 import { etiquetaUnidad } from "@/lib/unidades";
+import { InventarioTabs } from "./inventario-tabs";
 
 type Item = {
   id: string;
@@ -42,6 +43,8 @@ export function DirectorioInventario({
 
   return (
     <div>
+      <InventarioTabs />
+
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Inventario</h1>
         <Link

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { RecetaLineas, type Insumo, type LineaRecetaValor } from "../../receta-lineas";
 import { guardarReceta } from "../actions";
 
@@ -36,6 +37,9 @@ export function RecetaForm({
 
   return (
     <div className="max-w-xl">
+      <Link href="/inventario/recetas" className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-700">
+        ← Volver a recetas
+      </Link>
       <h1 className="mb-1 text-lg font-semibold text-gray-900">Receta</h1>
       <p className="mb-6 text-sm text-gray-500">
         Insumos que se descuentan automáticamente al producir una unidad de{" "}

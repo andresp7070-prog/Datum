@@ -58,6 +58,11 @@ export function NuevoProductoForm({
     .filter((item) => item.id !== itemExistente?.id)
     .map((item) => ({ id: item.id, nombre: item.nombre, unidad: item.unidad }));
 
+  const costoCalculado = receta.reduce((total, linea) => {
+    const insumo = items.find((item) => item.id === linea.insumoId);
+    return total + linea.cantidad * (insumo?.costo ?? 0);
+  }, 0);
+
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
@@ -117,11 +122,11 @@ export function NuevoProductoForm({
       return;
     }
 
-    const cantidadNum = Number(cantidad);
-    const costoNum = Number(costo);
+    const cantidadNum = volverAReceta ? 0 : Number(cantidad);
+    const costoNum = volverAReceta ? costoCalculado : Number(costo);
     const precioVentaNum = Number(precioVenta);
 
-    if (cantidad.trim() === "" || Number.isNaN(cantidadNum) || cantidadNum < 0) {
+    if (!volverAReceta && (cantidad.trim() === "" || Number.isNaN(cantidadNum) || cantidadNum < 0)) {
       setError(
         itemExistente
           ? "La cantidad a agregar es obligatoria y debe ser un número mayor o igual a cero."
@@ -130,7 +135,7 @@ export function NuevoProductoForm({
       irAlCampo(cantidadRef.current);
       return;
     }
-    if (costo.trim() === "" || Number.isNaN(costoNum) || costoNum < 0) {
+    if (!volverAReceta && (costo.trim() === "" || Number.isNaN(costoNum) || costoNum < 0)) {
       setError("El costo es obligatorio y debe ser un número mayor o igual a cero.");
       irAlCampo(document.getElementById("costo"));
       return;
@@ -205,8 +210,8 @@ export function NuevoProductoForm({
 
       {volverAReceta && (
         <p className="mb-4 rounded bg-gray-50 px-3 py-2 text-sm text-gray-600">
-          Como este producto se arma combinando otros, también elige aquí abajo de qué insumos
-          se compone.
+          Como este producto se arma combinando otros, elige aquí abajo de qué insumos se
+          compone — la cantidad inicial y el costo por unidad se calculan solos a partir de eso.
         </p>
       )}
 
@@ -321,31 +326,52 @@ export function NuevoProductoForm({
           )}
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            {itemExistente ? "Cantidad a agregar *" : "Cantidad *"} (
-            {itemExistente
-              ? UNIDADES.find((u) => u.valor === itemExistente.unidad)?.etiqueta
-              : UNIDADES.find((u) => u.valor === unidad)?.etiqueta}
-            )
-          </label>
-          <input
-            ref={cantidadRef}
-            type="number"
-            min={0}
-            value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-          />
-        </div>
+        {volverAReceta ? (
+          <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+            La cantidad inicial es 0. Después de guardar, usa &ldquo;Producir&rdquo; para armar
+            unidades — ahí se descuentan los insumos automáticamente.
+          </div>
+        ) : (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              {itemExistente ? "Cantidad a agregar *" : "Cantidad *"} (
+              {itemExistente
+                ? UNIDADES.find((u) => u.valor === itemExistente.unidad)?.etiqueta
+                : UNIDADES.find((u) => u.valor === unidad)?.etiqueta}
+              )
+            </label>
+            <input
+              ref={cantidadRef}
+              type="number"
+              min={0}
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
+        )}
 
-        <CampoMoneda
-          id="costo"
-          label="Costo por unidad (precio de compra)"
-          required
-          value={costo}
-          onChange={setCosto}
-        />
+        {volverAReceta ? (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Costo por unidad (calculado según la receta)
+            </label>
+            <div className="w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              {costoCalculado.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              Suma del costo de cada insumo según la cantidad que le pongas abajo.
+            </p>
+          </div>
+        ) : (
+          <CampoMoneda
+            id="costo"
+            label="Costo por unidad (precio de compra)"
+            required
+            value={costo}
+            onChange={setCosto}
+          />
+        )}
 
         <CampoMoneda
           id="precioVenta"

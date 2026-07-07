@@ -1,9 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { reemplazarReceta } from "@/lib/inventario";
-
-type LineaReceta = { insumoId: string; cantidad: number };
 
 export async function crearProducto(input: {
   nombre: string;
@@ -12,7 +9,6 @@ export async function crearProducto(input: {
   cantidad: number;
   costo: number;
   precioVenta: number;
-  receta: LineaReceta[];
 }) {
   const supabase = await createClient();
   const {
@@ -30,23 +26,17 @@ export async function crearProducto(input: {
     throw new Error("Tu usuario no tiene una empresa asignada.");
   }
 
-  const { data, error } = await supabase
-    .from("inventario_items")
-    .insert({
-      empresa_id: perfil.empresa_id,
-      nombre: input.nombre,
-      categoria: input.categoria || null,
-      unidad: input.unidad,
-      cantidad: input.cantidad,
-      costo: input.costo,
-      precio_venta: input.precioVenta,
-    })
-    .select("id")
-    .single();
+  const { error } = await supabase.from("inventario_items").insert({
+    empresa_id: perfil.empresa_id,
+    nombre: input.nombre,
+    categoria: input.categoria || null,
+    unidad: input.unidad,
+    cantidad: input.cantidad,
+    costo: input.costo,
+    precio_venta: input.precioVenta,
+  });
 
   if (error) throw new Error(error.message);
-
-  await reemplazarReceta(supabase, data.id as string, input.receta);
 }
 
 export async function reabastecerProducto(input: {
@@ -55,7 +45,6 @@ export async function reabastecerProducto(input: {
   cantidadAgregada: number;
   costo: number;
   precioVenta: number;
-  receta: LineaReceta[];
 }) {
   const supabase = await createClient();
   const {
@@ -72,6 +61,4 @@ export async function reabastecerProducto(input: {
   });
 
   if (error) throw new Error(error.message);
-
-  await reemplazarReceta(supabase, input.itemId, input.receta);
 }

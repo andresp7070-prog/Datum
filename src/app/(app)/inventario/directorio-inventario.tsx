@@ -68,27 +68,32 @@ export function DirectorioInventario({
       ) : (
         <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
           {filtrados.map((item) => (
-            <li key={item.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{item.nombre}</p>
-                <p className="text-xs text-gray-400">
-                  {[item.categoria, item.marca].filter(Boolean).join(" · ") || "Sin categoría"}
-                </p>
-              </div>
-              <div className="flex items-center gap-6 text-right text-sm">
+            <li key={item.id}>
+              <Link
+                href={`/inventario/${item.id}`}
+                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+              >
                 <div>
-                  <p className="text-xs text-gray-400">Cantidad</p>
-                  <p className="font-medium text-gray-900">{item.cantidad}</p>
+                  <p className="text-sm font-medium text-gray-900">{item.nombre}</p>
+                  <p className="text-xs text-gray-400">
+                    {[item.categoria, item.marca].filter(Boolean).join(" · ") || "Sin categoría"}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-400">Costo</p>
-                  <p className="font-medium text-gray-900">{formatoMoneda(item.costo)}</p>
+                <div className="flex items-center gap-6 text-right text-sm">
+                  <div>
+                    <p className="text-xs text-gray-400">Cantidad</p>
+                    <p className="font-medium text-gray-900">{item.cantidad}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Costo</p>
+                    <p className="font-medium text-gray-900">{formatoMoneda(item.costo)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Precio de venta</p>
+                    <p className="font-medium text-gray-900">{formatoMoneda(item.precio_venta)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-400">Precio de venta</p>
-                  <p className="font-medium text-gray-900">{formatoMoneda(item.precio_venta)}</p>
-                </div>
-              </div>
+              </Link>
             </li>
           ))}
         </ul>

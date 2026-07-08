@@ -5,6 +5,7 @@ import { useState } from "react";
 export type Barra = {
   etiqueta: string;
   valor: number;
+  textoValor: string;
   tono?: "default" | "positivo" | "negativo" | "alerta";
 };
 
@@ -21,11 +22,9 @@ function tonoAutomatico(valor: number): NonNullable<Barra["tono"]> {
 
 export function GraficoBarras({
   datos,
-  formatoValor,
   alto = 160,
 }: {
   datos: Barra[];
-  formatoValor: (v: number) => string;
   alto?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -79,7 +78,7 @@ export function GraficoBarras({
                 fontSize={11}
                 fill="#52514e"
               >
-                {formatoValor(d.valor)}
+                {d.textoValor}
               </text>
               <text
                 x={x + anchoBarra / 2}
@@ -98,13 +97,7 @@ export function GraficoBarras({
   );
 }
 
-export function GraficoBarrasHorizontal({
-  datos,
-  formatoValor,
-}: {
-  datos: Barra[];
-  formatoValor: (v: number) => string;
-}) {
+export function GraficoBarrasHorizontal({ datos }: { datos: Barra[] }) {
   const [hover, setHover] = useState<number | null>(null);
 
   if (datos.length === 0) return null;
@@ -136,7 +129,7 @@ export function GraficoBarrasHorizontal({
                 }}
               />
             </div>
-            <span className="w-20 shrink-0 text-right text-gray-700">{formatoValor(d.valor)}</span>
+            <span className="w-20 shrink-0 text-right text-gray-700">{d.textoValor}</span>
           </div>
         );
       })}

@@ -168,6 +168,7 @@ export default async function InsightsPage() {
   const barrasDiaSemana: Barra[] = porDiaSemana.map((d) => ({
     etiqueta: ABREVIATURA_DIA[d.dia],
     valor: d.promedio,
+    textoValor: formatoMonedaCorta(d.promedio),
     tono:
       mejorDiaDestaca && d.dia === mejorDia?.dia
         ? "positivo"
@@ -178,7 +179,11 @@ export default async function InsightsPage() {
 
   const barrasMes: Barra[] = [...porMes]
     .sort((a, b) => a.mes.localeCompare(b.mes))
-    .map((f) => ({ etiqueta: etiquetaMesCorta(f.mes), valor: f.utilidad_neta }));
+    .map((f) => ({
+      etiqueta: etiquetaMesCorta(f.mes),
+      valor: f.utilidad_neta,
+      textoValor: formatoMonedaCorta(f.utilidad_neta),
+    }));
 
   const barrasMargen: Barra[] = porProducto
     .filter((p) => p.ingresos > 0)
@@ -186,6 +191,7 @@ export default async function InsightsPage() {
     .map((p) => ({
       etiqueta: p.nombre,
       valor: p.margen_porcentaje,
+      textoValor: `${p.margen_porcentaje}%`,
       tono: p.margen_porcentaje < UMBRAL_MARGEN_BAJO ? "alerta" : "default",
     }));
 
@@ -282,7 +288,7 @@ export default async function InsightsPage() {
           <div className="rounded-lg border border-gray-200 p-4">
             <h3 className="mb-3 text-xs font-medium text-gray-700">Ventas por día de la semana</h3>
             {promedioGeneral > 0 ? (
-              <GraficoBarras datos={barrasDiaSemana} formatoValor={formatoMonedaCorta} />
+              <GraficoBarras datos={barrasDiaSemana} />
             ) : (
               <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
             )}
@@ -312,7 +318,7 @@ export default async function InsightsPage() {
           {barrasMargen.length === 0 ? (
             <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
           ) : (
-            <GraficoBarrasHorizontal datos={barrasMargen} formatoValor={(v) => `${v}%`} />
+            <GraficoBarrasHorizontal datos={barrasMargen} />
           )}
         </div>
 
@@ -321,7 +327,7 @@ export default async function InsightsPage() {
           {barrasMes.length === 0 ? (
             <p className="text-sm text-gray-400">Aún no hay datos suficientes.</p>
           ) : (
-            <GraficoBarras datos={barrasMes} formatoValor={formatoMonedaCorta} />
+            <GraficoBarras datos={barrasMes} />
           )}
         </div>
 

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { primeraMayuscula } from "@/lib/texto";
-import { GraficoBarras, GraficoBarrasHorizontal, type Barra } from "./graficos";
+import { GraficoBarras, GraficoBarrasHorizontal, GraficoLinea, type Barra, type PuntoLinea } from "./graficos";
 
 type FilaVentaDia = {
   dia: string;
@@ -99,6 +99,7 @@ export default async function InsightsPage() {
     { data: porMesData },
     { data: perfilesClienteData },
     { data: contactosData },
+    { data: ventasHoraData },
   ] = await Promise.all([
     supabase
       .from("vista_ventas_por_dia")
@@ -119,6 +120,7 @@ export default async function InsightsPage() {
       .select("contacto_id, ultima_compra, dias_promedio_entre_compras")
       .eq("empresa_id", perfil.empresa_id),
     supabase.from("crm_contactos").select("id, nombre").eq("empresa_id", perfil.empresa_id),
+    supabase.from("ventas").select("fecha, monto").eq("empresa_id", perfil.empresa_id),
   ]);
 
   const ventasPorDia = (ventasPorDiaData ?? []) as FilaVentaDia[];
@@ -127,6 +129,7 @@ export default async function InsightsPage() {
   const perfilesCliente = (perfilesClienteData ?? []) as FilaPerfilCliente[];
   const contactos = (contactosData ?? []) as Contacto[];
   const nombrePorContacto = new Map(contactos.map((c) => [c.id, c.nombre]));
+  const ventasConHora = (ventasHoraData ?? []) as { fecha: string; monto: number }[];
 
   // ---- Agregados para el resumen general ----
   const porDiaSemana = ORDEN_DIAS.map((dia) => {
@@ -163,6 +166,20 @@ export default async function InsightsPage() {
     noFestivos.length > 0
       ? noFestivos.reduce((s, f) => s + f.total_vendido, 0) / noFestivos.length
       : null;
+
+  // Colombia no tiene horario de verano — el desfase con UTC siempre es -5.
+  const totalPorHora = Array.from({ length: 24 }, () => 0);
+  for (const v of ventasConHora) {
+    const horaUtc = new Date(v.fecha).getUTCHours();
+    const horaColombia = (horaUtc + 24 - 5) % 24;
+    totalPorHora[horaColombia] += v.monto;
+  }
+  const puntosHora: PuntoLinea[] = totalPorHora.map((total, hora) => ({
+    etiqueta: `${hora}h`,
+    valor: total,
+    textoValor: formatoMonedaCorta(total),
+    mostrarEtiqueta: hora % 3 === 0,
+  }));
 
   // ---- Datos para las gráficas ----
   const barrasDiaSemana: Barra[] = porDiaSemana.map((d) => ({
@@ -311,6 +328,15 @@ export default async function InsightsPage() {
               </div>
             </dl>
           </div>
+        </div>
+
+        <div className="mt-4 rounded-lg border border-gray-200 p-4">
+          <h3 className="mb-3 text-xs font-medium text-gray-700">Ventas por hora del día</h3>
+          {ventasConHora.length === 0 ? (
+            <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
+          ) : (
+            <GraficoLinea puntos={puntosHora} />
+          )}
         </div>
 
         <div className="mt-4 rounded-lg border border-gray-200 p-4">

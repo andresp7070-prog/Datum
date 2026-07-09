@@ -827,7 +827,9 @@ declare
   v_monto_total numeric(12,2);
   v_item jsonb;
 begin
-  -- 1. Cliente: si ya se confirmó uno en el buscador, se usa directo
+  -- 1. Cliente: si ya se confirmó uno en el buscador, se usa directo. Si no
+  --    se dio ningún nombre (negocio sin CRM activo, venta anónima), se
+  --    omite por completo — no se crea ni se busca ningún contacto.
   if p_contacto_id is not null then
     v_contacto_id := p_contacto_id;
     update crm_contactos
@@ -836,7 +838,7 @@ begin
         email = coalesce(p_cliente_email, email),
         etapa_pipeline = 'cerrado'
     where id = v_contacto_id;
-  else
+  elsif coalesce(p_cliente_nombre, '') <> '' then
     select id into v_contacto_id
     from crm_contactos
     where empresa_id = p_empresa_id and telefono = p_cliente_telefono
@@ -854,6 +856,8 @@ begin
           etapa_pipeline = 'cerrado'
       where id = v_contacto_id;
     end if;
+  else
+    v_contacto_id := null;
   end if;
 
   -- 2. Calcular el monto total a partir de los items (ya con el descuento aplicado)

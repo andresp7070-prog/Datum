@@ -82,10 +82,12 @@ export function NuevaVentaForm({
   items,
   metodosPago,
   promociones,
+  crmActivo,
 }: {
   items: ItemCatalogo[];
   metodosPago: string[];
   promociones: Promocion[];
+  crmActivo: boolean;
 }) {
   const router = useRouter();
 
@@ -109,6 +111,7 @@ export function NuevaVentaForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!crmActivo) return;
     const timeout = setTimeout(async () => {
       if (contactoId || nombre.trim().length < 2) {
         setSugerencias([]);
@@ -121,7 +124,7 @@ export function NuevaVentaForm({
       setBusquedaClienteLista(true);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [nombre, contactoId]);
+  }, [nombre, contactoId, crmActivo]);
 
   function seleccionarCliente(cliente: ClienteEncontrado) {
     setNombre(cliente.nombre);
@@ -240,17 +243,19 @@ export function NuevaVentaForm({
       setError("Agrega al menos un producto con cantidad mayor a cero.");
       return;
     }
-    if (!nombre.trim()) {
-      setError("El nombre del cliente es obligatorio.");
-      return;
-    }
-    if (!/^\d+$/.test(telefono.trim())) {
-      setError("El teléfono es obligatorio y solo puede contener números.");
-      return;
-    }
-    if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setError("El correo es obligatorio y debe ser válido.");
-      return;
+    if (crmActivo) {
+      if (!nombre.trim()) {
+        setError("El nombre del cliente es obligatorio.");
+        return;
+      }
+      if (!/^\d+$/.test(telefono.trim())) {
+        setError("El teléfono es obligatorio y solo puede contener números.");
+        return;
+      }
+      if (!/\S+@\S+\.\S+/.test(email.trim())) {
+        setError("El correo es obligatorio y debe ser válido.");
+        return;
+      }
     }
     if (!metodoPago) {
       setError("Selecciona un método de pago.");
@@ -589,8 +594,9 @@ export function NuevaVentaForm({
     </section>
   );
 
-  const secciones =
-    orden === "cliente-primero"
+  const secciones = !crmActivo
+    ? [seccionProductos]
+    : orden === "cliente-primero"
       ? [seccionCliente, seccionProductos]
       : [seccionProductos, seccionCliente];
 
@@ -598,17 +604,19 @@ export function NuevaVentaForm({
     <div className="max-w-3xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Agregar venta</h1>
-        <button
-          type="button"
-          onClick={() =>
-            setOrden((actual) =>
-              actual === "cliente-primero" ? "productos-primero" : "cliente-primero",
-            )
-          }
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          Cambiar orden ↕
-        </button>
+        {crmActivo && (
+          <button
+            type="button"
+            onClick={() =>
+              setOrden((actual) =>
+                actual === "cliente-primero" ? "productos-primero" : "cliente-primero",
+              )
+            }
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            Cambiar orden ↕
+          </button>
+        )}
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">

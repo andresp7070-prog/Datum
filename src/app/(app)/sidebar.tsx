@@ -4,22 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const modulos = [
-  { nombre: "Resumen", href: "/resumen" },
-  { nombre: "Ventas", href: "/ventas" },
-  { nombre: "CRM", href: "/crm" },
-  { nombre: "Inventario", href: "/inventario" },
-  { nombre: "Estado P y G", href: "/pyg" },
-  { nombre: "Insights", href: "/insights" },
-  { nombre: "Promociones", href: "/promociones" },
+  { nombre: "Resumen", href: "/resumen", slug: null },
+  { nombre: "Ventas", href: "/ventas", slug: "ventas" },
+  { nombre: "CRM", href: "/crm", slug: "crm" },
+  { nombre: "Inventario", href: "/inventario", slug: "inventario" },
+  { nombre: "Estado P y G", href: "/pyg", slug: "pyg" },
+  { nombre: "Insights", href: "/insights", slug: "insights" },
+  { nombre: "Promociones", href: "/promociones", slug: "promociones" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ modulosActivos }: { modulosActivos: string[] }) {
   const pathname = usePathname();
+
+  const modulosVisibles = modulos.filter(
+    (modulo) => modulo.slug === null || modulosActivos.includes(modulo.slug),
+  );
 
   return (
     <nav className="w-56 shrink-0 border-r border-gray-200 p-4">
       <ul className="space-y-1">
-        {modulos.map((modulo) => {
+        {modulosVisibles.map((modulo) => {
           const activo = pathname === modulo.href || pathname.startsWith(`${modulo.href}/`);
           return (
             <li key={modulo.href}>

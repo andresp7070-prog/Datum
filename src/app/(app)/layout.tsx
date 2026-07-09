@@ -16,7 +16,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar modulosActivos={perfil.empresas?.modulos_activos ?? []} />
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <span className="text-sm text-gray-500">{perfil.nombre}</span>

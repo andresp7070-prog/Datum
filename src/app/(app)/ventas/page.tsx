@@ -63,8 +63,31 @@ export default async function VentasPage({
     .order("fecha", { ascending: false });
 
   const ventas = (data ?? []) as unknown as Venta[];
-  const totalVentas = ventas.length;
-  const totalVendido = ventas.reduce((suma, venta) => suma + Number(venta.monto), 0);
+
+  const diaColombia = (fechaIso: string) =>
+    new Date(fechaIso).toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+
+  const ventasHoy = ventas.filter((venta) => diaColombia(venta.fecha) === hoy);
+  const totalVentasHoy = ventasHoy.length;
+  const totalVendidoHoy = ventasHoy.reduce((suma, venta) => suma + Number(venta.monto), 0);
+
+  const vendidoPorDia: Record<string, number> = {};
+  for (const venta of ventas) {
+    const dia = diaColombia(venta.fecha);
+    vendidoPorDia[dia] = (vendidoPorDia[dia] ?? 0) + Number(venta.monto);
+  }
+  const diasAnteriores = Object.entries(vendidoPorDia).filter(([dia]) => dia !== hoy);
+  const promedioDiario =
+    diasAnteriores.length > 0
+      ? diasAnteriores.reduce((suma, [, monto]) => suma + monto, 0) / diasAnteriores.length
+      : null;
+
+  const diferenciaPromedio =
+    promedioDiario !== null && promedioDiario > 0
+      ? Math.round(((totalVendidoHoy - promedioDiario) / promedioDiario) * 100)
+      : null;
 
   const filasCsv = ventas.map((venta) => ({
     fecha: new Date(venta.fecha).toLocaleString("es-CO"),
@@ -109,16 +132,33 @@ export default async function VentasPage({
         </p>
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:w-80">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:w-96">
         <div className="rounded-xl border border-gray-200 p-4">
-          <p className="text-xs text-gray-400">Total de ventas</p>
-          <p className="text-lg font-semibold text-gray-900">{totalVentas}</p>
+          <p className="text-xs text-gray-400">Ventas de hoy</p>
+          <p className="text-lg font-semibold text-gray-900">{totalVentasHoy}</p>
         </div>
         <div className="rounded-xl border border-gray-200 p-4">
-          <p className="text-xs text-gray-400">Total vendido</p>
+          <p className="text-xs text-gray-400">Vendido hoy</p>
           <p className="text-lg font-semibold text-gray-900">
-            {totalVendido.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+            {totalVendidoHoy.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
           </p>
+          {diferenciaPromedio !== null ? (
+            <p
+              className={`mt-1 text-xs font-medium ${
+                diferenciaPromedio > 0
+                  ? "text-green-600"
+                  : diferenciaPromedio < 0
+                    ? "text-red-600"
+                    : "text-gray-400"
+              }`}
+            >
+              {diferenciaPromedio > 0 && `▲ ${diferenciaPromedio}% sobre el promedio`}
+              {diferenciaPromedio < 0 && `▼ ${Math.abs(diferenciaPromedio)}% bajo el promedio`}
+              {diferenciaPromedio === 0 && "Igual al promedio"}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-400">Aún no hay suficientes días para comparar</p>
+          )}
         </div>
       </div>
 

@@ -1,8 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requerirModulo } from "@/lib/empresa";
 import { DirectorioClientes } from "./directorio-clientes";
 
 export default async function CrmPage() {
+  await requerirModulo("crm");
+
   const supabase = await createClient();
   const {
     data: { user },

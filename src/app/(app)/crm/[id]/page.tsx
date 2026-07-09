@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { requerirModulo } from "@/lib/empresa";
 import { CambiarEtapa } from "./cambiar-etapa";
 import { NuevaInteraccionForm } from "./nueva-interaccion-form";
 
@@ -17,6 +18,8 @@ export default async function FichaClientePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ creado?: string }>;
 }) {
+  await requerirModulo("crm");
+
   const { id } = await params;
   const { creado } = await searchParams;
 

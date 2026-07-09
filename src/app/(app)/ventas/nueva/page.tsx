@@ -31,9 +31,11 @@ export default async function NuevaVentaPage() {
 
   const { data: empresa } = await supabase
     .from("empresas")
-    .select("metodos_pago_disponibles")
+    .select("metodos_pago_disponibles, modulos_activos")
     .eq("id", perfil.empresa_id)
     .single();
+
+  const crmActivo = (empresa?.modulos_activos ?? []).includes("crm");
 
   const hoy = new Date().toISOString().slice(0, 10);
   const { data: promocionesData } = await supabase
@@ -66,6 +68,7 @@ export default async function NuevaVentaPage() {
       items={items ?? []}
       metodosPago={empresa?.metodos_pago_disponibles ?? []}
       promociones={promociones}
+      crmActivo={crmActivo}
     />
   );
 }

@@ -14,6 +14,10 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  if (perfil.debe_cambiar_password) {
+    redirect("/cambiar-password");
+  }
+
   return (
     <div className="flex min-h-screen">
       <Sidebar modulosActivos={perfil.empresas?.modulos_activos ?? []} />

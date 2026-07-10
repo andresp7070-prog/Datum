@@ -46,6 +46,7 @@ create table perfiles (
   empresa_id uuid references empresas(id),
   rol text not null default 'cliente' check (rol in ('cliente','admin')),
   nombre text,
+  debe_cambiar_password boolean not null default true,  -- true al crear la cuenta; se apaga solo cuando cambia su contraseña por primera vez
   created_at timestamptz default now()
 );
 
@@ -655,6 +656,10 @@ create policy "actualizar mi propia empresa" on empresas
 
 create policy "ver mi propio perfil" on perfiles
   for select using (id = auth.uid() or es_admin());
+
+create policy "actualizar mi propio perfil" on perfiles
+  for update using (id = auth.uid() or es_admin())
+  with check (id = auth.uid() or es_admin());
 
 create policy "ver mis diagnosticos" on diagnosticos
   for all using (empresa_id = mi_empresa_id() or es_admin());

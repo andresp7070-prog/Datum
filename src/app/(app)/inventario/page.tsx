@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { calcularMaxProducible } from "@/lib/inventario";
+import { calcularMaxProducible, calcularDiasRestantes } from "@/lib/inventario";
 import { firmarFotoUrls } from "@/lib/fotos";
 import { DirectorioInventario } from "./directorio-inventario";
 
@@ -71,11 +71,25 @@ export default async function InventarioPage({
     recetaPorItem[fila.item_resultante_id] = lista;
   }
 
-  const itemsConDisponible = (items ?? []).map((item) => ({
-    ...item,
-    disponible: calcularMaxProducible(recetaPorItem[item.id] ?? []),
-    fotoUrl: item.foto_path ? (fotoUrlsPorPath[item.foto_path] ?? null) : null,
-  }));
+  const { data: velocidadData } = await supabase
+    .from("vista_velocidad_ventas")
+    .select("item_id, unidades_por_dia")
+    .eq("empresa_id", perfil.empresa_id);
+
+  const velocidadPorItem = new Map(
+    (velocidadData ?? []).map((v) => [v.item_id, Number(v.unidades_por_dia)]),
+  );
+
+  const itemsConDisponible = (items ?? []).map((item) => {
+    const disponible = calcularMaxProducible(recetaPorItem[item.id] ?? []);
+    const cantidadEfectiva = disponible ?? item.cantidad;
+    return {
+      ...item,
+      disponible,
+      diasRestantes: calcularDiasRestantes(cantidadEfectiva, velocidadPorItem.get(item.id)),
+      fotoUrl: item.foto_path ? (fotoUrlsPorPath[item.foto_path] ?? null) : null,
+    };
+  });
 
   return <DirectorioInventario items={itemsConDisponible} creado={creado === "1"} />;
 }

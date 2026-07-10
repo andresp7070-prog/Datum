@@ -46,6 +46,7 @@ create table perfiles (
   empresa_id uuid references empresas(id),
   rol text not null default 'cliente' check (rol in ('cliente','admin')),
   nombre text,
+  debe_cambiar_password boolean not null default true,  -- true al crear la cuenta; se apaga solo cuando cambia su contraseña por primera vez
   created_at timestamptz default now()
 );
 
@@ -247,6 +248,45 @@ as $$
       precio_venta = p_precio_venta,
       categoria = p_categoria
   where id = p_item_id;
+$$;
+
+-- Corrige la cantidad en stock a lo que de verdad hay — pérdida, daño, o un
+-- conteo físico que no coincide con el sistema. A diferencia de reabastecer
+-- (que siempre suma), esto fija el número exacto y deja un movimiento en
+-- inventario_movimientos con motivo 'ajuste' como registro de por qué cambió.
+create or replace function ajustar_inventario(
+  p_item_id uuid,
+  p_cantidad_real numeric,
+  p_nota text default null
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_cantidad_actual numeric(12,2);
+  v_diferencia numeric(12,2);
+begin
+  select cantidad into v_cantidad_actual from inventario_items where id = p_item_id;
+  if v_cantidad_actual is null then
+    raise exception 'Producto no encontrado';
+  end if;
+
+  v_diferencia := p_cantidad_real - v_cantidad_actual;
+  if v_diferencia = 0 then
+    return;
+  end if;
+
+  insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+  values (
+    p_item_id,
+    case when v_diferencia > 0 then 'entrada' else 'salida' end,
+    'ajuste',
+    abs(v_diferencia),
+    p_nota
+  );
+
+  update inventario_items set cantidad = p_cantidad_real where id = p_item_id;
+end;
 $$;
 
 -- ------------------------------------------------------------
@@ -655,6 +695,10 @@ create policy "actualizar mi propia empresa" on empresas
 
 create policy "ver mi propio perfil" on perfiles
   for select using (id = auth.uid() or es_admin());
+
+create policy "actualizar mi propio perfil" on perfiles
+  for update using (id = auth.uid() or es_admin())
+  with check (id = auth.uid() or es_admin());
 
 create policy "ver mis diagnosticos" on diagnosticos
   for all using (empresa_id = mi_empresa_id() or es_admin());

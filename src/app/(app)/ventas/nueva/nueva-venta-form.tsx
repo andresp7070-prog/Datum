@@ -4,14 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ahoraFecha, ahoraHora } from "@/lib/fecha";
 import { sinTildes } from "@/lib/texto";
+import { etiquetaUnidad } from "@/lib/unidades";
 import { buscarClientes, guardarVenta, type ClienteEncontrado } from "./actions";
 
 type ItemCatalogo = {
   id: string;
   nombre: string;
   categoria: string | null;
+  unidad: string;
+  cantidad: number;
   precio_venta: number | null;
   marca: string | null;
+  diasRestantes: number | null;
 };
 
 type Promocion = {
@@ -469,6 +473,35 @@ export function NuevaVentaForm({
                         ))}
                       </ul>
                     )}
+                  {linea.itemId &&
+                    (() => {
+                      const itemSeleccionado = items.find((i) => i.id === linea.itemId);
+                      if (!itemSeleccionado) return null;
+                      return (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Quedan {itemSeleccionado.cantidad} {etiquetaUnidad(itemSeleccionado.unidad)}
+                          {itemSeleccionado.diasRestantes !== null ? (
+                            <>
+                              {" "}
+                              — a este ritmo,{" "}
+                              <span
+                                className={
+                                  itemSeleccionado.diasRestantes <= 3
+                                    ? "font-medium text-red-600"
+                                    : itemSeleccionado.diasRestantes <= 7
+                                      ? "font-medium text-amber-600"
+                                      : ""
+                                }
+                              >
+                                se {itemSeleccionado.diasRestantes === 0 ? "acaba hoy" : `acaba en ~${itemSeleccionado.diasRestantes} día(s)`}
+                              </span>
+                            </>
+                          ) : (
+                            " — aún no hay suficientes ventas para proyectar cuándo se acaba"
+                          )}
+                        </p>
+                      );
+                    })()}
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1 block text-xs font-medium text-gray-700">Cantidad *</label>

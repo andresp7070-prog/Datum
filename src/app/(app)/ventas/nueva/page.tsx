@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { calcularDiasRestantes } from "@/lib/inventario";
 import { NuevaVentaForm } from "./nueva-venta-form";
 
 export default async function NuevaVentaPage() {
@@ -23,11 +24,25 @@ export default async function NuevaVentaPage() {
     );
   }
 
-  const { data: items } = await supabase
+  const { data: itemsData } = await supabase
     .from("inventario_items")
-    .select("id, nombre, categoria, precio_venta, marca:atributos->>marca")
+    .select("id, nombre, categoria, unidad, cantidad, precio_venta, marca:atributos->>marca")
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
+
+  const { data: velocidadData } = await supabase
+    .from("vista_velocidad_ventas")
+    .select("item_id, unidades_por_dia")
+    .eq("empresa_id", perfil.empresa_id);
+
+  const velocidadPorItem = new Map(
+    (velocidadData ?? []).map((v) => [v.item_id, Number(v.unidades_por_dia)]),
+  );
+
+  const items = (itemsData ?? []).map((item) => ({
+    ...item,
+    diasRestantes: calcularDiasRestantes(item.cantidad, velocidadPorItem.get(item.id)),
+  }));
 
   const { data: empresa } = await supabase
     .from("empresas")
@@ -49,7 +64,7 @@ export default async function NuevaVentaPage() {
     .gte("fecha_fin", hoy);
 
   const promociones = (promocionesData ?? []).map((p) => {
-    const regalo = p.item_regalo_id ? (items ?? []).find((i) => i.id === p.item_regalo_id) : null;
+    const regalo = p.item_regalo_id ? items.find((i) => i.id === p.item_regalo_id) : null;
     return {
       id: p.id,
       nombre: p.nombre,
@@ -65,7 +80,7 @@ export default async function NuevaVentaPage() {
 
   return (
     <NuevaVentaForm
-      items={items ?? []}
+      items={items}
       metodosPago={empresa?.metodos_pago_disponibles ?? []}
       promociones={promociones}
       crmActivo={crmActivo}

@@ -45,3 +45,14 @@ export function calcularMaxProducible(
   if (posibles.length === 0) return null;
   return Math.max(0, Math.min(...posibles));
 }
+
+// En cuántos días se acabaría el stock actual, al ritmo de venta reciente
+// (vista_velocidad_ventas). null = no hay suficiente historial de ventas
+// para estimarlo todavía.
+export function calcularDiasRestantes(
+  cantidad: number,
+  unidadesPorDia: number | null | undefined,
+): number | null {
+  if (!unidadesPorDia || unidadesPorDia <= 0) return null;
+  return Math.floor(cantidad / unidadesPorDia);
+}

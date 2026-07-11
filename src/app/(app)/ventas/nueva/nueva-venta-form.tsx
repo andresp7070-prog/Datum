@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ahoraFecha, ahoraHora } from "@/lib/fecha";
 import { sinTildes } from "@/lib/texto";
 import { etiquetaUnidad } from "@/lib/unidades";
+import { EntradaMoneda } from "@/components/campo-moneda";
 import { buscarClientes, guardarVenta, type ClienteEncontrado } from "./actions";
 
 type ItemCatalogo = {
@@ -553,14 +554,12 @@ export function NuevaVentaForm({
                   <label className="mb-1 block text-xs font-medium text-gray-700">
                     Precio unitario
                   </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={linea.precioUnitario}
-                    onChange={(e) =>
-                      actualizarLinea(linea.key, { precioUnitario: Number(e.target.value) || 0 })
+                  <EntradaMoneda
+                    value={String(linea.precioUnitario)}
+                    onChange={(valor) =>
+                      actualizarLinea(linea.key, { precioUnitario: Number(valor) || 0 })
                     }
-                    className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
                   />
                 </div>
                 <div className="col-span-1 flex justify-end">

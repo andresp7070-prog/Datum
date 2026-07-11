@@ -117,6 +117,20 @@ alter table ventas add column contacto_id uuid references crm_contactos(id);
 -- ------------------------------------------------------------
 -- 8. INVENTARIO
 -- ------------------------------------------------------------
+-- Proveedores: a quién le compra cada producto la empresa, y en qué condición
+-- le paga (de contado o a cuotas fijas). Es una entidad propia (no un campo en
+-- atributos) porque tiene su propia identidad y su propia forma de pago, no un
+-- dato adicional sobre un producto que ya existe.
+create table proveedores (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  nombre text not null,
+  telefono text,
+  condicion_pago text not null default 'contado'
+    check (condicion_pago in ('contado', '15_dias', '30_dias', '60_dias', '90_dias')),
+  created_at timestamptz default now()
+);
+
 create table inventario_items (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
@@ -129,6 +143,7 @@ create table inventario_items (
   costo numeric(12,2),
   precio_venta numeric(12,2),
   foto_path text,  -- ruta dentro del bucket 'inventario-fotos' de Supabase Storage; opcional
+  proveedor_id uuid references proveedores(id),  -- a quién se le compra este producto; opcional
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: fecha de vencimiento, modelo compatible, etc.
   created_at timestamptz default now()
 );
@@ -237,7 +252,8 @@ create or replace function reabastecer_producto(
   p_cantidad_agregada numeric,
   p_costo numeric,
   p_precio_venta numeric,
-  p_categoria text
+  p_categoria text,
+  p_proveedor_id uuid default null
 )
 returns void
 language sql
@@ -246,7 +262,8 @@ as $$
   set cantidad = cantidad + p_cantidad_agregada,
       costo = p_costo,
       precio_venta = p_precio_venta,
-      categoria = p_categoria
+      categoria = p_categoria,
+      proveedor_id = p_proveedor_id
   where id = p_item_id;
 $$;
 
@@ -722,6 +739,7 @@ alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
 alter table inventario_movimientos enable row level security;
 alter table inventario_receta enable row level security;
+alter table proveedores enable row level security;
 alter table finanzas_movimientos enable row level security;
 alter table pasivos enable row level security;
 alter table promociones enable row level security;
@@ -774,6 +792,9 @@ create policy "ver mi crm" on crm_contactos
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mi inventario" on inventario_items
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver mis proveedores" on proveedores
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mis finanzas" on finanzas_movimientos

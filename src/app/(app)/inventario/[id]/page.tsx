@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { etiquetaUnidad } from "@/lib/unidades";
 import { calcularMaxProducible } from "@/lib/inventario";
+import { etiquetaCondicionPago } from "@/lib/proveedores";
 import { firmarFotoUrl } from "@/lib/fotos";
 import { FotoProducto } from "./foto-producto";
 import { AjustarInventario } from "./ajustar-inventario";
@@ -33,12 +34,14 @@ export default async function FichaProductoPage({
   const { data: item } = await supabase
     .from("inventario_items")
     .select(
-      "id, nombre, categoria, unidad, cantidad, costo, precio_venta, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad",
+      "id, nombre, categoria, unidad, cantidad, costo, precio_venta, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad, proveedor:proveedores ( nombre, condicion_pago )",
     )
     .eq("id", id)
     .single();
 
   if (!item) notFound();
+
+  const proveedor = Array.isArray(item.proveedor) ? item.proveedor[0] : item.proveedor;
 
   const fotoUrl = await firmarFotoUrl(supabase, item.foto_path);
 
@@ -72,6 +75,11 @@ export default async function FichaProductoPage({
               {item.contenido_por_unidad && (
                 <p className="mt-1 text-xs text-gray-400">
                   Cada unidad: {item.contenido_por_unidad} {etiquetaUnidad(item.unidad)}
+                </p>
+              )}
+              {proveedor && (
+                <p className="mt-1 text-xs text-gray-400">
+                  Proveedor: {proveedor.nombre} · {etiquetaCondicionPago(proveedor.condicion_pago)}
                 </p>
               )}
             </div>

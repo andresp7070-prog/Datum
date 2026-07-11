@@ -9,6 +9,7 @@ export async function crearProducto(input: {
   cantidad: number;
   costo: number;
   precioVenta: number;
+  proveedorId?: string | null;
   atributos?: Record<string, unknown>;
 }): Promise<{ error: string | null; id?: string }> {
   const supabase = await createClient();
@@ -37,6 +38,7 @@ export async function crearProducto(input: {
       cantidad: input.cantidad,
       costo: input.costo,
       precio_venta: input.precioVenta,
+      proveedor_id: input.proveedorId ?? null,
       atributos: input.atributos ?? {},
     })
     .select("id")
@@ -53,6 +55,7 @@ export async function reabastecerProducto(input: {
   cantidadAgregada: number;
   costo: number;
   precioVenta: number;
+  proveedorId?: string | null;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const {
@@ -66,6 +69,7 @@ export async function reabastecerProducto(input: {
     p_costo: input.costo,
     p_precio_venta: input.precioVenta,
     p_categoria: input.categoria || null,
+    p_proveedor_id: input.proveedorId ?? null,
   });
 
   if (error) return { error: error.message };

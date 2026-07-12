@@ -10,10 +10,10 @@ export type Barra = {
 };
 
 const COLOR: Record<NonNullable<Barra["tono"]>, string> = {
-  default: "#33311a",
+  default: "#1a1b33",
   positivo: "#9c6900",
-  negativo: "#d03b3b",
-  alerta: "#d03b3b",
+  negativo: "#7f2525",
+  alerta: "#7f2525",
 };
 
 function tonoAutomatico(valor: number): NonNullable<Barra["tono"]> {
@@ -139,7 +139,7 @@ export function GraficoLinea({
         className="min-w-full"
       >
         <line x1={margen} y1={ejeY} x2={ancho - margen} y2={ejeY} stroke="#e1e0d9" strokeWidth={1} />
-        <path d={path} fill="none" stroke="#33311a" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={path} fill="none" stroke="#1a1b33" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         {coords.map((c, i) => (
           <g
             key={i}
@@ -148,7 +148,7 @@ export function GraficoLinea({
             className="cursor-default"
           >
             <rect x={c.x - pasoX / 2} y={0} width={pasoX} height={alto} fill="transparent" />
-            <circle cx={c.x} cy={c.y} r={hover === i ? 5 : 3} fill="#33311a" />
+            <circle cx={c.x} cy={c.y} r={hover === i ? 5 : 3} fill="#1a1b33" />
             {puntos[i].mostrarEtiqueta && (
               <text x={c.x} y={alto - 6} textAnchor="middle" fontSize={10} fill="#898781">
                 {puntos[i].etiqueta}

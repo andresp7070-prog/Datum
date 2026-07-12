@@ -25,8 +25,13 @@ function IconoCandado() {
 function LogoCompass({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" fill="none" className={`${className} shrink-0`} aria-hidden="true">
-      <circle cx="24" cy="24" r="18" stroke="currentColor" strokeWidth="3" />
-      <path d="M24 12 L30 24 L24 36 L18 24 Z" fill="currentColor" />
+      <path
+        d="M 24 42 A 18 18 0 1 1 36.321 37.122"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <path d="M24 10 L29 24 L24 38 L19 24 Z" fill="currentColor" />
     </svg>
   );
 }

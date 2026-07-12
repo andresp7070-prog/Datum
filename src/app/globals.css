@@ -11,9 +11,8 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Paleta minimalista (Opción C): la escala de grises se afina hacia estos
-     tonos, y se agrega un color de acento propio para botones primarios y
-     estados activos — antes reutilizaban el mismo negro que el texto. */
+  /* Paleta de marca Datum: negro para texto, #1A1B33 para botones/brújula,
+     #9C6900 para indicadores y datos destacados, #33311A para gráficas. */
   --color-gray-50: #fafafa;
   --color-gray-100: #f2f2f2;
   --color-gray-200: #e7e7e7;
@@ -23,10 +22,12 @@
   --color-gray-600: #525252;
   --color-gray-700: #3a3a3a;
   --color-gray-800: #232323;
-  --color-gray-900: #0e0e0e;
+  --color-gray-900: #000000;
 
-  --color-accent: #3730e0;
-  --color-accent-hover: #2e26b8;
+  --color-accent: #1a1b33;
+  --color-accent-hover: #2c2e57;
+
+  --color-amber-600: #9c6900;
 
   /* Más redondeado (ovalado), en vez del default de Tailwind. */
   --radius-lg: 14px;

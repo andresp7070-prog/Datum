@@ -29,6 +29,13 @@
 
   --color-amber-600: #9c6900;
 
+  /* Rojo de alerta / negativos, mismo tono apagado que el resto de la paleta
+     en vez del rojo genérico de Tailwind. */
+  --color-red-50: #fbeeee;
+  --color-red-500: #b23434;
+  --color-red-600: #7f2525;
+  --color-red-700: #5f1c1c;
+
   /* Más redondeado (ovalado), en vez del default de Tailwind. */
   --radius-lg: 14px;
   --radius-xl: 20px;

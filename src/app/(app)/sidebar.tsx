@@ -81,8 +81,8 @@ export function Sidebar({ modulosActivos }: { modulosActivos: string[] }) {
         </ul>
       </div>
 
-      <div className="flex items-center gap-2 px-3 text-xs text-gray-400">
-        <LogoCompass className="h-4 w-4" />
+      <div className="flex items-center gap-2.5 px-3 text-base text-gray-400">
+        <LogoCompass className="h-6 w-6" />
         <span>Desarrollado por Datum</span>
       </div>
     </nav>

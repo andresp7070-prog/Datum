@@ -42,9 +42,9 @@ export function Sidebar({ modulosActivos }: { modulosActivos: string[] }) {
   return (
     <nav className="flex w-56 shrink-0 flex-col justify-between border-r border-gray-200 p-4">
       <div>
-        <div className="mb-4 flex items-center gap-2 px-3 text-accent">
-          <LogoCompass className="h-6 w-6" />
-          <span className="text-lg font-bold tracking-tight text-gray-900">Datum</span>
+        <div className="mb-6 flex items-center gap-3 px-3 text-accent">
+          <LogoCompass className="h-9 w-9" />
+          <span className="text-4xl font-bold tracking-tight text-gray-900">Datum</span>
         </div>
         <ul className="space-y-1">
           {modulos.map((modulo) => {

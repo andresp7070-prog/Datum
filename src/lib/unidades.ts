@@ -1,14 +1,6 @@
 import { sinTildes } from "./texto";
 
-export type Dimension =
-  | "conteo"
-  | "peso"
-  | "volumen"
-  | "longitud"
-  | "caja"
-  | "paquete"
-  | "bolsa"
-  | "bulto";
+export type Dimension = "conteo" | "peso" | "volumen" | "longitud";
 
 export type Unidad = {
   valor: string;
@@ -19,8 +11,6 @@ export type Unidad = {
 
 export const UNIDADES: Unidad[] = [
   { valor: "unidad", etiqueta: "Unidades", dimension: "conteo", factor: 1 },
-  { valor: "docena", etiqueta: "Docena (12 u.)", dimension: "conteo", factor: 12 },
-  { valor: "par", etiqueta: "Par (2 u.)", dimension: "conteo", factor: 2 },
   { valor: "gramo", etiqueta: "Gramo (g)", dimension: "peso", factor: 1 },
   { valor: "kilogramo", etiqueta: "Kilogramo (kg)", dimension: "peso", factor: 1000 },
   { valor: "libra", etiqueta: "Libra (lb)", dimension: "peso", factor: 453.592 },
@@ -32,13 +22,6 @@ export const UNIDADES: Unidad[] = [
   { valor: "garrafa", etiqueta: "Garrafa (20 L)", dimension: "volumen", factor: 20000 },
   { valor: "centimetro", etiqueta: "Centímetro (cm)", dimension: "longitud", factor: 1 },
   { valor: "metro", etiqueta: "Metro (m)", dimension: "longitud", factor: 100 },
-  // Estas cuatro no tienen un tamaño estándar (varía según el producto), así
-  // que cada una queda en su propia dimensión: solo se muestran como
-  // etiqueta, nunca se convierten entre sí ni con otra unidad.
-  { valor: "caja", etiqueta: "Caja", dimension: "caja", factor: 1 },
-  { valor: "paquete", etiqueta: "Paquete", dimension: "paquete", factor: 1 },
-  { valor: "bolsa", etiqueta: "Bolsa", dimension: "bolsa", factor: 1 },
-  { valor: "bulto", etiqueta: "Bulto", dimension: "bulto", factor: 1 },
 ];
 
 export function buscarUnidad(valor: string): Unidad | undefined {
@@ -54,11 +37,6 @@ const SINONIMOS_UNIDAD: Record<string, string> = {
   und: "unidad",
   un: "unidad",
   u: "unidad",
-  docena: "docena",
-  docenas: "docena",
-  dcna: "docena",
-  par: "par",
-  pares: "par",
   gramo: "gramo",
   gramos: "gramo",
   gr: "gramo",
@@ -91,15 +69,6 @@ const SINONIMOS_UNIDAD: Record<string, string> = {
   "oz liquida": "onza_liquida",
   garrafa: "garrafa",
   garrafas: "garrafa",
-  caja: "caja",
-  cajas: "caja",
-  paquete: "paquete",
-  paquetes: "paquete",
-  paq: "paquete",
-  bolsa: "bolsa",
-  bolsas: "bolsa",
-  bulto: "bulto",
-  bultos: "bulto",
   centimetro: "centimetro",
   centimetros: "centimetro",
   cm: "centimetro",

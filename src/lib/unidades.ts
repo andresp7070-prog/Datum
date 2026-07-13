@@ -1,3 +1,5 @@
+import { sinTildes } from "./texto";
+
 export type Dimension = "conteo" | "peso" | "volumen" | "longitud";
 
 export type Unidad = {
@@ -23,6 +25,69 @@ export const UNIDADES: Unidad[] = [
 
 export function buscarUnidad(valor: string): Unidad | undefined {
   return UNIDADES.find((u) => u.valor === valor);
+}
+
+// Formas comunes en que alguien escribiría cada unidad a mano (sin tildes,
+// minúsculas) — para la carga masiva de inventario, donde la persona no
+// elige de una lista sino que escribe en un CSV.
+const SINONIMOS_UNIDAD: Record<string, string> = {
+  unidad: "unidad",
+  unidades: "unidad",
+  und: "unidad",
+  un: "unidad",
+  u: "unidad",
+  gramo: "gramo",
+  gramos: "gramo",
+  gr: "gramo",
+  g: "gramo",
+  kilogramo: "kilogramo",
+  kilogramos: "kilogramo",
+  kilo: "kilogramo",
+  kilos: "kilogramo",
+  kg: "kilogramo",
+  libra: "libra",
+  libras: "libra",
+  lb: "libra",
+  lbs: "libra",
+  onza: "onza_peso",
+  onzas: "onza_peso",
+  oz: "onza_peso",
+  "onza peso": "onza_peso",
+  mililitro: "mililitro",
+  mililitros: "mililitro",
+  ml: "mililitro",
+  litro: "litro",
+  litros: "litro",
+  lt: "litro",
+  l: "litro",
+  galon: "galon",
+  galones: "galon",
+  gal: "galon",
+  "onza liquida": "onza_liquida",
+  "onza_liquida": "onza_liquida",
+  "oz liquida": "onza_liquida",
+  centimetro: "centimetro",
+  centimetros: "centimetro",
+  cm: "centimetro",
+  metro: "metro",
+  metros: "metro",
+  m: "metro",
+  mt: "metro",
+  mts: "metro",
+};
+
+// Convierte lo que alguien haya escrito a mano ("Kg", "litros", "GALONES")
+// al código interno exacto que usa el sistema. Si no reconoce nada, cae en
+// "unidad" — nunca deja pasar un valor que no signifique nada en el sistema.
+export function normalizarUnidad(textoLibre: string): { valor: string; reconocida: boolean } {
+  const limpio = sinTildes(textoLibre.trim());
+
+  if (!limpio) return { valor: "unidad", reconocida: true };
+
+  const valor = SINONIMOS_UNIDAD[limpio];
+  if (valor) return { valor, reconocida: true };
+
+  return { valor: "unidad", reconocida: false };
 }
 
 export function etiquetaUnidad(valor: string): string {

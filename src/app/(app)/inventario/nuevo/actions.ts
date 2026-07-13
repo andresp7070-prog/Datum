@@ -2,14 +2,38 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+// Genera el siguiente SKU secuencial de la empresa: 00000, 00001, 00002... —
+// solo tiene en cuenta los SKU numéricos ya usados, para no romperse si
+// alguien puso uno manual con letras.
+async function siguienteSku(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  empresaId: string,
+): Promise<string> {
+  const { data } = await supabase
+    .from("inventario_items")
+    .select("sku")
+    .eq("empresa_id", empresaId)
+    .not("sku", "is", null);
+
+  const maximo = (data ?? []).reduce((max, fila) => {
+    const sku = fila.sku ?? "";
+    if (!/^\d+$/.test(sku)) return max;
+    return Math.max(max, Number(sku));
+  }, -1);
+
+  return String(maximo + 1).padStart(5, "0");
+}
+
 export async function crearProducto(input: {
   nombre: string;
   categoria: string;
   unidad: string;
   cantidad: number;
   costo: number;
-  precioVenta: number;
+  precioVenta: number | null;
   proveedorId?: string | null;
+  sku?: string | null;
+  esInsumo?: boolean;
   atributos?: Record<string, unknown>;
 }): Promise<{ error: string | null; id?: string }> {
   const supabase = await createClient();
@@ -28,23 +52,32 @@ export async function crearProducto(input: {
     return { error: "Tu usuario no tiene una empresa asignada." };
   }
 
+  const skuFinal = input.sku?.trim() || (await siguienteSku(supabase, perfil.empresa_id));
+
   const { data, error } = await supabase
     .from("inventario_items")
     .insert({
       empresa_id: perfil.empresa_id,
       nombre: input.nombre,
+      sku: skuFinal,
       categoria: input.categoria || null,
       unidad: input.unidad,
       cantidad: input.cantidad,
       costo: input.costo,
-      precio_venta: input.precioVenta,
+      precio_venta: input.esInsumo ? null : input.precioVenta,
       proveedor_id: input.proveedorId ?? null,
+      es_insumo: input.esInsumo ?? false,
       atributos: input.atributos ?? {},
     })
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.message.includes("duplicate") || error.code === "23505") {
+      return { error: `El SKU "${skuFinal}" ya lo está usando otro producto.` };
+    }
+    return { error: error.message };
+  }
 
   // La cantidad inicial es su primer lote — así, si el costo cambia en la
   // próxima compra, esta primera tanda se sigue vendiendo a su costo real.
@@ -65,7 +98,7 @@ export async function reabastecerProducto(input: {
   categoria: string;
   cantidadAgregada: number;
   costo: number;
-  precioVenta: number;
+  precioVenta: number | null;
   proveedorId?: string | null;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();

@@ -8,12 +8,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-hanken-grotesk);
   --font-mono: var(--font-geist-mono);
 
-  /* Paleta minimalista (Opción C): la escala de grises se afina hacia estos
-     tonos, y se agrega un color de acento propio para botones primarios y
-     estados activos — antes reutilizaban el mismo negro que el texto. */
+  /* Paleta de marca Datum: negro para texto, #1A1B33 para botones/brújula,
+     #9C6900 para indicadores y datos destacados, #1A1B33 para gráficas. */
   --color-gray-50: #fafafa;
   --color-gray-100: #f2f2f2;
   --color-gray-200: #e7e7e7;
@@ -23,10 +22,19 @@
   --color-gray-600: #525252;
   --color-gray-700: #3a3a3a;
   --color-gray-800: #232323;
-  --color-gray-900: #0e0e0e;
+  --color-gray-900: #000000;
 
-  --color-accent: #3730e0;
-  --color-accent-hover: #2e26b8;
+  --color-accent: #1a1b33;
+  --color-accent-hover: #2c2e57;
+
+  --color-amber-600: #9c6900;
+
+  /* Rojo de alerta / negativos, mismo tono apagado que el resto de la paleta
+     en vez del rojo genérico de Tailwind. */
+  --color-red-50: #fbeeee;
+  --color-red-500: #b23434;
+  --color-red-600: #7f2525;
+  --color-red-700: #5f1c1c;
 
   /* Más redondeado (ovalado), en vez del default de Tailwind. */
   --radius-lg: 14px;
@@ -43,5 +51,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }

@@ -26,8 +26,9 @@ export default async function NuevaVentaPage() {
 
   const { data: itemsData } = await supabase
     .from("inventario_items")
-    .select("id, nombre, categoria, unidad, cantidad, precio_venta, marca:atributos->>marca")
+    .select("id, nombre, categoria, unidad, cantidad, precio_venta, sku, marca:atributos->>marca")
     .eq("empresa_id", perfil.empresa_id)
+    .eq("es_insumo", false)
     .order("nombre");
 
   const { data: velocidadData } = await supabase

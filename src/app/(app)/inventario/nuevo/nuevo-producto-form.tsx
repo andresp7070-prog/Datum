@@ -20,6 +20,8 @@ type ItemExistente = {
   precio_venta: number | null;
   unidad: string;
   proveedor_id: string | null;
+  sku: string | null;
+  es_insumo: boolean;
 };
 
 type Proveedor = {
@@ -62,6 +64,8 @@ export function NuevoProductoForm({
   const [costo, setCosto] = useState("");
   const [precioVenta, setPrecioVenta] = useState("");
   const [proveedorId, setProveedorId] = useState("");
+  const [sku, setSku] = useState("");
+  const [esInsumo, setEsInsumo] = useState(false);
   const [contenidoPorUnidad, setContenidoPorUnidad] = useState("");
   const [receta, setReceta] = useState<LineaRecetaValor[]>([]);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
@@ -70,6 +74,15 @@ export function NuevoProductoForm({
   const insumosDisponibles = items
     .filter((item) => item.id !== itemExistente?.id)
     .map((item) => ({ id: item.id, nombre: item.nombre, unidad: item.unidad }));
+
+  // Solo para mostrar como referencia — el valor real lo asigna el servidor,
+  // así dos personas agregando productos a la vez no chocan con el mismo SKU.
+  const proximoSkuSugerido = String(
+    items.reduce((max, item) => {
+      if (!item.sku || !/^\d+$/.test(item.sku)) return max;
+      return Math.max(max, Number(item.sku));
+    }, -1) + 1,
+  ).padStart(5, "0");
 
   const costoCalculado = receta.reduce((total, linea) => {
     const insumo = items.find((item) => item.id === linea.insumoId);
@@ -83,7 +96,7 @@ export function NuevoProductoForm({
   const margenPorcentaje =
     precioVentaEstimado > 0 ? (gananciaUnitaria / precioVentaEstimado) * 100 : null;
   const mostrarMargen =
-    margenPorcentaje !== null && (volverAReceta || costo.trim() !== "");
+    !esInsumo && margenPorcentaje !== null && (volverAReceta || costo.trim() !== "");
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +134,7 @@ export function NuevoProductoForm({
     setCosto(item.costo != null ? String(item.costo) : "");
     setPrecioVenta(item.precio_venta != null ? String(item.precio_venta) : "");
     setProveedorId(item.proveedor_id ?? "");
+    setEsInsumo(item.es_insumo);
     setCantidad("");
     setMostrarSugerenciasNombre(false);
   }
@@ -135,6 +149,8 @@ export function NuevoProductoForm({
     setPrecioVenta("");
     setProveedorId("");
     setContenidoPorUnidad("");
+    setSku("");
+    setEsInsumo(false);
     setFotoFile(null);
     setErrorFoto(null);
   }
@@ -160,7 +176,7 @@ export function NuevoProductoForm({
 
     const cantidadNum = volverAReceta ? 0 : Number(cantidad);
     const costoNum = volverAReceta ? costoCalculado : Number(costo);
-    const precioVentaNum = Number(precioVenta);
+    const precioVentaNum = esInsumo ? null : Number(precioVenta);
 
     if (!volverAReceta && (cantidad.trim() === "" || Number.isNaN(cantidadNum) || cantidadNum < 0)) {
       setError(
@@ -176,7 +192,10 @@ export function NuevoProductoForm({
       irAlCampo(document.getElementById("costo"));
       return;
     }
-    if (precioVenta.trim() === "" || Number.isNaN(precioVentaNum) || precioVentaNum < 0) {
+    if (
+      !esInsumo &&
+      (precioVenta.trim() === "" || precioVentaNum === null || Number.isNaN(precioVentaNum) || precioVentaNum < 0)
+    ) {
       setError("El precio de venta es obligatorio y debe ser un número mayor o igual a cero.");
       irAlCampo(document.getElementById("precioVenta"));
       return;
@@ -193,7 +212,7 @@ export function NuevoProductoForm({
           categoria: categoriaFinal,
           cantidadAgregada: cantidadNum,
           costo: costoNum,
-          precioVenta: precioVentaNum,
+          precioVenta: itemExistente.es_insumo ? null : precioVentaNum,
           proveedorId: proveedorId || null,
         });
         if (resultado.error) {
@@ -231,6 +250,8 @@ export function NuevoProductoForm({
           costo: costoNum,
           precioVenta: precioVentaNum,
           proveedorId: proveedorId || null,
+          sku: sku.trim() || null,
+          esInsumo,
           atributos:
             volverAReceta && unidad !== "unidad" && contenidoPorUnidad.trim()
               ? { contenido_por_unidad: Number(contenidoPorUnidad) }
@@ -340,6 +361,42 @@ export function NuevoProductoForm({
         </ul>
       )}
     </div>
+  );
+
+  const campoSku = itemExistente ? (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">SKU</label>
+      <input
+        value={itemExistente.sku ?? "Sin SKU"}
+        disabled
+        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+      />
+    </div>
+  ) : (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">SKU / código (opcional)</label>
+      <input
+        value={sku}
+        onChange={(e) => setSku(e.target.value)}
+        placeholder={`Se genera automático si lo dejas vacío: ${proximoSkuSugerido}`}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+      />
+    </div>
+  );
+
+  const campoEsInsumo = itemExistente ? null : (
+    <label className="flex items-start gap-2 text-sm text-gray-700">
+      <input
+        type="checkbox"
+        checked={esInsumo}
+        onChange={(e) => setEsInsumo(e.target.checked)}
+        className="mt-0.5"
+      />
+      <span>
+        Es material de receta (insumo) — no se vende individualmente, solo se usa para producir
+        otros productos. No pide precio de venta.
+      </span>
+    </label>
   );
 
   const campoProveedor = (
@@ -503,7 +560,11 @@ export function NuevoProductoForm({
     />
   );
 
-  const campoPrecioVenta = (
+  const campoPrecioVenta = esInsumo ? (
+    <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+      Como es material de receta, no lleva precio de venta — solo se usa como insumo.
+    </p>
+  ) : (
     <div>
       <CampoMoneda
         id="precioVenta"
@@ -585,11 +646,13 @@ export function NuevoProductoForm({
       ) : (
         <div className="max-w-md space-y-4">
           {campoNombre}
+          {campoSku}
           {campoCategoria}
           {campoProveedor}
           {campoUnidad}
           {campoCantidad}
           {campoCosto}
+          {campoEsInsumo}
           {campoPrecioVenta}
           {campoFoto}
           <p className="text-xs text-gray-400">* Campos obligatorios</p>

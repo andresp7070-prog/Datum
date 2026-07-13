@@ -271,8 +271,16 @@ async function ContenidoInsights({
     return `?${params.toString()}`;
   }
 
+  // Supabase devuelve "mes" como marca de tiempo completa (ej.
+  // "2026-05-01T00:00:00+00:00"), no solo la fecha — hay que quedarse con
+  // los primeros 10 caracteres antes de construir un Date con esto, si no
+  // "T00:00:00" quedaba pegado dos veces y rompía el cálculo.
+  function primerDiaDelMes(mesIso: string) {
+    return mesIso.slice(0, 10);
+  }
+
   function ultimoDiaDelMes(mesIso: string) {
-    const d = new Date(`${mesIso}T00:00:00`);
+    const d = new Date(`${mesIso.slice(0, 10)}T00:00:00`);
     const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     return ultimo.toISOString().slice(0, 10);
   }
@@ -495,7 +503,7 @@ async function ContenidoInsights({
       etiqueta: etiquetaMesCorta(f.mes),
       valor: f.utilidad_neta,
       textoValor: formatoMonedaCorta(f.utilidad_neta),
-      enlace: enlaceConFiltro({ periodo: "personalizado", desde: f.mes, hasta: ultimoDiaDelMes(f.mes) }),
+      enlace: enlaceConFiltro({ periodo: "personalizado", desde: primerDiaDelMes(f.mes), hasta: ultimoDiaDelMes(f.mes) }),
     }));
 
   const barrasMargen: Barra[] = [...porProducto]
@@ -538,7 +546,7 @@ async function ContenidoInsights({
       etiqueta: etiquetaMesCorta(f.mes),
       valor: f.ingresos_por_ventas,
       textoValor: formatoMonedaCorta(f.ingresos_por_ventas),
-      enlace: enlaceConFiltro({ periodo: "personalizado", desde: f.mes, hasta: ultimoDiaDelMes(f.mes) }),
+      enlace: enlaceConFiltro({ periodo: "personalizado", desde: primerDiaDelMes(f.mes), hasta: ultimoDiaDelMes(f.mes) }),
     }));
 
   const ventasPorDiaOrdenadas = [...ventasPorDia].sort((a, b) => a.dia.localeCompare(b.dia));

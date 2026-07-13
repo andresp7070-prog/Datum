@@ -451,7 +451,8 @@ $$;
 -- movimientos. Devuelve cuántos productos nuevos creó.
 create or replace function cargar_inventario_inicial(
   p_empresa_id uuid,
-  p_items jsonb  -- [{"nombre":"...","categoria":"...","unidad":"unidad","cantidad":10,"costo":1000,"precio_venta":2000,"es_insumo":false}, ...]
+  p_items jsonb,  -- [{"nombre":"...","categoria":"...","unidad":"unidad","cantidad":10,"costo":1000,"precio_venta":2000,"es_insumo":false}, ...]
+  p_reemplazar boolean default false  -- true: el archivo reemplaza la cantidad de cada producto (carga inicial o recuento completo); false: suma a lo que ya hay (reabastecimiento)
 )
 returns int
 language plpgsql
@@ -465,6 +466,7 @@ declare
   v_es_insumo boolean;
   v_precio_venta numeric;
   v_creados int := 0;
+  v_items_reseteados uuid[] := '{}';
 begin
   for v_item in select * from jsonb_array_elements(p_items)
   loop
@@ -480,13 +482,30 @@ begin
     limit 1;
 
     if v_existente_id is not null then
-      update inventario_items
-      set cantidad = cantidad + v_cantidad,
-          costo = coalesce(v_costo, costo),
-          precio_venta = case when v_es_insumo then null else coalesce(v_precio_venta, precio_venta) end,
-          categoria = coalesce(nullif(v_item->>'categoria', ''), categoria),
-          es_insumo = v_es_insumo
-      where id = v_existente_id;
+      if p_reemplazar and not (v_existente_id = any(v_items_reseteados)) then
+        -- primera fila de este producto en una carga que reemplaza: se
+        -- descarta el stock y los lotes anteriores, empieza de cero con lo
+        -- que diga el archivo
+        delete from inventario_lotes where item_id = v_existente_id;
+        update inventario_items
+        set cantidad = v_cantidad,
+            costo = coalesce(v_costo, costo),
+            precio_venta = case when v_es_insumo then null else coalesce(v_precio_venta, precio_venta) end,
+            categoria = coalesce(nullif(v_item->>'categoria', ''), categoria),
+            es_insumo = v_es_insumo
+        where id = v_existente_id;
+        v_items_reseteados := v_items_reseteados || v_existente_id;
+      else
+        -- reabastecimiento normal, o segunda fila del mismo producto en una
+        -- carga que reemplaza (mismo nombre, distinto costo = otro lote)
+        update inventario_items
+        set cantidad = cantidad + v_cantidad,
+            costo = coalesce(v_costo, costo),
+            precio_venta = case when v_es_insumo then null else coalesce(v_precio_venta, precio_venta) end,
+            categoria = coalesce(nullif(v_item->>'categoria', ''), categoria),
+            es_insumo = v_es_insumo
+        where id = v_existente_id;
+      end if;
       v_item_id := v_existente_id;
     else
       insert into inventario_items (empresa_id, nombre, categoria, unidad, cantidad, costo, precio_venta, es_insumo)
@@ -502,6 +521,7 @@ begin
       )
       returning id into v_item_id;
       v_creados := v_creados + 1;
+      v_items_reseteados := v_items_reseteados || v_item_id;
     end if;
 
     if v_cantidad > 0 then

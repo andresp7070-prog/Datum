@@ -14,6 +14,7 @@ export type FilaImportacion = {
 
 export async function cargarInventarioInicial(
   filas: FilaImportacion[],
+  reemplazar: boolean,
 ): Promise<{ error: string | null; creados: number | null; actualizados: number | null }> {
   const supabase = await createClient();
   const {
@@ -42,6 +43,7 @@ export async function cargarInventarioInicial(
       precio_venta: f.precioVenta,
       es_insumo: f.esInsumo,
     })),
+    p_reemplazar: reemplazar,
   });
 
   if (error) return { error: error.message, creados: null, actualizados: null };

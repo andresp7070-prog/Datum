@@ -51,6 +51,7 @@ export function ImportarInventarioForm() {
   const [filas, setFilas] = useState<FilaPreview[]>([]);
   const [errorArchivo, setErrorArchivo] = useState<string | null>(null);
   const [nombreArchivo, setNombreArchivo] = useState<string | null>(null);
+  const [reemplazar, setReemplazar] = useState(false);
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,7 +162,7 @@ export function ImportarInventarioForm() {
     setCargando(true);
     try {
       const filasValidas = filas.filter((fila) => fila.nombre !== "");
-      const resultado = await cargarInventarioInicial(filasValidas);
+      const resultado = await cargarInventarioInicial(filasValidas, reemplazar);
       if (resultado.error) {
         setError(resultado.error);
         return;
@@ -218,8 +219,8 @@ export function ImportarInventarioForm() {
           2. Súbela aquí abajo — vas a ver una vista previa antes de confirmar nada.
         </p>
         <p className="mb-1">
-          3. Si un producto ya existe (mismo nombre), le suma la cantidad y actualiza costo y
-          precio; si no existe, lo crea.
+          3. Si no existe, lo crea. Si un producto ya existe (mismo nombre), lo que pase con la
+          cantidad depende del modo que elijas abajo.
         </p>
         <p className="mb-1">
           En &quot;unidad&quot; puedes escribir como te salga natural — <em>kg, kilo, litro, lt, ml, libra,
@@ -231,6 +232,41 @@ export function ImportarInventarioForm() {
           se venden solos (no tienen precio de venta) — si marcas &quot;si&quot; y además le pones
           precio de venta, la vista previa lo marca como error porque no tiene lógica.
         </p>
+      </div>
+
+      <div className="mb-4 rounded-xl border border-gray-200 p-4">
+        <p className="mb-2 text-sm font-medium text-gray-900">
+          Si un producto del archivo ya existe, ¿qué hacemos con la cantidad?
+        </p>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="radio"
+              name="modo-carga"
+              checked={!reemplazar}
+              onChange={() => setReemplazar(false)}
+              className="mt-0.5"
+            />
+            <span>
+              <strong>Sumar</strong> a la cantidad que ya hay — para reabastecimientos normales.
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="radio"
+              name="modo-carga"
+              checked={reemplazar}
+              onChange={() => setReemplazar(true)}
+              className="mt-0.5"
+            />
+            <span>
+              <strong>Reemplazar</strong> la cantidad por la del archivo — para la carga inicial o
+              un recuento completo. Si el mismo producto aparece en dos filas con costos
+              distintos, la cantidad de ambas se suma, pero se guardan como dos lotes separados
+              (no se pierde el detalle de a qué costo entró cada uno).
+            </span>
+          </label>
+        </div>
       </div>
 
       <div className="mb-4">

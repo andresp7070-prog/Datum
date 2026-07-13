@@ -161,7 +161,7 @@ create table inventario_movimientos (
   id uuid primary key default gen_random_uuid(),
   item_id uuid references inventario_items(id) not null,
   tipo text not null check (tipo in ('entrada','salida')),
-  motivo text check (motivo in ('compra','ajuste','devolucion','trasvase')),  -- solo aplica a entradas; 'compra' genera un gasto automático
+  motivo text check (motivo in ('compra','ajuste','devolucion','trasvase','dotacion')),  -- 'compra' genera un gasto automático (solo entradas); 'dotacion' también genera un gasto automático (solo salidas)
   cantidad numeric(12,2) not null,
   fecha date default current_date,
   nota text
@@ -440,6 +440,56 @@ begin
     -- existentes empezando por el más antiguo, para no perder la trazabilidad.
     perform consumir_lotes_fifo(p_item_id, abs(v_diferencia));
   end if;
+end;
+$$;
+
+-- Dotación: productos que se le entregan a un empleado (esponjas, uniformes,
+-- etc.), no a un cliente. No es una venta (no genera ingreso), pero sí es un
+-- costo real del negocio, así que además de descontar el inventario (por
+-- FIFO, igual que una venta) genera su propio gasto automático en
+-- finanzas_movimientos — a diferencia de un 'ajuste' por pérdida o daño, que
+-- no debe tocar el P y G.
+create or replace function registrar_dotacion(
+  p_item_id uuid,
+  p_cantidad numeric,
+  p_nota text default null
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+  v_nombre text;
+  v_stock numeric(12,2);
+  v_costo_consumido numeric(12,2);
+begin
+  select empresa_id, nombre, cantidad into v_empresa_id, v_nombre, v_stock
+  from inventario_items where id = p_item_id;
+
+  if v_empresa_id is null then
+    raise exception 'Producto no encontrado';
+  end if;
+  if p_cantidad <= 0 then
+    raise exception 'La cantidad debe ser mayor a cero';
+  end if;
+  if v_stock < p_cantidad then
+    raise exception 'No hay suficiente stock de "%": quedan % y se intentó entregar %.',
+      v_nombre, v_stock, p_cantidad;
+  end if;
+
+  v_costo_consumido := consumir_lotes_fifo(p_item_id, p_cantidad);
+
+  insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+  values (p_item_id, 'salida', 'dotacion', p_cantidad, p_nota);
+
+  update inventario_items set cantidad = cantidad - p_cantidad where id = p_item_id;
+
+  insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, nota)
+  values (
+    v_empresa_id, 'gasto', 'dotación a empleados',
+    p_cantidad * coalesce(v_costo_consumido, 0),
+    coalesce(p_nota, 'Dotación de "' || v_nombre || '" a empleado')
+  );
 end;
 $$;
 

@@ -7,6 +7,7 @@ import { etiquetaFrecuenciaPago } from "@/lib/proveedores";
 import { firmarFotoUrl } from "@/lib/fotos";
 import { FotoProducto } from "./foto-producto";
 import { AjustarInventario } from "./ajustar-inventario";
+import { DarDotacion } from "./dar-dotacion";
 
 type RecetaFila = {
   cantidad_insumo: number;
@@ -121,12 +122,17 @@ export default async function FichaProductoPage({
             Con los insumos que tienes ahora, podrías producir hasta {maxProducible} más.
           </p>
         )}
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           <AjustarInventario
             itemId={item.id}
             cantidadActual={item.cantidad}
             unidad={etiquetaUnidad(item.unidad)}
             tieneReceta={receta.length > 0}
+          />
+          <DarDotacion
+            itemId={item.id}
+            cantidadActual={item.cantidad}
+            unidad={etiquetaUnidad(item.unidad)}
           />
         </div>
       </div>

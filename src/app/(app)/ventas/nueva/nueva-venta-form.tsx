@@ -17,8 +17,13 @@ type ItemCatalogo = {
   cantidad: number;
   precio_venta: number | null;
   marca: string | null;
+  sku: string | null;
   diasRestantes: number | null;
 };
+
+function etiquetaProducto(item: ItemCatalogo) {
+  return item.sku ? `${item.sku} - ${item.nombre}` : item.nombre;
+}
 
 type Promocion = {
   id: string;
@@ -94,7 +99,10 @@ function filtrarItems(items: ItemCatalogo[], query: string) {
   if (!q) return [];
   return items
     .filter(
-      (item) => sinTildes(item.nombre).includes(q) || sinTildes(item.marca ?? "").includes(q),
+      (item) =>
+        sinTildes(item.nombre).includes(q) ||
+        sinTildes(item.marca ?? "").includes(q) ||
+        sinTildes(item.sku ?? "").includes(q),
     )
     .slice(0, 8);
 }
@@ -184,9 +192,10 @@ export function NuevaVentaForm({
   }
 
   function seleccionarProducto(key: string, item: ItemCatalogo) {
+    const base = etiquetaProducto(item);
     actualizarLinea(key, {
       itemId: item.id,
-      busquedaProducto: item.marca ? `${item.nombre} — ${item.marca}` : item.nombre,
+      busquedaProducto: item.marca ? `${base} — ${item.marca}` : base,
       precioUnitario: item.precio_venta ?? 0,
       precioOriginal: item.precio_venta ?? 0,
       promocionId: null,
@@ -544,7 +553,7 @@ export function NuevaVentaForm({
                               onMouseDown={() => seleccionarProducto(linea.key, item)}
                               className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                             >
-                              {item.nombre}
+                              {etiquetaProducto(item)}
                               {item.marca && (
                                 <span className="ml-2 text-gray-400">{item.marca}</span>
                               )}

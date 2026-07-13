@@ -151,8 +151,10 @@ create table inventario_items (
   precio_venta numeric(12,2),
   foto_path text,  -- ruta dentro del bucket 'inventario-fotos' de Supabase Storage; opcional
   proveedor_id uuid references proveedores(id),  -- a quién se le compra este producto; opcional
+  es_insumo boolean not null default false,  -- material de receta puro: no se vende individualmente, no tiene precio_venta
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: fecha de vencimiento, modelo compatible, etc.
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (empresa_id, sku)
 );
 
 create table inventario_movimientos (
@@ -252,6 +254,7 @@ declare
   v_costo numeric(12,2);
   v_stock numeric(12,2);
   v_nombre text;
+  v_es_insumo boolean;
 begin
   -- Una venta histórica importada (importar_ventas_historicas) no debe volver
   -- a descontar inventario ni recalcular el costo — eso ya pasó de verdad con
@@ -261,8 +264,13 @@ begin
   end if;
 
   if new.item_id is not null then
-    select tipo, costo, cantidad, nombre into v_tipo, v_costo, v_stock, v_nombre
+    select tipo, costo, cantidad, nombre, es_insumo
+    into v_tipo, v_costo, v_stock, v_nombre, v_es_insumo
     from inventario_items where id = new.item_id;
+
+    if v_es_insumo then
+      raise exception '"%" es material de receta y no se vende individualmente.', v_nombre;
+    end if;
 
     if v_tipo = 'producto' then
       -- No se puede vender más de lo que hay — obliga a mantener el inventario

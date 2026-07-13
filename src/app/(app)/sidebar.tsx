@@ -36,8 +36,15 @@ function LogoCompass({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+function estaHabilitado(modulo: (typeof modulos)[number], modulosActivos: string[]) {
+  return modulo.slug === null || modulosActivos.includes(modulo.slug);
+}
+
 export function Sidebar({ modulosActivos }: { modulosActivos: string[] }) {
   const pathname = usePathname();
+
+  const habilitados = modulos.filter((m) => estaHabilitado(m, modulosActivos));
+  const bloqueados = modulos.filter((m) => !estaHabilitado(m, modulosActivos));
 
   return (
     <nav className="flex w-56 shrink-0 flex-col justify-between border-r border-gray-200 p-4">
@@ -47,23 +54,7 @@ export function Sidebar({ modulosActivos }: { modulosActivos: string[] }) {
           <span className="text-4xl font-bold tracking-tight text-gray-900">Datum</span>
         </div>
         <ul className="space-y-1">
-          {modulos.map((modulo) => {
-            const habilitado = modulo.slug === null || modulosActivos.includes(modulo.slug);
-
-            if (!habilitado) {
-              return (
-                <li key={modulo.href}>
-                  <span
-                    title="No incluido en tu plan actual"
-                    className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-400"
-                  >
-                    {modulo.nombre}
-                    <IconoCandado />
-                  </span>
-                </li>
-              );
-            }
-
+          {habilitados.map((modulo) => {
             const activo = pathname === modulo.href || pathname.startsWith(`${modulo.href}/`);
             return (
               <li key={modulo.href}>
@@ -79,6 +70,25 @@ export function Sidebar({ modulosActivos }: { modulosActivos: string[] }) {
             );
           })}
         </ul>
+
+        {bloqueados.length > 0 && (
+          <>
+            <hr className="my-3 border-gray-200" />
+            <ul className="space-y-1">
+              {bloqueados.map((modulo) => (
+                <li key={modulo.href}>
+                  <span
+                    title="No incluido en tu plan actual"
+                    className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-400"
+                  >
+                    {modulo.nombre}
+                    <IconoCandado />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-2.5 px-3 text-base text-gray-400">

@@ -34,7 +34,7 @@ export default async function FichaProductoPage({
   const { data: item } = await supabase
     .from("inventario_items")
     .select(
-      "id, nombre, categoria, unidad, cantidad, costo, precio_venta, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad, proveedor:proveedores ( nombre, frecuencia_pago, dia_semana_pago, dias_personalizado )",
+      "id, nombre, sku, categoria, unidad, cantidad, costo, precio_venta, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad, proveedor:proveedores ( nombre, frecuencia_pago, dia_semana_pago, dias_personalizado )",
     )
     .eq("id", id)
     .single();
@@ -69,6 +69,7 @@ export default async function FichaProductoPage({
             <FotoProducto itemId={item.id} fotoUrl={fotoUrl} />
             <div>
               <h1 className="text-lg font-semibold text-gray-900">{item.nombre}</h1>
+              <p className="mt-0.5 font-mono text-xs text-gray-400">SKU: {item.sku ?? "—"}</p>
               <p className="text-sm text-gray-500">
                 {[item.categoria, item.marca].filter(Boolean).join(" · ") || "Sin categoría"}
               </p>

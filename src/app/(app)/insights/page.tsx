@@ -328,70 +328,70 @@ export default async function InsightsPage() {
               </div>
             </dl>
           </div>
-        </div>
 
-        <div className="mt-4 rounded-xl border border-gray-200 p-4">
-          <h3 className="mb-3 text-xs font-medium text-gray-700">Ventas por hora del día</h3>
-          {ventasConHora.length === 0 ? (
-            <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
-          ) : (
-            <GraficoLinea puntos={puntosHora} />
-          )}
-        </div>
-
-        <div className="mt-4 rounded-xl border border-gray-200 p-4">
-          <h3 className="mb-3 text-xs font-medium text-gray-700">Margen por producto</h3>
-          {barrasMargen.length === 0 ? (
-            <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
-          ) : (
-            <GraficoBarrasHorizontal datos={barrasMargen} />
-          )}
-        </div>
-
-        <div className="mt-4 rounded-xl border border-gray-200 p-4">
-          <h3 className="mb-3 text-xs font-medium text-gray-700">Utilidad por mes</h3>
-          {barrasMes.length === 0 ? (
-            <p className="text-sm text-gray-400">Aún no hay datos suficientes.</p>
-          ) : (
-            <GraficoBarras datos={barrasMes} />
-          )}
-        </div>
-
-        {porProducto.length > 0 && (
-          <div className="mt-4 rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Detalle por producto</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="text-xs text-gray-400">
-                    <th className="pb-2 font-medium">Producto</th>
-                    <th className="pb-2 font-medium">Ingresos</th>
-                    <th className="pb-2 font-medium">Utilidad</th>
-                    <th className="pb-2 font-medium">Margen</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {porProducto.map((p) => (
-                    <tr key={p.item_id}>
-                      <td className="py-2 text-gray-900">
-                        <Link href={`/inventario/${p.item_id}`} className="hover:underline">
-                          {p.nombre}
-                        </Link>
-                      </td>
-                      <td className="py-2 text-gray-700">{formatoMoneda(p.ingresos)}</td>
-                      <td className="py-2 text-gray-700">{formatoMoneda(p.utilidad)}</td>
-                      <td
-                        className={`py-2 ${p.margen_porcentaje < UMBRAL_MARGEN_BAJO ? "text-red-600" : "text-gray-700"}`}
-                      >
-                        {p.margen_porcentaje}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="rounded-xl border border-gray-200 p-4 md:col-span-2">
+            <h3 className="mb-3 text-xs font-medium text-gray-700">Ventas por hora del día</h3>
+            {ventasConHora.length === 0 ? (
+              <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
+            ) : (
+              <GraficoLinea puntos={puntosHora} />
+            )}
           </div>
-        )}
+
+          <div className="rounded-xl border border-gray-200 p-4">
+            <h3 className="mb-3 text-xs font-medium text-gray-700">Margen por producto</h3>
+            {barrasMargen.length === 0 ? (
+              <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
+            ) : (
+              <GraficoBarrasHorizontal datos={barrasMargen} />
+            )}
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4">
+            <h3 className="mb-3 text-xs font-medium text-gray-700">Utilidad por mes</h3>
+            {barrasMes.length === 0 ? (
+              <p className="text-sm text-gray-400">Aún no hay datos suficientes.</p>
+            ) : (
+              <GraficoBarras datos={barrasMes} />
+            )}
+          </div>
+
+          {porProducto.length > 0 && (
+            <div className="rounded-xl border border-gray-200 p-4 md:col-span-2">
+              <h3 className="mb-3 text-xs font-medium text-gray-700">Detalle por producto</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-400">
+                      <th className="pb-2 font-medium">Producto</th>
+                      <th className="pb-2 font-medium">Ingresos</th>
+                      <th className="pb-2 font-medium">Utilidad</th>
+                      <th className="pb-2 font-medium">Margen</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {porProducto.map((p) => (
+                      <tr key={p.item_id}>
+                        <td className="py-2 text-gray-900">
+                          <Link href={`/inventario/${p.item_id}`} className="hover:underline">
+                            {p.nombre}
+                          </Link>
+                        </td>
+                        <td className="py-2 text-gray-700">{formatoMoneda(p.ingresos)}</td>
+                        <td className="py-2 text-gray-700">{formatoMoneda(p.utilidad)}</td>
+                        <td
+                          className={`py-2 ${p.margen_porcentaje < UMBRAL_MARGEN_BAJO ? "text-red-600" : "text-gray-700"}`}
+                        >
+                          {p.margen_porcentaje}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div>

@@ -2,7 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { primeraMayuscula } from "@/lib/texto";
+import { calcularRango, type Periodo } from "@/lib/periodos";
 import { GraficoBarras, GraficoBarrasHorizontal, GraficoLinea, type Barra, type PuntoLinea } from "./graficos";
+import { FiltroFecha } from "./filtro-fecha";
+import { VariacionBadge } from "./variacion";
 
 type FilaVentaDia = {
   dia: string;
@@ -42,6 +45,15 @@ type Contacto = {
   nombre: string;
 };
 
+type FilaVentaItemRaw = {
+  cantidad: number;
+  precio_unitario: number;
+  costo_unitario: number | null;
+  item_id: string;
+  inventario_items: { nombre: string; categoria: string | null } | { nombre: string; categoria: string | null }[] | null;
+  ventas: { fecha: string } | { fecha: string }[] | null;
+};
+
 function formatoMoneda(valor: number) {
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
 }
@@ -65,6 +77,18 @@ function etiquetaMesCorta(mes: string) {
   return primeraMayuscula(new Date(mes).toLocaleDateString("es-CO", { month: "short" }));
 }
 
+function etiquetaDiaCompleta(fecha: string) {
+  return primeraMayuscula(
+    new Date(fecha).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" }),
+  );
+}
+
+function sumarDiasIso(fecha: string, dias: number) {
+  const d = new Date(`${fecha}T00:00:00`);
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
 const ORDEN_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const ABREVIATURA_DIA: Record<string, string> = {
   Lunes: "Lun",
@@ -78,7 +102,63 @@ const ABREVIATURA_DIA: Record<string, string> = {
 const UMBRAL_DESVIACION_DIA = 0.2; // 20%
 const UMBRAL_MARGEN_BAJO = 15; // %
 
-export default async function InsightsPage() {
+// Junta las líneas de venta ya filtradas por fecha en totales por producto y
+// por categoría — se usa cuando hay un filtro de período activo, porque las
+// vistas vista_utilidad_por_producto/categoria no tienen columna de fecha
+// para filtrar (agregan todo el histórico).
+function agregarPorProductoYCategoria(filas: FilaVentaItemRaw[]) {
+  const porProductoMapa = new Map<
+    string,
+    { nombre: string; categoria: string | null; ingresos: number; costos: number }
+  >();
+
+  for (const f of filas) {
+    const item = Array.isArray(f.inventario_items) ? f.inventario_items[0] : f.inventario_items;
+    if (!item) continue;
+    const ingresos = f.cantidad * f.precio_unitario;
+    const costos = f.cantidad * (f.costo_unitario ?? 0);
+    const actual = porProductoMapa.get(f.item_id) ?? {
+      nombre: item.nombre,
+      categoria: item.categoria,
+      ingresos: 0,
+      costos: 0,
+    };
+    actual.ingresos += ingresos;
+    actual.costos += costos;
+    porProductoMapa.set(f.item_id, actual);
+  }
+
+  const porProducto: FilaProducto[] = Array.from(porProductoMapa.entries()).map(([itemId, v]) => {
+    const utilidad = v.ingresos - v.costos;
+    return {
+      item_id: itemId,
+      nombre: v.nombre,
+      ingresos: v.ingresos,
+      utilidad,
+      margen_porcentaje: v.ingresos > 0 ? Math.round((utilidad / v.ingresos) * 1000) / 10 : 0,
+    };
+  });
+
+  const porCategoriaMapa = new Map<string, number>();
+  for (const p of porProductoMapa.values()) {
+    const cat = p.categoria ?? "Sin categoría";
+    porCategoriaMapa.set(cat, (porCategoriaMapa.get(cat) ?? 0) + p.ingresos);
+  }
+  const porCategoria: FilaCategoria[] = Array.from(porCategoriaMapa.entries()).map(
+    ([categoria, ingresos]) => ({ categoria, ingresos }),
+  );
+
+  return { porProducto, porCategoria };
+}
+
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string; desde?: string; hasta?: string }>;
+}) {
+  const { periodo = "todo", desde: desdeParam, hasta: hastaParam } = await searchParams;
+  const rango = calcularRango(periodo as Periodo, desdeParam, hastaParam);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -98,50 +178,128 @@ export default async function InsightsPage() {
       </p>
     );
   }
+  const empresaId = perfil.empresa_id;
+
+  let queryVentasPorDia = supabase
+    .from("vista_ventas_por_dia")
+    .select("dia, dia_semana, es_festivo, numero_ventas, total_vendido")
+    .eq("empresa_id", empresaId);
+  let queryPorMes = supabase
+    .from("vista_estado_resultados")
+    .select("mes, ingresos_por_ventas, utilidad_neta")
+    .eq("empresa_id", empresaId)
+    .order("mes", { ascending: false });
+
+  if (rango) {
+    queryVentasPorDia = queryVentasPorDia.gte("dia", rango.desde).lte("dia", rango.hasta);
+    queryPorMes = queryPorMes.gte("mes", `${rango.desde.slice(0, 7)}-01`).lte("mes", rango.hasta);
+  }
 
   const [
     { data: ventasPorDiaData },
-    { data: porProductoData },
     { data: porMesData },
-    { data: porCategoriaData },
     { data: perfilesClienteData },
     { data: contactosData },
-    { data: ventasHoraData },
   ] = await Promise.all([
-    supabase
-      .from("vista_ventas_por_dia")
-      .select("dia, dia_semana, es_festivo, numero_ventas, total_vendido")
-      .eq("empresa_id", perfil.empresa_id),
-    supabase
-      .from("vista_utilidad_por_producto")
-      .select("item_id, nombre, ingresos, utilidad, margen_porcentaje")
-      .eq("empresa_id", perfil.empresa_id)
-      .order("utilidad", { ascending: false }),
-    supabase
-      .from("vista_estado_resultados")
-      .select("mes, ingresos_por_ventas, utilidad_neta")
-      .eq("empresa_id", perfil.empresa_id)
-      .order("mes", { ascending: false }),
-    supabase
-      .from("vista_utilidad_por_categoria")
-      .select("categoria, ingresos")
-      .eq("empresa_id", perfil.empresa_id),
+    queryVentasPorDia,
+    queryPorMes,
     supabase
       .from("vista_perfil_cliente")
       .select("contacto_id, ultima_compra, dias_promedio_entre_compras")
-      .eq("empresa_id", perfil.empresa_id),
-    supabase.from("crm_contactos").select("id, nombre").eq("empresa_id", perfil.empresa_id),
-    supabase.from("ventas").select("fecha, monto").eq("empresa_id", perfil.empresa_id),
+      .eq("empresa_id", empresaId),
+    supabase.from("crm_contactos").select("id, nombre").eq("empresa_id", empresaId),
   ]);
 
+  // Ventas crudas: si hay filtro, se traen desde el inicio del período
+  // anterior de una sola vez y se parten en JS — así el total del período
+  // anterior sale del mismo viaje a la base de datos.
+  const { data: ventasRawData } = await supabase
+    .from("ventas")
+    .select("fecha, monto")
+    .eq("empresa_id", empresaId)
+    .gte("fecha", `${rango ? rango.desdeAnterior : "1900-01-01"}T00:00:00`)
+    .lt("fecha", `${rango ? sumarDiasIso(rango.hasta, 1) : "2999-01-01"}T00:00:00`);
+
+  const ventasRaw = (ventasRawData ?? []) as { fecha: string; monto: number }[];
+  const ventasConHora = rango
+    ? ventasRaw.filter((v) => v.fecha.slice(0, 10) >= rango.desde && v.fecha.slice(0, 10) <= rango.hasta)
+    : ventasRaw;
+  const totalVentasActual = ventasConHora.reduce((s, v) => s + v.monto, 0);
+  const totalVentasAnterior = rango
+    ? ventasRaw
+        .filter((v) => v.fecha.slice(0, 10) < rango.desde)
+        .reduce((s, v) => s + v.monto, 0)
+    : 0;
+
+  // Productos y categorías: sin filtro se usan las vistas ya agregadas (más
+  // simples y rápidas). Con filtro, se recalculan desde ventas_items crudas
+  // porque las vistas no tienen columna de fecha.
+  let porProducto: FilaProducto[];
+  let porCategoria: FilaCategoria[];
+  let porProductoAnterior: FilaProducto[] = [];
+
+  if (!rango) {
+    const [{ data: porProductoData }, { data: porCategoriaData }] = await Promise.all([
+      supabase
+        .from("vista_utilidad_por_producto")
+        .select("item_id, nombre, ingresos, utilidad, margen_porcentaje")
+        .eq("empresa_id", empresaId),
+      supabase.from("vista_utilidad_por_categoria").select("categoria, ingresos").eq("empresa_id", empresaId),
+    ]);
+    porProducto = (porProductoData ?? []) as FilaProducto[];
+    porCategoria = (porCategoriaData ?? []) as FilaCategoria[];
+  } else {
+    const { data: ventasItemsRawData } = await supabase
+      .from("ventas_items")
+      .select(
+        "cantidad, precio_unitario, costo_unitario, item_id, inventario_items ( nombre, categoria ), ventas!inner ( fecha, empresa_id )",
+      )
+      .eq("ventas.empresa_id", empresaId)
+      .gte("ventas.fecha", `${rango.desdeAnterior}T00:00:00`)
+      .lt("ventas.fecha", `${sumarDiasIso(rango.hasta, 1)}T00:00:00`);
+
+    const filas = (ventasItemsRawData ?? []) as FilaVentaItemRaw[];
+    const filasActual = filas.filter((f) => {
+      const v = Array.isArray(f.ventas) ? f.ventas[0] : f.ventas;
+      const fecha = v?.fecha.slice(0, 10) ?? "";
+      return fecha >= rango.desde && fecha <= rango.hasta;
+    });
+    const filasAnterior = filas.filter((f) => {
+      const v = Array.isArray(f.ventas) ? f.ventas[0] : f.ventas;
+      const fecha = v?.fecha.slice(0, 10) ?? "";
+      return fecha < rango.desde;
+    });
+
+    const agregadoActual = agregarPorProductoYCategoria(filasActual);
+    const agregadoAnterior = agregarPorProductoYCategoria(filasAnterior);
+    porProducto = agregadoActual.porProducto;
+    porCategoria = agregadoActual.porCategoria;
+    porProductoAnterior = agregadoAnterior.porProducto;
+  }
+
+  const utilidadAnteriorTotal = porProductoAnterior.reduce((s, p) => s + p.utilidad, 0);
+  const ingresosAnteriorProductos = porProductoAnterior.reduce((s, p) => s + p.ingresos, 0);
+
   const ventasPorDia = (ventasPorDiaData ?? []) as FilaVentaDia[];
-  const porProducto = (porProductoData ?? []) as FilaProducto[];
   const porMes = (porMesData ?? []) as FilaMes[];
-  const porCategoria = (porCategoriaData ?? []) as FilaCategoria[];
   const perfilesCliente = (perfilesClienteData ?? []) as FilaPerfilCliente[];
   const contactos = (contactosData ?? []) as Contacto[];
   const nombrePorContacto = new Map(contactos.map((c) => [c.id, c.nombre]));
-  const ventasConHora = (ventasHoraData ?? []) as { fecha: string; monto: number }[];
+
+  // Utilidad neta del período anterior, para la variación de "Utilidad por mes".
+  let utilidadNetaAnterior = 0;
+  if (rango) {
+    const { data: porMesAnteriorData } = await supabase
+      .from("vista_estado_resultados")
+      .select("mes, utilidad_neta")
+      .eq("empresa_id", empresaId)
+      .gte("mes", `${rango.desdeAnterior.slice(0, 7)}-01`)
+      .lte("mes", rango.hastaAnterior);
+    utilidadNetaAnterior = (porMesAnteriorData ?? []).reduce(
+      (s, f) => s + (f.utilidad_neta as number),
+      0,
+    );
+  }
 
   // ---- Agregados para el resumen general ----
   const porDiaSemana = ORDEN_DIAS.map((dia) => {
@@ -178,6 +336,7 @@ export default async function InsightsPage() {
     noFestivos.length > 0
       ? noFestivos.reduce((s, f) => s + f.total_vendido, 0) / noFestivos.length
       : null;
+  const festivosDetalle = [...festivos].sort((a, b) => a.dia.localeCompare(b.dia));
 
   // Colombia no tiene horario de verano — el desfase con UTC siempre es -5.
   const totalPorHora = Array.from({ length: 24 }, () => 0);
@@ -214,8 +373,9 @@ export default async function InsightsPage() {
       textoValor: formatoMonedaCorta(f.utilidad_neta),
     }));
 
-  const barrasMargen: Barra[] = porProducto
+  const barrasMargen: Barra[] = [...porProducto]
     .filter((p) => p.ingresos > 0)
+    .sort((a, b) => b.margen_porcentaje - a.margen_porcentaje)
     .slice(0, 10)
     .map((p) => ({
       etiqueta: p.nombre,
@@ -229,7 +389,7 @@ export default async function InsightsPage() {
   const añosConVentas = new Set(
     porMes.filter((f) => f.ingresos_por_ventas > 0).map((f) => f.mes.slice(0, 4)),
   );
-  const mostrarPorAnio = añosConVentas.size >= 2;
+  const mostrarPorAnio = !rango && añosConVentas.size >= 2;
 
   const barrasAnio: Barra[] = mostrarPorAnio
     ? Array.from(
@@ -296,6 +456,11 @@ export default async function InsightsPage() {
     },
   ];
 
+  const utilidadNetaActual = porMes.reduce((s, f) => s + f.utilidad_neta, 0);
+  const ingresosProductosActual = porProducto.reduce((s, p) => s + p.ingresos, 0);
+  const categoriaIngresosActual = porCategoria.reduce((s, c) => s + c.ingresos, 0);
+  const categoriaIngresosAnterior = ingresosAnteriorProductos;
+
   // ---- Insights: solo lo que cruza un umbral ----
   type Insight = { titulo: string; detalle: string };
   const insights: Insight[] = [];
@@ -338,7 +503,7 @@ export default async function InsightsPage() {
     });
   }
 
-  if (porMes.length >= 2) {
+  if (!rango && porMes.length >= 2) {
     const [ultimo, anterior] = porMes;
     if (ultimo.utilidad_neta < anterior.utilidad_neta) {
       insights.push({
@@ -382,14 +547,19 @@ export default async function InsightsPage() {
         </p>
       </div>
 
+      <FiltroFecha periodoActual={periodo} />
+
       <div>
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Resumen general</h2>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">
-              {mostrarPorAnio ? "Ventas por año" : "Ventas por mes"}
-            </h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">
+                {mostrarPorAnio ? "Ventas por año" : "Ventas por mes"}
+              </h3>
+              {rango && <VariacionBadge actual={totalVentasActual} anterior={totalVentasAnterior} />}
+            </div>
             {(mostrarPorAnio ? barrasAnio : barrasVentasMes).length === 0 ? (
               <p className="text-sm text-gray-400">Aún no hay datos suficientes.</p>
             ) : (
@@ -397,26 +567,35 @@ export default async function InsightsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Ventas por día</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Ventas por día</h3>
+              {rango && <VariacionBadge actual={totalVentasActual} anterior={totalVentasAnterior} />}
+            </div>
             {puntosVentasPorDia.length === 0 ? (
               <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
             ) : (
-              <GraficoLinea puntos={puntosVentasPorDia} />
+              <GraficoLinea puntos={puntosVentasPorDia} compacto />
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Ventas por hora del día</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Ventas por hora del día</h3>
+              {rango && <VariacionBadge actual={totalVentasActual} anterior={totalVentasAnterior} />}
+            </div>
             {ventasConHora.length === 0 ? (
               <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
             ) : (
-              <GraficoLinea puntos={puntosHora} />
+              <GraficoLinea puntos={puntosHora} compacto />
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Ventas por día de la semana</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Ventas por día de la semana</h3>
+              {rango && <VariacionBadge actual={totalVentasActual} anterior={totalVentasAnterior} />}
+            </div>
             {promedioGeneral > 0 ? (
               <GraficoBarras datos={barrasDiaSemana} />
             ) : (
@@ -424,8 +603,11 @@ export default async function InsightsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Utilidad por mes</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Utilidad por mes</h3>
+              {rango && <VariacionBadge actual={utilidadNetaActual} anterior={utilidadNetaAnterior} />}
+            </div>
             {barrasMes.length === 0 ? (
               <p className="text-sm text-gray-400">Aún no hay datos suficientes.</p>
             ) : (
@@ -433,8 +615,13 @@ export default async function InsightsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Categorías con más ventas</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Categorías con más ventas</h3>
+              {rango && (
+                <VariacionBadge actual={categoriaIngresosActual} anterior={categoriaIngresosAnterior} />
+              )}
+            </div>
             {barrasCategoria.length === 0 ? (
               <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
             ) : (
@@ -442,8 +629,13 @@ export default async function InsightsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Productos con más ventas</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Productos con más ventas</h3>
+              {rango && (
+                <VariacionBadge actual={ingresosProductosActual} anterior={ingresosAnteriorProductos} />
+              )}
+            </div>
             {barrasProductoVentas.length === 0 ? (
               <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
             ) : (
@@ -451,17 +643,37 @@ export default async function InsightsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Festivos vs. días normales</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Festivos vs. días normales</h3>
+              {rango && <VariacionBadge actual={totalVentasActual} anterior={totalVentasAnterior} />}
+            </div>
             {promedioFestivo === null && promedioNoFestivo === null ? (
               <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
             ) : (
-              <GraficoBarras datos={barrasFestivos} />
+              <>
+                <GraficoBarras datos={barrasFestivos} />
+                {festivosDetalle.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-xs text-gray-500">
+                    {festivosDetalle.map((f) => (
+                      <li key={f.dia} className="flex justify-between gap-2">
+                        <span>
+                          {etiquetaDiaCompleta(f.dia)} — {f.dia_semana}
+                        </span>
+                        <span className="text-gray-700">{formatoMonedaCorta(f.total_vendido)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-4">
-            <h3 className="mb-3 text-xs font-medium text-gray-700">Margen por producto</h3>
+          <div className="rounded-xl border-2 border-gray-200 p-4 md:col-span-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-gray-700">Margen por producto</h3>
+              {rango && <VariacionBadge actual={utilidadNetaActual} anterior={utilidadAnteriorTotal} />}
+            </div>
             {barrasMargen.length === 0 ? (
               <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
             ) : (
@@ -470,7 +682,7 @@ export default async function InsightsPage() {
           </div>
 
           {porProducto.length > 0 && (
-            <div className="rounded-xl border border-gray-200 p-4 md:col-span-2">
+            <div className="rounded-xl border-2 border-gray-200 p-4 md:col-span-2">
               <h3 className="mb-3 text-xs font-medium text-gray-700">Detalle por producto</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -483,22 +695,24 @@ export default async function InsightsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {porProducto.map((p) => (
-                      <tr key={p.item_id}>
-                        <td className="py-2 text-gray-900">
-                          <Link href={`/inventario/${p.item_id}`} className="hover:underline">
-                            {p.nombre}
-                          </Link>
-                        </td>
-                        <td className="py-2 text-gray-700">{formatoMoneda(p.ingresos)}</td>
-                        <td className="py-2 text-gray-700">{formatoMoneda(p.utilidad)}</td>
-                        <td
-                          className={`py-2 ${p.margen_porcentaje < UMBRAL_MARGEN_BAJO ? "text-red-600" : "text-gray-700"}`}
-                        >
-                          {p.margen_porcentaje}%
-                        </td>
-                      </tr>
-                    ))}
+                    {[...porProducto]
+                      .sort((a, b) => b.ingresos - a.ingresos)
+                      .map((p) => (
+                        <tr key={p.item_id}>
+                          <td className="py-2 text-gray-900">
+                            <Link href={`/inventario/${p.item_id}`} className="hover:underline">
+                              {p.nombre}
+                            </Link>
+                          </td>
+                          <td className="py-2 text-gray-700">{formatoMoneda(p.ingresos)}</td>
+                          <td className="py-2 text-gray-700">{formatoMoneda(p.utilidad)}</td>
+                          <td
+                            className={`py-2 ${p.margen_porcentaje < UMBRAL_MARGEN_BAJO ? "text-red-600" : "text-gray-700"}`}
+                          >
+                            {p.margen_porcentaje}%
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -519,7 +733,7 @@ export default async function InsightsPage() {
         ) : (
           <ul className="space-y-2">
             {insights.map((insight, i) => (
-              <li key={i} className="rounded-xl border border-gray-200 p-3">
+              <li key={i} className="rounded-xl border-2 border-gray-200 p-3">
                 <p className="text-sm font-medium text-gray-900">{insight.titulo}</p>
                 <p className="text-xs text-gray-500">{insight.detalle}</p>
               </li>

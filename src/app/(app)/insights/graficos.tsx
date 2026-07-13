@@ -40,13 +40,12 @@ export function GraficoBarras({
   const escala = (hayNegativos ? alto / 2 - 20 : alto - 8 - 20) / maxAbs;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="flex justify-center overflow-x-auto">
       <svg
         width={ancho}
         height={alto + 24}
         role="img"
         aria-label="Gráfico de barras"
-        className="min-w-full"
       >
         <line x1={0} y1={baseY} x2={ancho} y2={baseY} stroke="#c3c2b7" strokeWidth={1} />
         {datos.map((d, i) => {
@@ -126,9 +125,13 @@ function trazoSuave(coords: { x: number; y: number }[]) {
 export function GraficoLinea({
   puntos,
   alto = 160,
+  compacto = false,
 }: {
   puntos: PuntoLinea[];
   alto?: number;
+  // En modo compacto, todos los puntos se ajustan al ancho disponible
+  // (sin barra de desplazamiento) en vez de crecer con la cantidad de datos.
+  compacto?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
 
@@ -136,26 +139,30 @@ export function GraficoLinea({
 
   const pasoX = 28;
   const margen = 16;
-  const ancho = (puntos.length - 1) * pasoX + margen * 2;
+  const anchoNatural = (puntos.length - 1) * pasoX + margen * 2;
+  const ancho = compacto ? 480 : anchoNatural;
   const ejeY = alto - 24;
   const max = Math.max(1, ...puntos.map((p) => p.valor));
   const escala = (ejeY - 16) / max;
+  const pasoXCompacto = (ancho - margen * 2) / Math.max(1, puntos.length - 1);
 
   const coords = puntos.map((p, i) => ({
-    x: margen + i * pasoX,
+    x: margen + i * (compacto ? pasoXCompacto : pasoX),
     y: ejeY - p.valor * escala,
   }));
 
   const path = trazoSuave(coords);
 
   return (
-    <div className="overflow-x-auto">
+    <div className={compacto ? "flex justify-center" : "flex justify-center overflow-x-auto"}>
       <svg
-        width={ancho}
+        viewBox={compacto ? `0 0 ${ancho} ${alto}` : undefined}
+        width={compacto ? "100%" : ancho}
         height={alto}
+        preserveAspectRatio={compacto ? "none" : undefined}
+        style={compacto ? { maxWidth: ancho } : undefined}
         role="img"
         aria-label="Gráfico de línea"
-        className="min-w-full"
       >
         <line x1={margen} y1={ejeY} x2={ancho - margen} y2={ejeY} stroke="#e1e0d9" strokeWidth={1} />
         <path d={path} fill="none" stroke="#1a1b33" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
@@ -166,7 +173,13 @@ export function GraficoLinea({
             onMouseLeave={() => setHover(null)}
             className="cursor-default"
           >
-            <rect x={c.x - pasoX / 2} y={0} width={pasoX} height={alto} fill="transparent" />
+            <rect
+              x={c.x - (compacto ? pasoXCompacto : pasoX) / 2}
+              y={0}
+              width={compacto ? pasoXCompacto : pasoX}
+              height={alto}
+              fill="transparent"
+            />
             <circle cx={c.x} cy={c.y} r={hover === i ? 5 : 3} fill="#1a1b33" />
             {puntos[i].mostrarEtiqueta && (
               <text x={c.x} y={alto - 6} textAnchor="middle" fontSize={10} fill="#898781">

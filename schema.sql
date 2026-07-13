@@ -528,7 +528,8 @@ begin
 
     select id into v_existente_id
     from inventario_items
-    where empresa_id = p_empresa_id and nombre = (v_item->>'nombre')
+    where empresa_id = p_empresa_id
+      and lower(unaccent(nombre)) = lower(unaccent(v_item->>'nombre'))
     limit 1;
 
     if v_existente_id is not null then

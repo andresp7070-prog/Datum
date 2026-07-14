@@ -1257,15 +1257,22 @@ $$;
 
 -- Carga masiva de ventas históricas: para una empresa que migra desde otra
 -- herramienta (o una hoja de Excel) y quiere conservar su historial de
--- ventas. A diferencia de registrar_venta(), estas ventas NUNCA descuentan
--- inventario ni recalculan costo por FIFO — ya pasaron de verdad en el
--- sistema anterior del cliente, volver a descontarlas duplicaría el efecto.
+-- ventas. Por defecto (p_descontar_inventario = false) estas ventas NUNCA
+-- descuentan inventario ni recalculan costo por FIFO — para migrar ventas
+-- que ya pasaron de verdad en el sistema anterior del cliente, donde volver
+-- a descontarlas duplicaría el efecto. Si p_descontar_inventario = true, se
+-- comportan como ventas reales (registrar_venta()): sí descuentan stock por
+-- FIFO y bloquean la fila si no hay suficiente — útil para cargar ventas
+-- recientes en lote (ej. de un turno de noche) que sí deben afectar el
+-- inventario actual. Como toda la carga corre en una sola transacción, si
+-- una fila falla por falta de stock en ese modo, NINGUNA fila se importa.
 -- Cada fila es una venta de un solo producto (una fila del CSV = una línea
 -- vendida); si el producto no existe en el catálogo, la venta igual se
 -- guarda, solo queda sin ligar a inventario. Devuelve cuántas se importaron.
 create or replace function importar_ventas_historicas(
   p_empresa_id uuid,
-  p_ventas jsonb  -- [{"fecha":"2026-03-01","cliente_nombre":"...","cliente_telefono":"...","cliente_email":"...","producto":"...","cantidad":1,"precio_unitario":1000,"costo_unitario":700,"metodo_pago":"efectivo"}, ...]
+  p_ventas jsonb,  -- [{"fecha":"2026-03-01","cliente_nombre":"...","cliente_telefono":"...","cliente_email":"...","producto":"...","cantidad":1,"precio_unitario":1000,"costo_unitario":700,"metodo_pago":"efectivo"}, ...]
+  p_descontar_inventario boolean default false
 )
 returns int
 language plpgsql
@@ -1280,7 +1287,7 @@ declare
   v_precio numeric;
   v_costo numeric;
 begin
-  perform set_config('app.importando_historico', 'true', true);
+  perform set_config('app.importando_historico', (not p_descontar_inventario)::text, true);
 
   for v_fila in select * from jsonb_array_elements(p_ventas)
   loop
@@ -1288,7 +1295,8 @@ begin
     if coalesce(v_fila->>'producto', '') <> '' then
       select id into v_item_id
       from inventario_items
-      where empresa_id = p_empresa_id and nombre = (v_fila->>'producto')
+      where empresa_id = p_empresa_id
+        and lower(unaccent(nombre)) = lower(unaccent(v_fila->>'producto'))
       limit 1;
     end if;
 

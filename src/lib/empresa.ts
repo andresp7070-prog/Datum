@@ -48,3 +48,11 @@ export async function requerirModulo(modulo: string) {
     redirect("/resumen");
   }
 }
+
+// Bloquea el acceso a pantallas exclusivas del administrador.
+export async function requerirAdmin() {
+  const perfil = await getPerfilActual();
+  if (perfil?.rol !== "admin") {
+    redirect("/resumen");
+  }
+}

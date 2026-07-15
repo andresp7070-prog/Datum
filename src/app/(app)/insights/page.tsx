@@ -57,7 +57,8 @@ type FilaVentaItemRaw = {
   cantidad: number;
   precio_unitario: number;
   costo_unitario: number | null;
-  item_id: string;
+  item_id: string | null;
+  nombre_libre: string | null;
   inventario_items: { nombre: string; categoria: string | null } | { nombre: string; categoria: string | null }[] | null;
   ventas: { fecha: string } | { fecha: string }[] | null;
 };
@@ -71,7 +72,7 @@ type FilaUnificada = {
   diaSemana: string;
   esFestivo: boolean;
   hora: number;
-  itemId: string;
+  itemId: string | null;
   nombre: string;
   categoria: string | null;
   ingresos: number;
@@ -127,7 +128,7 @@ function aplanarFilas(filas: FilaVentaItemRaw[], festivosSet: Set<string>): Fila
   for (const f of filas) {
     const v = Array.isArray(f.ventas) ? f.ventas[0] : f.ventas;
     const item = Array.isArray(f.inventario_items) ? f.inventario_items[0] : f.inventario_items;
-    if (!v?.fecha || !item) continue;
+    if (!v?.fecha) continue;
     const { diaStr, hora } = fechaColombia(v.fecha);
     const diaSemana = NOMBRE_DIA[new Date(`${diaStr}T00:00:00Z`).getUTCDay()];
     resultado.push({
@@ -136,8 +137,8 @@ function aplanarFilas(filas: FilaVentaItemRaw[], festivosSet: Set<string>): Fila
       esFestivo: festivosSet.has(diaStr),
       hora,
       itemId: f.item_id,
-      nombre: item.nombre,
-      categoria: item.categoria,
+      nombre: item?.nombre ?? f.nombre_libre ?? "Sin nombre",
+      categoria: item?.categoria ?? null,
       ingresos: f.cantidad * f.precio_unitario,
       costos: f.cantidad * (f.costo_unitario ?? 0),
     });
@@ -173,15 +174,19 @@ function derivarDesdeUnificadas(filas: FilaUnificada[]) {
     mes.utilidad += f.ingresos - f.costos;
     porMesMapa.set(mesKey, mes);
 
-    const prod = porProductoMapa.get(f.itemId) ?? {
-      nombre: f.nombre,
-      categoria: f.categoria,
-      ingresos: 0,
-      costos: 0,
-    };
-    prod.ingresos += f.ingresos;
-    prod.costos += f.costos;
-    porProductoMapa.set(f.itemId, prod);
+    // Sin item_id (venta sin catálogo) no hay una identidad estable de
+    // producto para agrupar — se cuenta en día/mes/hora, pero no aquí.
+    if (f.itemId) {
+      const prod = porProductoMapa.get(f.itemId) ?? {
+        nombre: f.nombre,
+        categoria: f.categoria,
+        ingresos: 0,
+        costos: 0,
+      };
+      prod.ingresos += f.ingresos;
+      prod.costos += f.costos;
+      porProductoMapa.set(f.itemId, prod);
+    }
   }
 
   // ventasConHora se usa para la gráfica por hora — una fila "sintética" por
@@ -376,7 +381,7 @@ async function ContenidoInsights({
     let query = supabase
       .from("ventas_items")
       .select(
-        "cantidad, precio_unitario, costo_unitario, item_id, inventario_items ( nombre, categoria ), ventas!inner ( fecha, empresa_id )",
+        "cantidad, precio_unitario, costo_unitario, item_id, nombre_libre, inventario_items ( nombre, categoria ), ventas!inner ( fecha, empresa_id )",
       )
       .eq("ventas.empresa_id", empresaId)
       .gte("ventas.fecha", `${desdeAmplio}T00:00:00`)

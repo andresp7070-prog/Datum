@@ -58,6 +58,8 @@ type LineaVenta = {
   itemId: string;
   busquedaProducto: string;
   mostrarSugerenciasProducto: boolean;
+  nombreLibre: string;
+  costoUnitario: number | "";
   cantidad: number | "";
   precioUnitario: number;
   precioOriginal: number;
@@ -71,6 +73,8 @@ function nuevaLinea(): LineaVenta {
     itemId: "",
     busquedaProducto: "",
     mostrarSugerenciasProducto: false,
+    nombreLibre: "",
+    costoUnitario: "",
     cantidad: "",
     precioUnitario: 0,
     precioOriginal: 0,
@@ -107,13 +111,23 @@ function filtrarItems(items: ItemCatalogo[], query: string) {
     .slice(0, 8);
 }
 
+function filtrarSugerencias(sugerencias: string[], query: string) {
+  const q = sinTildes(query.trim());
+  if (!q) return [];
+  return sugerencias.filter((s) => sinTildes(s).includes(q)).slice(0, 8);
+}
+
 export function NuevaVentaForm({
   items,
+  sugerenciasProductos,
+  inventarioActivo,
   metodosPago,
   promociones,
   crmActivo,
 }: {
   items: ItemCatalogo[];
+  sugerenciasProductos: string[];
+  inventarioActivo: boolean;
   metodosPago: string[];
   promociones: Promocion[];
   crmActivo: boolean;
@@ -203,6 +217,14 @@ export function NuevaVentaForm({
     });
   }
 
+  function escribirNombreLibre(key: string, texto: string) {
+    actualizarLinea(key, { nombreLibre: texto, mostrarSugerenciasProducto: true });
+  }
+
+  function seleccionarNombreLibre(key: string, nombre: string) {
+    actualizarLinea(key, { nombreLibre: nombre, mostrarSugerenciasProducto: false });
+  }
+
   function promocionesAplicables(itemId: string): Promocion[] {
     const item = items.find((i) => i.id === itemId);
     if (!item) return [];
@@ -238,6 +260,8 @@ export function NuevaVentaForm({
         itemId: promo.itemRegaloId!,
         busquedaProducto: promo.regaloNombre ?? "Regalo",
         mostrarSugerenciasProducto: false,
+        nombreLibre: "",
+        costoUnitario: "",
         cantidad: 1,
         precioUnitario: 0,
         precioOriginal: promo.regaloPrecio,
@@ -264,17 +288,25 @@ export function NuevaVentaForm({
 
     const lineasValidas = lineas.filter(
       (linea): linea is LineaVenta & { cantidad: number } =>
-        Boolean(linea.itemId) && linea.cantidad !== "" && linea.cantidad > 0,
+        Boolean(inventarioActivo ? linea.itemId : linea.nombreLibre.trim()) &&
+        linea.cantidad !== "" &&
+        linea.cantidad > 0,
     );
     if (lineasValidas.length === 0) {
-      setError("Agrega al menos un producto con cantidad mayor a cero.");
+      setError(
+        inventarioActivo
+          ? "Agrega al menos un producto con cantidad mayor a cero."
+          : "Escribe al menos qué vendiste, con cantidad mayor a cero.",
+      );
       return;
     }
 
     // No se puede vender más de lo que hay — suma todas las líneas del mismo
     // producto (ej. la línea pagada + la gratis de un 2x1) contra el stock real.
+    // Solo aplica cuando hay catálogo con stock real que controlar.
     const cantidadPorItem: Record<string, number> = {};
     for (const linea of lineasValidas) {
+      if (!linea.itemId) continue;
       cantidadPorItem[linea.itemId] = (cantidadPorItem[linea.itemId] ?? 0) + linea.cantidad;
     }
     for (const [itemId, cantidadPedida] of Object.entries(cantidadPorItem)) {
@@ -321,6 +353,8 @@ export function NuevaVentaForm({
             return [
               {
                 itemId: linea.itemId,
+                nombreLibre: null,
+                costoUnitario: null,
                 cantidad: linea.cantidad,
                 precioUnitario: linea.precioUnitario,
                 promocionId: linea.promocionId,
@@ -340,6 +374,8 @@ export function NuevaVentaForm({
             if (pagadas > 0) {
               filas.push({
                 itemId: linea.itemId,
+                nombreLibre: null,
+                costoUnitario: null,
                 cantidad: pagadas,
                 precioUnitario: linea.precioUnitario,
                 promocionId: null,
@@ -349,6 +385,8 @@ export function NuevaVentaForm({
             if (gratis > 0) {
               filas.push({
                 itemId: linea.itemId,
+                nombreLibre: null,
+                costoUnitario: null,
                 cantidad: gratis,
                 precioUnitario: 0,
                 promocionId: promo.id,
@@ -365,7 +403,9 @@ export function NuevaVentaForm({
             promo?.tipoPromocion === "descuento_porcentaje" || promo?.tipoPromocion === "descuento_fijo";
           return [
             {
-              itemId: linea.itemId,
+              itemId: linea.itemId || null,
+              nombreLibre: linea.nombreLibre.trim() || null,
+              costoUnitario: linea.costoUnitario === "" ? null : linea.costoUnitario,
               cantidad: linea.cantidad,
               precioUnitario: linea.precioUnitario,
               promocionId: esDescuentoDirecto ? linea.promocionId : null,
@@ -520,8 +560,101 @@ export function NuevaVentaForm({
             );
           }
 
-          const aplicables = promocionesAplicables(linea.itemId);
+          const aplicables = inventarioActivo ? promocionesAplicables(linea.itemId) : [];
           const promoSeleccionada = aplicables.find((p) => p.id === linea.promocionId) ?? null;
+
+          if (!inventarioActivo) {
+            return (
+              <div key={linea.key} className="space-y-1">
+                <div className="grid grid-cols-12 items-end gap-2">
+                  <div className="relative col-span-4">
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      Qué vendiste *
+                    </label>
+                    <input
+                      value={linea.nombreLibre}
+                      onChange={(e) => escribirNombreLibre(linea.key, e.target.value)}
+                      onFocus={() =>
+                        actualizarLinea(linea.key, { mostrarSugerenciasProducto: true })
+                      }
+                      onBlur={() =>
+                        setTimeout(
+                          () => actualizarLinea(linea.key, { mostrarSugerenciasProducto: false }),
+                          150,
+                        )
+                      }
+                      placeholder="Ej. Camisa talla M"
+                      className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                    />
+                    {linea.mostrarSugerenciasProducto &&
+                      filtrarSugerencias(sugerenciasProductos, linea.nombreLibre).length > 0 && (
+                        <ul className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-sm">
+                          {filtrarSugerencias(sugerenciasProductos, linea.nombreLibre).map((s) => (
+                            <li key={s}>
+                              <button
+                                type="button"
+                                onMouseDown={() => seleccionarNombreLibre(linea.key, s)}
+                                className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                              >
+                                {s}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-gray-700">Cantidad *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      inputMode="numeric"
+                      value={linea.cantidad}
+                      onChange={(e) =>
+                        actualizarLinea(linea.key, { cantidad: cantidadDesdeInput(e.target.value) })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      Precio unitario
+                    </label>
+                    <EntradaMoneda
+                      value={String(linea.precioUnitario)}
+                      onChange={(valor) =>
+                        actualizarLinea(linea.key, { precioUnitario: Number(valor) || 0 })
+                      }
+                      className="w-full rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      Costo (opcional)
+                    </label>
+                    <EntradaMoneda
+                      value={String(linea.costoUnitario)}
+                      onChange={(valor) =>
+                        actualizarLinea(linea.key, { costoUnitario: valor === "" ? "" : Number(valor) || 0 })
+                      }
+                      className="w-full rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => quitarLinea(linea.key)}
+                      className="text-sm text-red-500 hover:text-red-700"
+                      aria-label="Quitar producto"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div key={linea.key} className="space-y-1">

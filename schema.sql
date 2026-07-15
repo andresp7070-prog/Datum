@@ -231,6 +231,11 @@ create table ventas_items (
   id uuid primary key default gen_random_uuid(),
   venta_id uuid references ventas(id) not null,
   item_id uuid references inventario_items(id),
+  -- Nombre libre de lo vendido, para una empresa sin el módulo de Inventario
+  -- activo (no tiene catálogo): item_id queda null y esto guarda qué se
+  -- vendió, escrito a mano. Si item_id sí está, el nombre sale del catálogo
+  -- y esto queda null — nunca se necesitan los dos a la vez.
+  nombre_libre text,
   cantidad numeric(12,2) not null default 1,
   precio_unitario numeric(12,2) not null,
   costo_unitario numeric(12,2),   -- costo del ítem congelado al momento de la venta, para que la utilidad histórica no cambie si el costo sube después
@@ -1181,6 +1186,7 @@ create or replace function registrar_venta(
   p_atributos_cliente jsonb,    -- ej. {"placa": "ABC123", "modelo": "Dominar 250"}
   p_atributos_venta jsonb,      -- ej. {"km": 15000}
   p_items jsonb,                 -- ej. [{"item_id":"...","cantidad":1,"precio_unitario":20000,"promocion_id":null,"descuento_aplicado":0}, ...]
+                                  -- o, sin catálogo (empresa sin Inventario): [{"nombre_libre":"Camisa talla M","cantidad":1,"precio_unitario":45000,"costo_unitario":20000}, ...]
   p_fecha timestamptz default null,  -- si la persona cambió la fecha/hora sugerida; null = usar el momento actual
   p_metodo_pago text default null    -- uno de los valores en empresas.metodos_pago_disponibles
 )
@@ -1237,15 +1243,19 @@ begin
   returning id into v_venta_id;
 
   -- 4. Agregar cada producto o servicio vendido, con su promoción si aplica
-  --    (esto dispara el descuento de inventario, solo para productos)
+  --    (esto dispara el descuento de inventario, solo para productos con
+  --    item_id — una empresa sin Inventario no manda item_id, solo
+  --    nombre_libre y su propio costo_unitario, y no pasa por ese trigger)
   for v_item in select * from jsonb_array_elements(p_items)
   loop
-    insert into ventas_items (venta_id, item_id, cantidad, precio_unitario, promocion_id, descuento_aplicado)
+    insert into ventas_items (venta_id, item_id, nombre_libre, cantidad, precio_unitario, costo_unitario, promocion_id, descuento_aplicado)
     values (
       v_venta_id,
-      (v_item->>'item_id')::uuid,
+      nullif(v_item->>'item_id','')::uuid,
+      nullif(v_item->>'nombre_libre',''),
       (v_item->>'cantidad')::numeric,
       (v_item->>'precio_unitario')::numeric,
+      nullif(v_item->>'costo_unitario','')::numeric,
       nullif(v_item->>'promocion_id','')::uuid,
       coalesce((v_item->>'descuento_aplicado')::numeric, 0)
     );
@@ -1340,8 +1350,15 @@ begin
     )
     returning id into v_venta_id;
 
-    insert into ventas_items (venta_id, item_id, cantidad, precio_unitario, costo_unitario)
-    values (v_venta_id, v_item_id, v_cantidad, v_precio, v_costo);
+    insert into ventas_items (venta_id, item_id, nombre_libre, cantidad, precio_unitario, costo_unitario)
+    values (
+      v_venta_id,
+      v_item_id,
+      case when v_item_id is null then nullif(v_fila->>'producto', '') end,
+      v_cantidad,
+      v_precio,
+      v_costo
+    );
 
     v_importadas := v_importadas + 1;
   end loop;

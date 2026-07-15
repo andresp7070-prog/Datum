@@ -44,7 +44,11 @@ create table empresas (
 create table perfiles (
   id uuid primary key references auth.users(id) on delete cascade,
   empresa_id uuid references empresas(id),
-  rol text not null default 'cliente' check (rol in ('cliente','admin')),
+  -- 'admin' es un rol de plataforma reservado para futuro personal de
+  -- soporte (sin acceso al reporte global). 'super_admin' es exclusivamente
+  -- la cuenta dueña de la plataforma — ver requerirAdmin() en el código,
+  -- que además verifica el id exacto del usuario, no solo este rol.
+  rol text not null default 'cliente' check (rol in ('cliente','admin','super_admin')),
   -- Rol DENTRO de la empresa (solo aplica cuando rol = 'cliente'; varias
   -- personas de la misma empresa pueden tener perfiles distintos, cada una
   -- con su propio login). 'administrador' ve todo lo que la empresa tiene

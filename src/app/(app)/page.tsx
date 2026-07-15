@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { getPerfilActual } from "@/lib/empresa";
+import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
 
 export default async function HomePage() {
   const perfil = await getPerfilActual();
 
-  if (perfil?.rol === "admin") {
+  if (esRolDePlataforma(perfil?.rol)) {
     redirect("/admin");
   }
 

@@ -39,13 +39,21 @@ export async function getPerfilActual(): Promise<Perfil | null> {
   return perfil as unknown as Perfil | null;
 }
 
+// Cualquier rol de plataforma (soporte o dueño) — distinto de un rol dentro
+// de una empresa cliente. No confundir con requerirAdmin(): esto no protege
+// el reporte global, solo decide navegación general (a dónde aterriza, qué
+// ve el menú). El reporte global exige además el id exacto del usuario.
+export function esRolDePlataforma(rol: string | undefined) {
+  return rol === "admin" || rol === "super_admin";
+}
+
 // Bloquea el acceso directo por URL a un módulo que la empresa no tiene
 // activo, o que el rol de la persona dentro de la empresa no le permite ver
 // (aunque no aparezca en el menú, alguien podría intentar entrar escribiendo
 // la dirección a mano). Un "vendedor" solo puede ver Ventas.
 export async function requerirModulo(modulo: string) {
   const perfil = await getPerfilActual();
-  if (perfil?.rol === "admin") return;
+  if (esRolDePlataforma(perfil?.rol)) return;
 
   if (perfil?.rol_empresa === "vendedor" && modulo !== "ventas") {
     redirect("/ventas");

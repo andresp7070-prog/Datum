@@ -34,13 +34,21 @@ export default async function DiagnosticoPage() {
   const supabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
   const ref = refSupabaseDesdeUrl();
 
+  // Ya confirmamos que la autenticación funciona (con los intentos de la
+  // primera ronda); estos son intentos puntuales a rutas candidatas para
+  // encontrar dónde vive el dato de uso/consumo real.
+  const teamId = "team_KtGBiWKLJMM1AFOcNDAzB25Q";
+  const orgSlug = "afndomgkcysvlxstqett";
+
   const resultados = await Promise.all([
-    llamar("https://api.vercel.com/v9/projects", vercelToken),
-    llamar("https://api.vercel.com/v2/user", vercelToken),
-    llamar("https://api.supabase.com/v1/projects", supabaseToken),
+    llamar(`https://api.vercel.com/v1/teams/${teamId}`, vercelToken),
+    llamar(`https://api.vercel.com/v1/teams/${teamId}/usage`, vercelToken),
+    llamar(`https://api.vercel.com/v1/teams/${teamId}/billing/charges`, vercelToken),
     ref
-      ? llamar(`https://api.supabase.com/v1/projects/${ref}`, supabaseToken)
-      : Promise.resolve({ url: "(sin ref de Supabase)", error: "No se pudo leer NEXT_PUBLIC_SUPABASE_URL" }),
+      ? llamar(`https://api.supabase.com/v1/projects/${ref}/usage`, supabaseToken)
+      : Promise.resolve({ url: "(sin ref)", error: "sin ref" }),
+    llamar(`https://api.supabase.com/v1/organizations/${orgSlug}`, supabaseToken),
+    llamar(`https://api.supabase.com/v1/organizations/${orgSlug}/usage`, supabaseToken),
   ]);
 
   return (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getPerfilActual } from "@/lib/empresa";
 import { primeraMayuscula } from "@/lib/texto";
 import { firmarFotoUrl } from "@/lib/fotos";
 import { LogoEmpresa } from "./logo-empresa";
@@ -19,6 +20,10 @@ export default async function ResumenPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Resumen muestra datos de P y G e inventario — un vendedor solo debe ver Ventas.
+  const perfilActual = await getPerfilActual();
+  if (perfilActual?.rol_empresa === "vendedor") redirect("/ventas");
 
   const { data: perfil } = await supabase
     .from("perfiles")

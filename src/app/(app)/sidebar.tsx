@@ -36,15 +36,31 @@ function LogoCompass({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-function estaHabilitado(modulo: (typeof modulos)[number], modulosActivos: string[]) {
+function estaHabilitado(
+  modulo: (typeof modulos)[number],
+  modulosActivos: string[],
+  esVendedor: boolean,
+) {
+  if (esVendedor) return modulo.slug === "ventas";
   return modulo.slug === null || modulosActivos.includes(modulo.slug);
 }
 
-export function Sidebar({ modulosActivos }: { modulosActivos: string[] }) {
+export function Sidebar({
+  modulosActivos,
+  rolEmpresa,
+}: {
+  modulosActivos: string[];
+  rolEmpresa: "administrador" | "vendedor";
+}) {
   const pathname = usePathname();
+  const esVendedor = rolEmpresa === "vendedor";
 
-  const habilitados = modulos.filter((m) => estaHabilitado(m, modulosActivos));
-  const bloqueados = modulos.filter((m) => !estaHabilitado(m, modulosActivos));
+  const habilitados = modulos.filter((m) => estaHabilitado(m, modulosActivos, esVendedor));
+  // Para un vendedor, lo que no ve no es porque falte en el plan — es su rol.
+  // No tiene sentido mostrarle candados de "no incluido en tu plan".
+  const bloqueados = esVendedor
+    ? []
+    : modulos.filter((m) => !estaHabilitado(m, modulosActivos, esVendedor));
 
   return (
     <nav className="flex w-56 shrink-0 flex-col justify-between border-r border-gray-200 p-4">

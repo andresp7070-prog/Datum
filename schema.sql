@@ -45,6 +45,12 @@ create table perfiles (
   id uuid primary key references auth.users(id) on delete cascade,
   empresa_id uuid references empresas(id),
   rol text not null default 'cliente' check (rol in ('cliente','admin')),
+  -- Rol DENTRO de la empresa (solo aplica cuando rol = 'cliente'; varias
+  -- personas de la misma empresa pueden tener perfiles distintos, cada una
+  -- con su propio login). 'administrador' ve todo lo que la empresa tiene
+  -- activo; 'vendedor' solo ve el módulo de Ventas, sin importar qué otros
+  -- módulos tenga la empresa.
+  rol_empresa text not null default 'administrador' check (rol_empresa in ('administrador','vendedor')),
   nombre text,
   debe_cambiar_password boolean not null default true,  -- true al crear la cuenta; se apaga solo cuando cambia su contraseña por primera vez
   created_at timestamptz default now()
@@ -1262,6 +1268,55 @@ begin
   end loop;
 
   return v_venta_id;
+end;
+$$;
+
+-- Deshacer una venta recién registrada, para corregir un error sin dejar el
+-- inventario mal calculado. Solo funciona en los 2 minutos siguientes a
+-- haberla creado (la app solo ofrece el botón durante 60 segundos; este
+-- margen extra es por si hay algo de latencia). En vez de intentar
+-- reconstruir el lote exacto que consumió el FIFO (frágil si hubo otra
+-- venta del mismo producto en el medio), crea un lote nuevo de entrada al
+-- costo que quedó congelado en la venta — la cantidad y el costo quedan
+-- exactamente igual que antes de vender, aunque no sea "el mismo" lote.
+-- No revierte nada del CRM (si creó o actualizó un contacto, se queda así).
+create or replace function deshacer_venta(p_venta_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_creada_en timestamptz;
+  v_item record;
+begin
+  select created_at into v_creada_en from ventas where id = p_venta_id;
+  if v_creada_en is null then
+    raise exception 'Venta no encontrada';
+  end if;
+  if now() - v_creada_en > interval '2 minutes' then
+    raise exception 'Ya pasó el tiempo para deshacer esta venta';
+  end if;
+
+  for v_item in
+    select vi.item_id, vi.cantidad, vi.costo_unitario, ii.tipo
+    from ventas_items vi
+    join inventario_items ii on ii.id = vi.item_id
+    where vi.venta_id = p_venta_id and vi.item_id is not null
+  loop
+    if v_item.tipo = 'producto' then
+      insert into inventario_lotes (item_id, cantidad_disponible, costo_unitario)
+      values (v_item.item_id, v_item.cantidad, coalesce(v_item.costo_unitario, 0));
+
+      insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+      values (v_item.item_id, 'entrada', 'devolucion', v_item.cantidad, 'Venta deshecha');
+
+      update inventario_items
+      set cantidad = cantidad + v_item.cantidad
+      where id = v_item.item_id;
+    end if;
+  end loop;
+
+  delete from ventas_items where venta_id = p_venta_id;
+  delete from ventas where id = p_venta_id;
 end;
 $$;
 

@@ -7,7 +7,9 @@ import { ahoraFecha, ahoraHora } from "@/lib/fecha";
 import { sinTildes } from "@/lib/texto";
 import { etiquetaUnidad } from "@/lib/unidades";
 import { EntradaMoneda } from "@/components/campo-moneda";
-import { buscarClientes, guardarVenta, type ClienteEncontrado } from "./actions";
+import { buscarClientes, guardarVenta, deshacerVenta, type ClienteEncontrado } from "./actions";
+
+const SEGUNDOS_PARA_DESHACER = 60;
 
 type ItemCatalogo = {
   id: string;
@@ -152,7 +154,39 @@ export function NuevaVentaForm({
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ventaGuardada, setVentaGuardada] = useState(false);
+
+  const [ultimaVenta, setUltimaVenta] = useState<{ id: string; venceEn: number } | null>(null);
+  const [segundosRestantes, setSegundosRestantes] = useState(0);
+  const [deshaciendo, setDeshaciendo] = useState(false);
+
+  useEffect(() => {
+    if (!ultimaVenta) return;
+    const actualizar = () => {
+      const restante = Math.max(0, Math.ceil((ultimaVenta.venceEn - Date.now()) / 1000));
+      setSegundosRestantes(restante);
+      if (restante <= 0) setUltimaVenta(null);
+    };
+    actualizar();
+    const intervalo = setInterval(actualizar, 1000);
+    return () => clearInterval(intervalo);
+  }, [ultimaVenta]);
+
+  async function deshacer() {
+    if (!ultimaVenta) return;
+    setError(null);
+    setDeshaciendo(true);
+    try {
+      const resultado = await deshacerVenta(ultimaVenta.id);
+      if (resultado.error) {
+        setError(resultado.error);
+        return;
+      }
+      setUltimaVenta(null);
+      router.refresh();
+    } finally {
+      setDeshaciendo(false);
+    }
+  }
 
   useEffect(() => {
     if (!crmActivo) return;
@@ -284,7 +318,7 @@ export function NuevaVentaForm({
 
   async function guardar() {
     setError(null);
-    setVentaGuardada(false);
+    setUltimaVenta(null);
 
     const lineasValidas = lineas.filter(
       (linea): linea is LineaVenta & { cantidad: number } =>
@@ -424,7 +458,12 @@ export function NuevaVentaForm({
 
       // Nos quedamos en esta pantalla para poder registrar la siguiente venta rápido,
       // en vez de mandar de vuelta al listado general.
-      setVentaGuardada(true);
+      if (resultado.ventaId) {
+        setUltimaVenta({
+          id: resultado.ventaId,
+          venceEn: Date.now() + SEGUNDOS_PARA_DESHACER * 1000,
+        });
+      }
       setLineas([nuevaLinea()]);
       setNombre("");
       setTelefono("");
@@ -912,10 +951,20 @@ export function NuevaVentaForm({
         )}
       </div>
 
-      {ventaGuardada && (
-        <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-          Venta agregada correctamente.
-        </p>
+      {ultimaVenta && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          <span>Venta agregada correctamente.</span>
+          {segundosRestantes > 0 && (
+            <button
+              type="button"
+              onClick={deshacer}
+              disabled={deshaciendo}
+              className="font-medium text-red-600 underline hover:text-red-700 disabled:opacity-50"
+            >
+              {deshaciendo ? "Deshaciendo..." : `Deshacer (${segundosRestantes}s)`}
+            </button>
+          )}
+        </div>
       )}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">

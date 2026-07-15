@@ -11,6 +11,7 @@ type Empresa = {
 
 type Perfil = {
   rol: string;
+  rol_empresa: "administrador" | "vendedor";
   nombre: string | null;
   empresa_id: string | null;
   debe_cambiar_password: boolean;
@@ -28,7 +29,7 @@ export async function getPerfilActual(): Promise<Perfil | null> {
   const { data: perfil } = await supabase
     .from("perfiles")
     .select(
-      "rol, nombre, empresa_id, debe_cambiar_password, empresas ( id, nombre, tipo_negocio, pagina_entrada, modulos_activos )",
+      "rol, rol_empresa, nombre, empresa_id, debe_cambiar_password, empresas ( id, nombre, tipo_negocio, pagina_entrada, modulos_activos )",
     )
     .eq("id", user.id)
     .single();
@@ -39,10 +40,17 @@ export async function getPerfilActual(): Promise<Perfil | null> {
 }
 
 // Bloquea el acceso directo por URL a un módulo que la empresa no tiene
-// activo (aunque no aparezca en el menú, alguien podría intentar entrar
-// escribiendo la dirección a mano).
+// activo, o que el rol de la persona dentro de la empresa no le permite ver
+// (aunque no aparezca en el menú, alguien podría intentar entrar escribiendo
+// la dirección a mano). Un "vendedor" solo puede ver Ventas.
 export async function requerirModulo(modulo: string) {
   const perfil = await getPerfilActual();
+  if (perfil?.rol === "admin") return;
+
+  if (perfil?.rol_empresa === "vendedor" && modulo !== "ventas") {
+    redirect("/ventas");
+  }
+
   const modulosActivos = perfil?.empresas?.modulos_activos ?? [];
   if (!modulosActivos.includes(modulo)) {
     redirect("/resumen");

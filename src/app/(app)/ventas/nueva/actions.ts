@@ -94,3 +94,16 @@ export async function guardarVenta(input: {
   if (error) return { error: error.message };
   return { error: null, ventaId: ventaId as string };
 }
+
+export async function deshacerVenta(ventaId: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No hay sesión activa." };
+
+  const { error } = await supabase.rpc("deshacer_venta", { p_venta_id: ventaId });
+
+  if (error) return { error: error.message };
+  return { error: null };
+}

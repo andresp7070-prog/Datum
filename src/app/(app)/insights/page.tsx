@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requerirModulo } from "@/lib/empresa";
 import { primeraMayuscula } from "@/lib/texto";
 import { calcularRango, type Periodo } from "@/lib/periodos";
 import {
@@ -833,6 +834,7 @@ export default async function InsightsPage({
 }: {
   searchParams: Promise<{ periodo?: string; desde?: string; hasta?: string; dia_semana?: string; producto?: string }>;
 }) {
+  await requerirModulo("insights");
   const params = await searchParams;
   return (
     <Suspense fallback={<p className="text-sm text-gray-400">Cargando…</p>}>

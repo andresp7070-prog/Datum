@@ -23,6 +23,7 @@ export default async function AppLayout({
       <Sidebar
         modulosActivos={perfil.empresas?.modulos_activos ?? []}
         rolEmpresa={perfil.rol_empresa}
+        esAdmin={perfil.rol === "admin"}
       />
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">

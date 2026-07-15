@@ -23,6 +23,7 @@ export default async function ResumenPage() {
 
   // Resumen muestra datos de P y G e inventario — un vendedor solo debe ver Ventas.
   const perfilActual = await getPerfilActual();
+  if (perfilActual?.rol === "admin") redirect("/admin");
   if (perfilActual?.rol_empresa === "vendedor") redirect("/ventas");
 
   const { data: perfil } = await supabase

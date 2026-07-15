@@ -4,6 +4,10 @@ import { getPerfilActual } from "@/lib/empresa";
 export default async function HomePage() {
   const perfil = await getPerfilActual();
 
+  if (perfil?.rol === "admin") {
+    redirect("/admin");
+  }
+
   if (perfil?.rol_empresa === "vendedor") {
     redirect("/ventas");
   }

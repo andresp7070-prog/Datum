@@ -13,6 +13,11 @@ const modulos = [
   { nombre: "Promociones", href: "/promociones", slug: "promociones" },
 ];
 
+const enlacesAdmin = [
+  { nombre: "Panel", href: "/admin" },
+  { nombre: "Enviar bienvenida", href: "/admin/bienvenida" },
+];
+
 function IconoCandado() {
   return (
     <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5" aria-hidden="true">
@@ -48,9 +53,11 @@ function estaHabilitado(
 export function Sidebar({
   modulosActivos,
   rolEmpresa,
+  esAdmin = false,
 }: {
   modulosActivos: string[];
   rolEmpresa: "administrador" | "vendedor";
+  esAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const esVendedor = rolEmpresa === "vendedor";
@@ -61,6 +68,40 @@ export function Sidebar({
   const bloqueados = esVendedor
     ? []
     : modulos.filter((m) => !estaHabilitado(m, modulosActivos, esVendedor));
+
+  if (esAdmin) {
+    return (
+      <nav className="flex w-56 shrink-0 flex-col justify-between border-r border-gray-200 p-4">
+        <div>
+          <div className="mb-6 flex items-center gap-3 px-3 text-accent">
+            <LogoCompass className="h-9 w-9" />
+            <span className="text-4xl font-bold tracking-tight text-gray-900">Datum</span>
+          </div>
+          <ul className="space-y-1">
+            {enlacesAdmin.map((enlace) => {
+              const activo = pathname === enlace.href || pathname.startsWith(`${enlace.href}/`);
+              return (
+                <li key={enlace.href}>
+                  <Link
+                    href={enlace.href}
+                    className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                      activo ? "bg-accent text-white" : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {enlace.nombre}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        <div className="flex items-center gap-2.5 px-3 text-base text-gray-400">
+          <LogoCompass className="h-6 w-6" />
+          <span>Desarrollado por Datum</span>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="flex w-56 shrink-0 flex-col justify-between border-r border-gray-200 p-4">

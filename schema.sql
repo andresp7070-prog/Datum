@@ -646,6 +646,10 @@ $$;
 create table finanzas_movimientos (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
+  -- Solo aplica si la empresa usa puntos_venta; null para el resto. Así el
+  -- arriendo o la nómina de un punto no se mezclan con los de otro, y cada
+  -- punto puede tener su propia utilidad neta.
+  punto_venta_id uuid references puntos_venta(id),
   tipo text not null check (tipo in ('ingreso','gasto')),
   categoria text,
   monto numeric(12,2) not null,
@@ -1110,7 +1114,11 @@ create policy "ver mis proveedores" on proveedores
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mis finanzas" on finanzas_movimientos
-  for all using (empresa_id = mi_empresa_id() or es_admin());
+  for all using (
+    (empresa_id = mi_empresa_id()
+      and (mi_punto_venta_id() is null or punto_venta_id = mi_punto_venta_id()))
+    or es_admin()
+  );
 
 create policy "ver mis pasivos" on pasivos
   for all using (empresa_id = mi_empresa_id() or es_admin());

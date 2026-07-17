@@ -967,6 +967,9 @@ left join (select * from items_cliente where rn_caro = 1) caro on caro.contacto_
 create table promociones (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
+  -- Solo aplica si la empresa usa puntos_venta; null = aplica a todos los
+  -- puntos (y es el único valor posible para el resto de las empresas).
+  punto_venta_id uuid references puntos_venta(id),
   nombre text not null,                             -- ej. 'Cambio de aceite 20% - Julio'
   codigo text,                                       -- código de cupón, opcional
   tipo_promocion text not null

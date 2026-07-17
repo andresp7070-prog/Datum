@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { obtenerContextoPunto } from "@/lib/puntos";
 import { DescargarCsv } from "@/components/descargar-csv";
 
 type Promocion = {
@@ -11,6 +12,7 @@ type Promocion = {
   fecha_inicio: string;
   fecha_fin: string;
   activo: boolean;
+  punto_venta_id: string | null;
 };
 
 const etiquetaTipo: Record<string, string> = {
@@ -49,11 +51,26 @@ export default async function PromocionesPage() {
     );
   }
 
-  const { data } = await supabase
+  const { puntoSeleccionado, puntosVenta } = await obtenerContextoPunto(
+    supabase,
+    perfil.empresa_id,
+    null,
+  );
+  const nombrePorPunto = new Map(puntosVenta.map((p) => [p.id, p.nombre]));
+
+  let query = supabase
     .from("promociones")
-    .select("id, nombre, codigo, tipo_promocion, fecha_inicio, fecha_fin, activo")
+    .select("id, nombre, codigo, tipo_promocion, fecha_inicio, fecha_fin, activo, punto_venta_id")
     .eq("empresa_id", perfil.empresa_id)
     .order("fecha_inicio", { ascending: false });
+
+  // Con un punto elegido: sus promociones propias + las que aplican a todos
+  // los puntos (punto_venta_id null). Con "todos los puntos", se ven todas.
+  if (puntoSeleccionado) {
+    query = query.or(`punto_venta_id.is.null,punto_venta_id.eq.${puntoSeleccionado}`);
+  }
+
+  const { data } = await query;
 
   const promociones = (data ?? []) as Promocion[];
 
@@ -107,7 +124,11 @@ export default async function PromocionesPage() {
                   <div>
                     <p className="text-sm font-medium text-gray-900">{p.nombre}</p>
                     <p className="text-xs text-gray-400">
-                      {[etiquetaTipo[p.tipo_promocion] ?? p.tipo_promocion, p.codigo]
+                      {[
+                        etiquetaTipo[p.tipo_promocion] ?? p.tipo_promocion,
+                        p.codigo,
+                        p.punto_venta_id ? nombrePorPunto.get(p.punto_venta_id) : puntosVenta.length > 0 ? "Todos los puntos" : null,
+                      ]
                         .filter(Boolean)
                         .join(" · ")}{" "}
                       · {p.fecha_inicio} a {p.fecha_fin}

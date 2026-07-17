@@ -13,6 +13,7 @@ export async function crearPromocion(input: {
   fechaInicio: string;
   fechaFin: string;
   activo: boolean;
+  puntoVentaId?: string | null;
 }): Promise<{ error: string | null; id?: string }> {
   const supabase = await createClient();
   const {
@@ -34,6 +35,7 @@ export async function crearPromocion(input: {
     .from("promociones")
     .insert({
       empresa_id: perfil.empresa_id,
+      punto_venta_id: input.puntoVentaId ?? null,
       nombre: input.nombre,
       codigo: input.codigo || null,
       tipo_promocion: input.tipoPromocion,

@@ -53,6 +53,7 @@ export async function guardarVenta(input: {
   fecha: string;
   metodoPago: string;
   items: ItemVentaInput[];
+  puntoVentaId?: string | null;
 }): Promise<{ error: string | null; ventaId?: string }> {
   const supabase = await createClient();
   const {
@@ -89,6 +90,7 @@ export async function guardarVenta(input: {
     })),
     p_fecha: input.fecha,
     p_metodo_pago: input.metodoPago,
+    p_punto_venta_id: input.puntoVentaId ?? null,
   });
 
   if (error) return { error: error.message };

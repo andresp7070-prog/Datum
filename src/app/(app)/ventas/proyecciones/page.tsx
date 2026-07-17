@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { primeraMayuscula } from "@/lib/texto";
+import { obtenerContextoPunto } from "@/lib/puntos";
 import { VentasTabs } from "../ventas-tabs";
 
 type FilaMes = {
@@ -33,7 +34,7 @@ export default async function ProyeccionesVentasPage() {
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("empresa_id")
+    .select("empresa_id, punto_venta_id")
     .eq("id", user.id)
     .single();
 
@@ -45,14 +46,40 @@ export default async function ProyeccionesVentasPage() {
     );
   }
 
-  const { data } = await supabase
-    .from("vista_estado_resultados")
-    .select("mes, ingresos_por_ventas")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("mes", { ascending: false })
-    .limit(3);
+  const { puntoSeleccionado } = await obtenerContextoPunto(
+    supabase,
+    perfil.empresa_id,
+    perfil.punto_venta_id,
+  );
 
-  const meses = (data ?? []) as FilaMes[];
+  let query = supabase
+    .from("vista_estado_resultados")
+    .select("mes, punto_venta_id, ingresos_por_ventas")
+    .eq("empresa_id", perfil.empresa_id)
+    .order("mes", { ascending: false });
+
+  if (puntoSeleccionado) query = query.eq("punto_venta_id", puntoSeleccionado);
+
+  const { data } = await query;
+  const filasCrudas = (data ?? []) as (FilaMes & { punto_venta_id: string | null })[];
+
+  // Con "todos los puntos", la vista trae una fila por mes y punto — hay
+  // que sumarlas para tener el ingreso combinado de cada mes, como antes.
+  let meses: FilaMes[];
+  if (puntoSeleccionado) {
+    meses = filasCrudas.slice(0, 3);
+  } else {
+    const combinadoPorMes = new Map<string, FilaMes>();
+    for (const f of filasCrudas) {
+      const clave = f.mes.slice(0, 7);
+      const acumulado = combinadoPorMes.get(clave) ?? { mes: f.mes, ingresos_por_ventas: 0 };
+      acumulado.ingresos_por_ventas += Number(f.ingresos_por_ventas);
+      combinadoPorMes.set(clave, acumulado);
+    }
+    meses = Array.from(combinadoPorMes.values())
+      .sort((a, b) => b.mes.localeCompare(a.mes))
+      .slice(0, 3);
+  }
   const promedio =
     meses.length > 0
       ? meses.reduce((suma, f) => suma + f.ingresos_por_ventas, 0) / meses.length

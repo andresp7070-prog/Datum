@@ -35,6 +35,7 @@ export async function crearProducto(input: {
   sku?: string | null;
   esInsumo?: boolean;
   atributos?: Record<string, unknown>;
+  puntoVentaId?: string | null;
 }): Promise<{ error: string | null; id?: string }> {
   const supabase = await createClient();
   const {
@@ -58,6 +59,7 @@ export async function crearProducto(input: {
     .from("inventario_items")
     .insert({
       empresa_id: perfil.empresa_id,
+      punto_venta_id: input.puntoVentaId ?? null,
       nombre: input.nombre,
       sku: skuFinal,
       categoria: input.categoria || null,

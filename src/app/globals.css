@@ -53,3 +53,16 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
+
+/* Efecto de clic: cualquier botón o enlace se encoge un poco al presionarlo,
+   para que quede claro que el clic se registró. */
+button:not(:disabled),
+a {
+  transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+}
+
+button:not(:disabled):active,
+a:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}

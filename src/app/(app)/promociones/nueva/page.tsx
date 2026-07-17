@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { obtenerContextoPunto } from "@/lib/puntos";
 import { NuevaPromocionForm } from "./nueva-promocion-form";
 
 export default async function NuevaPromocionPage() {
@@ -25,9 +26,21 @@ export default async function NuevaPromocionPage() {
 
   const { data: items } = await supabase
     .from("inventario_items")
-    .select("id, nombre, categoria")
+    .select("id, nombre, categoria, punto_venta_id")
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
 
-  return <NuevaPromocionForm items={items ?? []} />;
+  const { puntosVenta, puntoSeleccionado } = await obtenerContextoPunto(
+    supabase,
+    perfil.empresa_id,
+    null,
+  );
+
+  return (
+    <NuevaPromocionForm
+      items={items ?? []}
+      puntosVenta={puntosVenta}
+      puntoInicial={puntoSeleccionado}
+    />
+  );
 }

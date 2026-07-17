@@ -44,18 +44,6 @@ type FilaCategoria = {
   ingresos: number;
 };
 
-type FilaPerfilCliente = {
-  contacto_id: string;
-  ultima_compra: string;
-  dias_promedio_entre_compras: number | null;
-  ticket_medio: number | null;
-};
-
-type Contacto = {
-  id: string;
-  nombre: string;
-};
-
 type FilaVentaItemRaw = {
   cantidad: number;
   precio_unitario: number;
@@ -323,19 +311,13 @@ async function ContenidoInsights({
     perfil.punto_venta_id,
   );
 
-  const [{ data: productosData }, { data: perfilesClienteData }, { data: contactosData }] = await Promise.all([
-    supabase.from("inventario_items").select("id, nombre").eq("empresa_id", empresaId).order("nombre"),
-    supabase
-      .from("vista_perfil_cliente")
-      .select("contacto_id, ultima_compra, dias_promedio_entre_compras, ticket_medio")
-      .eq("empresa_id", empresaId),
-    supabase.from("crm_contactos").select("id, nombre").eq("empresa_id", empresaId),
-  ]);
+  const { data: productosData } = await supabase
+    .from("inventario_items")
+    .select("id, nombre")
+    .eq("empresa_id", empresaId)
+    .order("nombre");
 
   const productos = (productosData ?? []) as { id: string; nombre: string }[];
-  const perfilesCliente = (perfilesClienteData ?? []) as FilaPerfilCliente[];
-  const contactos = (contactosData ?? []) as Contacto[];
-  const nombrePorContacto = new Map(contactos.map((c) => [c.id, c.nombre]));
 
   const sinFiltros = !rango && !diaSemanaFiltro && !productoFiltro && !puntoVentaFiltro;
 
@@ -664,33 +646,6 @@ async function ContenidoInsights({
         impacto: anterior.utilidad_neta - ultimo.utilidad_neta,
       });
     }
-  }
-
-  // Clientes en riesgo, pesados por lo que gastan: un cliente que compra
-  // seguido pero deja poca plata importa menos que uno de ticket alto que
-  // ya lleva varias compras "perdidas" sin volver.
-  const hoy = new Date();
-  const clientesEnRiesgo = perfilesCliente
-    .filter((p) => p.dias_promedio_entre_compras !== null)
-    .map((p) => {
-      const diasDesdeUltima = Math.floor(
-        (hoy.getTime() - new Date(p.ultima_compra).getTime()) / (1000 * 60 * 60 * 24),
-      );
-      const diasPromedio = p.dias_promedio_entre_compras ?? 1;
-      const visitasPerdidas = Math.floor(diasDesdeUltima / diasPromedio);
-      return { ...p, diasDesdeUltima, impacto: (p.ticket_medio ?? 0) * Math.max(1, visitasPerdidas) };
-    })
-    .filter((p) => p.diasDesdeUltima > (p.dias_promedio_entre_compras ?? 0))
-    .sort((a, b) => b.impacto - a.impacto)
-    .slice(0, 5);
-
-  for (const c of clientesEnRiesgo) {
-    const nombre = nombrePorContacto.get(c.contacto_id) ?? "Cliente";
-    insights.push({
-      titulo: `${nombre} no ha vuelto a comprar`,
-      detalle: `Compra en promedio cada ${Math.round(c.dias_promedio_entre_compras ?? 0)} días con un ticket de ${formatoMoneda(c.ticket_medio ?? 0)}, y ya lleva ${c.diasDesdeUltima} sin comprar.`,
-      impacto: c.impacto,
-    });
   }
 
   insights.sort((a, b) => b.impacto - a.impacto);

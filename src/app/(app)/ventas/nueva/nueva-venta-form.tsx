@@ -126,6 +126,7 @@ export function NuevaVentaForm({
   metodosPago,
   promociones,
   crmActivo,
+  puntoVentaId = null,
 }: {
   items: ItemCatalogo[];
   sugerenciasProductos: string[];
@@ -133,6 +134,7 @@ export function NuevaVentaForm({
   metodosPago: string[];
   promociones: Promocion[];
   crmActivo: boolean;
+  puntoVentaId?: string | null;
 }) {
   const router = useRouter();
 
@@ -382,6 +384,7 @@ export function NuevaVentaForm({
         clienteEmail: email.trim(),
         fecha: fechaHora,
         metodoPago,
+        puntoVentaId,
         items: lineasValidas.flatMap((linea) => {
           if (linea.esGratis) {
             return [

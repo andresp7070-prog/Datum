@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
+import { obtenerContextoPunto } from "@/lib/puntos";
 import { primeraMayuscula } from "@/lib/texto";
 import { firmarFotoUrl } from "@/lib/fotos";
 import { LogoEmpresa } from "./logo-empresa";
@@ -28,7 +29,7 @@ export default async function ResumenPage() {
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("empresa_id")
+    .select("empresa_id, punto_venta_id")
     .eq("id", user.id)
     .single();
 
@@ -40,34 +41,45 @@ export default async function ResumenPage() {
     );
   }
 
+  const { puntoSeleccionado } = await obtenerContextoPunto(
+    supabase,
+    perfil.empresa_id,
+    perfil.punto_venta_id,
+  );
+
   const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
   const mesActual = hoy.slice(0, 7);
 
-  const [
-    { data: empresa },
-    { data: ventasData },
-    { data: resultadosData },
-    { data: pasivosData },
-    { data: itemsData },
-  ] = await Promise.all([
-    supabase.from("empresas").select("nombre, logo_path").eq("id", perfil.empresa_id).single(),
-    supabase.from("ventas").select("fecha, monto").eq("empresa_id", perfil.empresa_id),
-    supabase
-      .from("vista_estado_resultados")
-      .select("mes, utilidad_neta")
-      .eq("empresa_id", perfil.empresa_id),
-    supabase
-      .from("pasivos")
-      .select("monto_total, monto_pagado, estado")
-      .eq("empresa_id", perfil.empresa_id),
-    supabase
-      .from("inventario_items")
-      .select("id, nombre, cantidad, unidad")
-      .eq("empresa_id", perfil.empresa_id)
-      .eq("tipo", "producto")
-      .lte("cantidad", 0)
-      .order("nombre"),
-  ]);
+  let ventasQuery = supabase.from("ventas").select("fecha, monto").eq("empresa_id", perfil.empresa_id);
+  let resultadosQuery = supabase
+    .from("vista_estado_resultados")
+    .select("mes, punto_venta_id, utilidad_neta")
+    .eq("empresa_id", perfil.empresa_id);
+  let itemsQuery = supabase
+    .from("inventario_items")
+    .select("id, nombre, cantidad, unidad")
+    .eq("empresa_id", perfil.empresa_id)
+    .eq("tipo", "producto")
+    .lte("cantidad", 0)
+    .order("nombre");
+
+  if (puntoSeleccionado) {
+    ventasQuery = ventasQuery.eq("punto_venta_id", puntoSeleccionado);
+    resultadosQuery = resultadosQuery.eq("punto_venta_id", puntoSeleccionado);
+    itemsQuery = itemsQuery.eq("punto_venta_id", puntoSeleccionado);
+  }
+
+  const [{ data: empresa }, { data: ventasData }, { data: resultadosData }, { data: pasivosData }, { data: itemsData }] =
+    await Promise.all([
+      supabase.from("empresas").select("nombre, logo_path").eq("id", perfil.empresa_id).single(),
+      ventasQuery,
+      resultadosQuery,
+      supabase
+        .from("pasivos")
+        .select("monto_total, monto_pagado, estado")
+        .eq("empresa_id", perfil.empresa_id),
+      itemsQuery,
+    ]);
 
   // ---- Ventas de hoy ----
   const ventas = (ventasData ?? []) as { fecha: string; monto: number }[];
@@ -91,9 +103,12 @@ export default async function ResumenPage() {
       : null;
 
   // ---- Utilidad neta del mes ----
+  // Con "todos los puntos" la vista trae una fila por punto — se suman para
+  // tener la utilidad combinada del mes, igual que antes de tener puntos.
   const resultados = (resultadosData ?? []) as { mes: string; utilidad_neta: number }[];
-  const filaMes = resultados.find((f) => f.mes.slice(0, 7) === mesActual);
-  const utilidadNetaMes = filaMes?.utilidad_neta ?? 0;
+  const utilidadNetaMes = resultados
+    .filter((f) => f.mes.slice(0, 7) === mesActual)
+    .reduce((suma, f) => suma + Number(f.utilidad_neta), 0);
 
   // ---- Deudas pendientes ----
   const pasivos = (pasivosData ?? []) as { monto_total: number; monto_pagado: number; estado: string }[];

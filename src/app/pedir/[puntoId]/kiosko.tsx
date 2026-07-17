@@ -29,6 +29,32 @@ function formatoMoneda(valor: number) {
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 }
 
+function LogoDatum() {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+      <path
+        d="M 24 42 A 18 18 0 1 1 36.321 37.122"
+        stroke="currentColor"
+        strokeWidth="3.4"
+        strokeLinecap="round"
+      />
+      <path d="M24 10 L29 24 L24 38 L19 24 Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function PieDatum() {
+  return (
+    <div
+      className="pointer-events-none fixed bottom-3 left-4 z-0 flex items-center gap-1.5 opacity-40"
+      style={{ color: TEMA.tintaSuave }}
+    >
+      <LogoDatum />
+      <span className="text-[11px]">Desarrollado por Datum</span>
+    </div>
+  );
+}
+
 function IconoTaza() {
   return (
     <svg viewBox="0 0 48 48" fill="none" className="h-10 w-10" aria-hidden="true">
@@ -172,6 +198,7 @@ export function Kiosko({
         >
           Hacer otro pedido
         </button>
+        <PieDatum />
       </div>
     );
   }
@@ -351,6 +378,8 @@ export function Kiosko({
           <p className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white">{errorPedido}</p>
         </div>
       )}
+
+      {totalUnidades === 0 && <PieDatum />}
     </div>
   );
 }

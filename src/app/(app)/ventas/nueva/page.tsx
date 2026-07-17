@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { calcularDiasRestantes } from "@/lib/inventario";
+import { obtenerContextoPunto } from "@/lib/puntos";
 import { NuevaVentaForm } from "./nueva-venta-form";
 
 export default async function NuevaVentaPage() {
@@ -12,7 +13,7 @@ export default async function NuevaVentaPage() {
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("empresa_id")
+    .select("empresa_id, punto_venta_id")
     .eq("id", user.id)
     .single();
 
@@ -23,6 +24,12 @@ export default async function NuevaVentaPage() {
       </p>
     );
   }
+
+  const { puntoSeleccionado } = await obtenerContextoPunto(
+    supabase,
+    perfil.empresa_id,
+    perfil.punto_venta_id,
+  );
 
   const { data: empresa } = await supabase
     .from("empresas")
@@ -56,16 +63,21 @@ export default async function NuevaVentaPage() {
         metodosPago={empresa?.metodos_pago_disponibles ?? []}
         promociones={[]}
         crmActivo={crmActivo}
+        puntoVentaId={puntoSeleccionado}
       />
     );
   }
 
-  const { data: itemsData } = await supabase
+  let itemsQuery = supabase
     .from("inventario_items")
     .select("id, nombre, categoria, unidad, cantidad, precio_venta, sku, marca:atributos->>marca")
     .eq("empresa_id", perfil.empresa_id)
     .eq("es_insumo", false)
     .order("nombre");
+
+  if (puntoSeleccionado) itemsQuery = itemsQuery.eq("punto_venta_id", puntoSeleccionado);
+
+  const { data: itemsData } = await itemsQuery;
 
   const { data: velocidadData } = await supabase
     .from("vista_velocidad_ventas")
@@ -82,7 +94,7 @@ export default async function NuevaVentaPage() {
   }));
 
   const hoy = new Date().toISOString().slice(0, 10);
-  const { data: promocionesData } = await supabase
+  let promocionesQuery = supabase
     .from("promociones")
     .select(
       "id, nombre, tipo_promocion, valor, aplica_a_categoria, item_regalo_id, promocion_items ( item_id )",
@@ -91,6 +103,16 @@ export default async function NuevaVentaPage() {
     .eq("activo", true)
     .lte("fecha_inicio", hoy)
     .gte("fecha_fin", hoy);
+
+  // Promociones de este punto en particular, más las que aplican a todos
+  // los puntos (punto_venta_id null).
+  if (puntoSeleccionado) {
+    promocionesQuery = promocionesQuery.or(
+      `punto_venta_id.is.null,punto_venta_id.eq.${puntoSeleccionado}`,
+    );
+  }
+
+  const { data: promocionesData } = await promocionesQuery;
 
   const promociones = (promocionesData ?? []).map((p) => {
     const regalo = p.item_regalo_id ? items.find((i) => i.id === p.item_regalo_id) : null;
@@ -115,6 +137,7 @@ export default async function NuevaVentaPage() {
       metodosPago={empresa?.metodos_pago_disponibles ?? []}
       promociones={promociones}
       crmActivo={crmActivo}
+      puntoVentaId={puntoSeleccionado}
     />
   );
 }

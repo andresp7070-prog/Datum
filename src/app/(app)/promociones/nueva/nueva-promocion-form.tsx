@@ -12,6 +12,12 @@ type Item = {
   id: string;
   nombre: string;
   categoria: string | null;
+  punto_venta_id: string | null;
+};
+
+type PuntoVenta = {
+  id: string;
+  nombre: string;
 };
 
 type TipoPromocion = "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis";
@@ -35,8 +41,26 @@ function filtrarCategorias(categorias: string[], query: string) {
   return categorias.filter((c) => sinTildes(c).includes(q)).slice(0, 8);
 }
 
-export function NuevaPromocionForm({ items }: { items: Item[] }) {
+export function NuevaPromocionForm({
+  items: itemsTodos,
+  puntosVenta = [],
+  puntoInicial = null,
+}: {
+  items: Item[];
+  puntosVenta?: PuntoVenta[];
+  puntoInicial?: string | null;
+}) {
   const router = useRouter();
+
+  const usaPuntos = puntosVenta.length > 0;
+  const [puntoVentaId, setPuntoVentaId] = useState(puntoInicial ?? "");
+
+  // Con un punto elegido, solo se pueden escoger productos de ese punto —
+  // el mismo nombre existe como filas distintas en cada punto. Con "todos
+  // los puntos" se ven los de todos, aunque la promoción no quede atada a
+  // uno solo.
+  const items =
+    usaPuntos && puntoVentaId ? itemsTodos.filter((i) => i.punto_venta_id === puntoVentaId) : itemsTodos;
 
   const categoriasExistentes = Array.from(
     new Set(items.map((i) => i.categoria).filter((c): c is string => Boolean(c))),
@@ -131,6 +155,7 @@ export function NuevaPromocionForm({ items }: { items: Item[] }) {
         fechaInicio,
         fechaFin,
         activo,
+        puntoVentaId: usaPuntos ? puntoVentaId || null : null,
       });
       if (resultado.error || !resultado.id) {
         setError(resultado.error ?? "No se pudo guardar la promoción.");
@@ -163,6 +188,28 @@ export function NuevaPromocionForm({ items }: { items: Item[] }) {
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
           />
         </div>
+
+        {usaPuntos && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Punto de venta</label>
+            <select
+              value={puntoVentaId}
+              onChange={(e) => setPuntoVentaId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            >
+              <option value="">Todos los puntos</option>
+              {puntosVenta.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-400">
+              A qué punto aplica esta promoción — deja &ldquo;Todos los puntos&rdquo; si es para toda
+              la empresa.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Código (opcional)</label>

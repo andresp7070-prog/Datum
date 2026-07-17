@@ -7,6 +7,7 @@ type ItemPedido = { itemId: string; cantidad: number; precioUnitario: number };
 export async function registrarPedidoKiosko(
   puntoId: string,
   items: ItemPedido[],
+  cliente?: { nombre: string; telefono: string },
 ): Promise<{ error: string | null; ventaId?: string; codigo?: string }> {
   if (items.length === 0) return { error: "El pedido está vacío." };
 
@@ -36,11 +37,14 @@ export async function registrarPedidoKiosko(
     return { error: "Ese punto de venta no existe o no es de tu empresa." };
   }
 
+  const nombre = cliente?.nombre.trim() || null;
+  const telefono = cliente?.telefono.trim() || null;
+
   const { data: ventaId, error } = await supabase.rpc("registrar_venta", {
     p_empresa_id: perfil.empresa_id,
     p_contacto_id: null,
-    p_cliente_nombre: null,
-    p_cliente_telefono: null,
+    p_cliente_nombre: nombre,
+    p_cliente_telefono: telefono,
     p_cliente_email: null,
     p_atributos_cliente: {},
     p_atributos_venta: { origen: "kiosko" },

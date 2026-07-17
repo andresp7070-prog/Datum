@@ -74,6 +74,9 @@ export function Kiosko({
   const [codigoPedido, setCodigoPedido] = useState<string | null>(null);
   const [errorPedido, setErrorPedido] = useState<string | null>(null);
   const [enviando, startTransition] = useTransition();
+  const [mostrarDatosCliente, setMostrarDatosCliente] = useState(false);
+  const [nombreCliente, setNombreCliente] = useState("");
+  const [telefonoCliente, setTelefonoCliente] = useState("");
 
   const productosVisibles = productos.filter((p) => p.categoria === categoriaActiva);
   const itemsCarrito = Object.entries(carrito).filter(([, cant]) => cant > 0);
@@ -103,8 +106,16 @@ export function Kiosko({
       return { itemId, cantidad, precioUnitario: p.precio };
     });
 
+    // Solo se manda si dio nombre Y teléfono juntos — con solo uno de los
+    // dos, registrar_venta() no puede reconocer si es el mismo cliente la
+    // próxima vez y terminaría creando un contacto repetido en el CRM.
+    const cliente =
+      nombreCliente.trim() && telefonoCliente.trim()
+        ? { nombre: nombreCliente.trim(), telefono: telefonoCliente.trim() }
+        : undefined;
+
     startTransition(async () => {
-      const resultado = await registrarPedidoKiosko(puntoId, items);
+      const resultado = await registrarPedidoKiosko(puntoId, items, cliente);
       if (resultado.error) {
         setErrorPedido(resultado.error);
         return;
@@ -118,6 +129,9 @@ export function Kiosko({
   function nuevoPedido() {
     setCarrito({});
     setCodigoPedido(null);
+    setMostrarDatosCliente(false);
+    setNombreCliente("");
+    setTelefonoCliente("");
     setPantalla("menu");
   }
 
@@ -266,25 +280,64 @@ export function Kiosko({
       </main>
 
       {totalUnidades > 0 && (
-        <div
-          className="fixed inset-x-0 bottom-0 flex items-center justify-between px-8 py-5"
-          style={{ background: TEMA.tinta }}
-        >
-          <div className="text-white">
-            <p className="text-xs opacity-70">
-              {totalUnidades} {totalUnidades === 1 ? "producto" : "productos"}
-            </p>
-            <p className="text-xl font-bold">{formatoMoneda(total)}</p>
+        <div className="fixed inset-x-0 bottom-0" style={{ background: TEMA.tinta }}>
+          {mostrarDatosCliente ? (
+            <div className="flex flex-wrap items-end gap-3 border-b border-white/10 px-8 py-3">
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Tu nombre</label>
+                <input
+                  type="text"
+                  value={nombreCliente}
+                  onChange={(e) => setNombreCliente(e.target.value)}
+                  placeholder="Opcional"
+                  className="rounded-lg border-0 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Tu teléfono</label>
+                <input
+                  type="tel"
+                  value={telefonoCliente}
+                  onChange={(e) => setTelefonoCliente(e.target.value)}
+                  placeholder="Opcional"
+                  className="rounded-lg border-0 px-3 py-2 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarDatosCliente(false)}
+                className="pb-2 text-xs font-medium text-white/60 underline"
+              >
+                Ocultar
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMostrarDatosCliente(true)}
+              className="w-full border-b border-white/10 px-8 py-2 text-left text-xs font-medium text-white/60 underline"
+            >
+              ¿Nos compartes tu nombre y teléfono? (opcional)
+            </button>
+          )}
+
+          <div className="flex items-center justify-between px-8 py-5">
+            <div className="text-white">
+              <p className="text-xs opacity-70">
+                {totalUnidades} {totalUnidades === 1 ? "producto" : "productos"}
+              </p>
+              <p className="text-xl font-bold">{formatoMoneda(total)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={confirmarPedido}
+              disabled={enviando}
+              className="rounded-full px-8 py-3 text-base font-semibold text-white disabled:opacity-60"
+              style={{ background: TEMA.acento }}
+            >
+              {enviando ? "Enviando..." : "Confirmar pedido"}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={confirmarPedido}
-            disabled={enviando}
-            className="rounded-full px-8 py-3 text-base font-semibold text-white disabled:opacity-60"
-            style={{ background: TEMA.acento }}
-          >
-            {enviando ? "Enviando..." : "Confirmar pedido"}
-          </button>
         </div>
       )}
 

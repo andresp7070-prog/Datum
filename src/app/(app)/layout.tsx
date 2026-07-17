@@ -20,6 +20,13 @@ export default async function AppLayout({
     redirect("/cambiar-password");
   }
 
+  // Una cuenta limitada a un punto de venta (ej. Florida) no ve el menú
+  // normal de la plataforma en absoluto — su única pantalla es el kiosko de
+  // autopedido de ese punto. No hay forma de navegar a otro lado desde acá.
+  if (perfil.punto_venta_id) {
+    redirect(`/pedir/${perfil.punto_venta_id}`);
+  }
+
   const esDePlataforma = esRolDePlataforma(perfil.rol);
   let puntosVenta: { id: string; nombre: string }[] = [];
   let puntoSeleccionado: string | null = null;

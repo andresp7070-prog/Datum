@@ -263,7 +263,7 @@ export function Kiosko({
                 style={{ background: TEMA.tarjeta, border: `1px solid ${TEMA.borde}` }}
               >
                 <div
-                  className="mb-3 flex h-24 items-center justify-center rounded-xl"
+                  className="mb-3 flex h-[200px] items-center justify-center rounded-xl"
                   style={{ background: TEMA.acentoSuave }}
                 >
                   {p.fotoUrl ? (

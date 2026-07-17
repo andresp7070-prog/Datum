@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { obtenerContextoPunto } from "@/lib/puntos";
 import { NuevoProductoForm } from "./nuevo-producto-form";
 
 export default async function NuevoProductoPage({
@@ -31,7 +32,9 @@ export default async function NuevoProductoPage({
 
   const { data: items } = await supabase
     .from("inventario_items")
-    .select("id, nombre, categoria, cantidad, costo, precio_venta, unidad, proveedor_id, sku, es_insumo")
+    .select(
+      "id, nombre, categoria, cantidad, costo, precio_venta, unidad, proveedor_id, sku, es_insumo, punto_venta_id",
+    )
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
 
@@ -41,12 +44,20 @@ export default async function NuevoProductoPage({
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
 
+  const { puntosVenta, puntoSeleccionado } = await obtenerContextoPunto(
+    supabase,
+    perfil.empresa_id,
+    null,
+  );
+
   return (
     <NuevoProductoForm
       items={items ?? []}
       proveedores={proveedores ?? []}
       nombreInicial={nombre ?? ""}
       volverAReceta={volver === "receta"}
+      puntosVenta={puntosVenta}
+      puntoInicial={puntoSeleccionado}
     />
   );
 }

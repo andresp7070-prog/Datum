@@ -22,9 +22,15 @@ type ItemExistente = {
   proveedor_id: string | null;
   sku: string | null;
   es_insumo: boolean;
+  punto_venta_id: string | null;
 };
 
 type Proveedor = {
+  id: string;
+  nombre: string;
+};
+
+type PuntoVenta = {
   id: string;
   nombre: string;
 };
@@ -36,17 +42,29 @@ function filtrar(valores: string[], query: string) {
 }
 
 export function NuevoProductoForm({
-  items,
+  items: itemsTodos,
   proveedores,
   nombreInicial = "",
   volverAReceta = false,
+  puntosVenta = [],
+  puntoInicial = null,
 }: {
   items: ItemExistente[];
   proveedores: Proveedor[];
   nombreInicial?: string;
   volverAReceta?: boolean;
+  puntosVenta?: PuntoVenta[];
+  puntoInicial?: string | null;
 }) {
   const router = useRouter();
+
+  const usaPuntos = puntosVenta.length > 0;
+  const [puntoVentaId, setPuntoVentaId] = useState(puntoInicial ?? puntosVenta[0]?.id ?? "");
+
+  // Los "productos existentes" (para sugerencias y para detectar duplicados)
+  // se limitan al punto elegido — el mismo nombre puede repetirse en
+  // distintos puntos, cada uno con su propio stock.
+  const items = usaPuntos ? itemsTodos.filter((i) => i.punto_venta_id === puntoVentaId) : itemsTodos;
 
   const categoriasExistentes = Array.from(
     new Set(items.map((item) => item.categoria).filter((valor): valor is string => Boolean(valor))),
@@ -77,8 +95,10 @@ export function NuevoProductoForm({
 
   // Solo para mostrar como referencia — el valor real lo asigna el servidor,
   // así dos personas agregando productos a la vez no chocan con el mismo SKU.
+  // Se calcula sobre TODOS los productos de la empresa (no solo los del
+  // punto elegido), porque el SKU es único para toda la empresa, no por punto.
   const proximoSkuSugerido = String(
-    items.reduce((max, item) => {
+    itemsTodos.reduce((max, item) => {
       if (!item.sku || !/^\d+$/.test(item.sku)) return max;
       return Math.max(max, Number(item.sku));
     }, -1) + 1,
@@ -125,6 +145,14 @@ export function NuevoProductoForm({
     setMensajeExito(null);
   }
 
+  function cambiarPunto(valor: string) {
+    setPuntoVentaId(valor);
+    // Las sugerencias y el producto "existente" seleccionado eran de otro
+    // punto — ya no aplican con el punto nuevo.
+    setNombre("");
+    setItemExistente(null);
+  }
+
   function seleccionarExistente(itemNombre: string) {
     const item = items.find((i) => i.nombre === itemNombre);
     if (!item) return;
@@ -167,6 +195,11 @@ export function NuevoProductoForm({
   async function guardar() {
     setError(null);
     setMensajeExito(null);
+
+    if (usaPuntos && !puntoVentaId && !itemExistente) {
+      setError("Elige a qué punto de venta pertenece este producto.");
+      return;
+    }
 
     if (!nombre.trim()) {
       setError("El nombre es obligatorio.");
@@ -263,6 +296,7 @@ export function NuevoProductoForm({
           proveedorId: proveedorId || null,
           sku: sku.trim() || null,
           esInsumo,
+          puntoVentaId: usaPuntos ? puntoVentaId || null : null,
           atributos:
             volverAReceta && unidad !== "unidad" && contenidoPorUnidad.trim()
               ? { contenido_por_unidad: Number(contenidoPorUnidad) }
@@ -301,6 +335,29 @@ export function NuevoProductoForm({
       setGuardando(false);
     }
   }
+
+  const campoPunto = usaPuntos ? (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">Punto de venta *</label>
+      <select
+        value={puntoVentaId}
+        onChange={(e) => cambiarPunto(e.target.value)}
+        disabled={Boolean(itemExistente)}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
+      >
+        <option value="">Elige un punto...</option>
+        {puntosVenta.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nombre}
+          </option>
+        ))}
+      </select>
+      <p className="mt-1 text-xs text-gray-400">
+        Cada punto tiene su propio catálogo y stock — este producto solo va a aparecer en el que
+        elijas aquí.
+      </p>
+    </div>
+  ) : null;
 
   const campoNombre = (
     <div className="relative">
@@ -640,6 +697,7 @@ export function NuevoProductoForm({
 
       {volverAReceta ? (
         <div className="max-w-2xl space-y-6">
+          {usaPuntos && <div className="max-w-md">{campoPunto}</div>}
           {panelReceta}
           <div className="max-w-md space-y-4">
             {campoCosto}
@@ -656,6 +714,7 @@ export function NuevoProductoForm({
         </div>
       ) : (
         <div className="max-w-md space-y-4">
+          {campoPunto}
           {campoNombre}
           {campoSku}
           {campoCategoria}

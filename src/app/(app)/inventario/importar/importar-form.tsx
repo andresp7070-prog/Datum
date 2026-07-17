@@ -6,6 +6,7 @@ import { parsearCsv } from "@/lib/csv";
 import { sinTildes } from "@/lib/texto";
 import { normalizarUnidad, etiquetaUnidad } from "@/lib/unidades";
 import { DescargarCsv } from "@/components/descargar-csv";
+import { ejemplosInventario } from "@/lib/ejemplos-negocio";
 import { cargarInventarioInicial, type FilaImportacion } from "./actions";
 
 type PuntoVenta = { id: string; nombre: string };
@@ -49,13 +50,16 @@ function normalizarSiNo(textoLibre: string): { valor: boolean; reconocida: boole
 export function ImportarInventarioForm({
   puntosVenta = [],
   puntoInicial = null,
+  tipoNegocio = null,
 }: {
   puntosVenta?: PuntoVenta[];
   puntoInicial?: string | null;
+  tipoNegocio?: string | null;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const usaPuntos = puntosVenta.length > 0;
+  const ejemplo = ejemplosInventario(tipoNegocio).producto;
 
   const [puntoVentaId, setPuntoVentaId] = useState(puntoInicial ?? "");
   const [filas, setFilas] = useState<FilaPreview[]>([]);
@@ -203,12 +207,12 @@ export function ImportarInventarioForm({
         <DescargarCsv
           filas={[
             {
-              nombre: "Jabón líquido para platos 500ml",
-              categoria: "Cocina",
+              nombre: ejemplo.nombre,
+              categoria: ejemplo.categoria,
               unidad: "unidad",
               cantidad: 50,
-              costo: 3500,
-              precio_venta: 6000,
+              costo: ejemplo.costo,
+              precio_venta: ejemplo.precioVenta,
               es_insumo: "no",
             },
           ]}

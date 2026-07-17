@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { sinTildes, primeraMayuscula } from "@/lib/texto";
+import { ejemplosInventario } from "@/lib/ejemplos-negocio";
 import { UNIDADES } from "@/lib/unidades";
 import { CampoMoneda } from "@/components/campo-moneda";
 import { comprimirImagen, TAMANO_MAXIMO_ORIGINAL_BYTES } from "@/lib/imagenes";
@@ -48,6 +49,7 @@ export function NuevoProductoForm({
   volverAReceta = false,
   puntosVenta = [],
   puntoInicial = null,
+  tipoNegocio = null,
 }: {
   items: ItemExistente[];
   proveedores: Proveedor[];
@@ -55,8 +57,10 @@ export function NuevoProductoForm({
   volverAReceta?: boolean;
   puntosVenta?: PuntoVenta[];
   puntoInicial?: string | null;
+  tipoNegocio?: string | null;
 }) {
   const router = useRouter();
+  const ejemplos = ejemplosInventario(tipoNegocio);
 
   const usaPuntos = puntosVenta.length > 0;
   const [puntoVentaId, setPuntoVentaId] = useState(puntoInicial ?? puntosVenta[0]?.id ?? "");
@@ -416,7 +420,7 @@ export function NuevoProductoForm({
           setMostrarSugerenciasCategoria(filtrar(categoriasExistentes, categoria).length > 0)
         }
         onBlur={() => setTimeout(() => setMostrarSugerenciasCategoria(false), 150)}
-        placeholder="Ej. Jabones, Detergentes"
+        placeholder={`Ej. ${ejemplos.categoria}`}
         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
       />
       {mostrarSugerenciasCategoria && filtrar(categoriasExistentes, categoria).length > 0 && (
@@ -446,7 +450,7 @@ export function NuevoProductoForm({
       <input
         value={marca}
         onChange={(e) => setMarca(e.target.value)}
-        placeholder="Ej. Fabuloso, Familia"
+        placeholder={`Ej. ${ejemplos.marca}`}
         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
       />
     </div>

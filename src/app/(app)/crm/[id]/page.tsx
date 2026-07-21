@@ -29,13 +29,27 @@ export default async function FichaClientePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("empresa_id")
+    .eq("id", user.id)
+    .single();
+
   const { data: contacto } = await supabase
     .from("crm_contactos")
-    .select("id, nombre, telefono, email, etapa_pipeline, empresa_cliente:atributos->>empresa")
+    .select("id, nombre, telefono, email, etapa_id, empresa_cliente:atributos->>empresa")
     .eq("id", id)
     .single();
 
   if (!contacto) notFound();
+
+  const { data: etapas } = perfil?.empresa_id
+    ? await supabase
+        .from("crm_etapas")
+        .select("id, nombre, orden")
+        .eq("empresa_id", perfil.empresa_id)
+        .order("orden")
+    : { data: [] };
 
   const { data: perfilCompra } = await supabase
     .from("vista_perfil_cliente")
@@ -78,7 +92,7 @@ export default async function FichaClientePage({
               {contacto.telefono ?? "Sin teléfono"} · {contacto.email ?? "Sin correo"}
             </p>
           </div>
-          <CambiarEtapa contactoId={contacto.id} etapaActual={contacto.etapa_pipeline} />
+          <CambiarEtapa contactoId={contacto.id} etapas={etapas ?? []} etapaActualId={contacto.etapa_id} />
         </div>
       </div>
 

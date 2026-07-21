@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requerirModulo } from "@/lib/empresa";
-import { DirectorioClientes } from "./directorio-clientes";
+import { EtapasForm } from "./etapas-form";
 
-export default async function CrmPage() {
+export default async function EtapasCrmPage() {
   await requerirModulo("crm");
 
   const supabase = await createClient();
@@ -26,22 +26,11 @@ export default async function CrmPage() {
     );
   }
 
-  // Aplica las reglas de inactividad (mover un contacto que lleva mucho
-  // tiempo sin seguimiento) antes de traer la lista — no hay un proceso en
-  // segundo plano que lo haga solo, se revisa cada vez que se abre el CRM.
-  await supabase.rpc("aplicar_reglas_inactividad_crm", { p_empresa_id: perfil.empresa_id });
-
   const { data: etapas } = await supabase
     .from("crm_etapas")
-    .select("id, nombre, orden")
+    .select("id, nombre, orden, es_cierre, dias_inactividad, etapa_destino_inactividad_id")
     .eq("empresa_id", perfil.empresa_id)
     .order("orden");
 
-  const { data: contactos } = await supabase
-    .from("crm_contactos")
-    .select("id, nombre, telefono, email, etapa_id, empresa_cliente:atributos->>empresa")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("nombre");
-
-  return <DirectorioClientes contactos={contactos ?? []} etapas={etapas ?? []} />;
+  return <EtapasForm etapas={etapas ?? []} />;
 }

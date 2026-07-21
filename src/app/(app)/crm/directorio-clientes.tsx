@@ -10,31 +10,26 @@ type Contacto = {
   nombre: string;
   telefono: string | null;
   email: string | null;
-  etapa_pipeline: string;
+  etapa_id: string | null;
   empresa_cliente: string | null;
 };
 
-const etapas = [
-  { value: "todas", label: "Todas" },
-  { value: "nuevo", label: "Nuevo" },
-  { value: "contactado", label: "Contactado" },
-  { value: "propuesta", label: "Propuesta" },
-  { value: "cerrado", label: "Cerrado" },
-];
+type Etapa = { id: string; nombre: string; orden: number };
 
-const etiquetaEtapa: Record<string, string> = {
-  nuevo: "Nuevo",
-  contactado: "Contactado",
-  propuesta: "Propuesta",
-  cerrado: "Cerrado",
-};
-
-export function DirectorioClientes({ contactos }: { contactos: Contacto[] }) {
+export function DirectorioClientes({
+  contactos,
+  etapas,
+}: {
+  contactos: Contacto[];
+  etapas: Etapa[];
+}) {
   const [busqueda, setBusqueda] = useState("");
   const [etapaFiltro, setEtapaFiltro] = useState("todas");
 
+  const nombrePorEtapa = new Map(etapas.map((etapa) => [etapa.id, etapa.nombre]));
+
   const filtrados = contactos.filter((contacto) => {
-    const coincideEtapa = etapaFiltro === "todas" || contacto.etapa_pipeline === etapaFiltro;
+    const coincideEtapa = etapaFiltro === "todas" || contacto.etapa_id === etapaFiltro;
     const q = sinTildes(busqueda.trim());
     const coincideTexto =
       !q ||
@@ -47,7 +42,7 @@ export function DirectorioClientes({ contactos }: { contactos: Contacto[] }) {
     nombre: contacto.nombre,
     telefono: contacto.telefono ?? "",
     email: contacto.email ?? "",
-    etapa: etiquetaEtapa[contacto.etapa_pipeline] ?? contacto.etapa_pipeline,
+    etapa: (contacto.etapa_id && nombrePorEtapa.get(contacto.etapa_id)) ?? "—",
     empresa: contacto.empresa_cliente ?? "",
   }));
 
@@ -67,6 +62,12 @@ export function DirectorioClientes({ contactos }: { contactos: Contacto[] }) {
             ]}
             nombreArchivo="clientes.csv"
           />
+          <Link
+            href="/crm/etapas"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            Configurar etapas
+          </Link>
           <Link
             href="/crm/nuevo"
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
@@ -88,9 +89,10 @@ export function DirectorioClientes({ contactos }: { contactos: Contacto[] }) {
           onChange={(e) => setEtapaFiltro(e.target.value)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
         >
+          <option value="todas">Todas</option>
           {etapas.map((etapa) => (
-            <option key={etapa.value} value={etapa.value}>
-              {etapa.label}
+            <option key={etapa.id} value={etapa.id}>
+              {etapa.nombre}
             </option>
           ))}
         </select>
@@ -114,7 +116,7 @@ export function DirectorioClientes({ contactos }: { contactos: Contacto[] }) {
                   </p>
                 </div>
                 <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                  {etiquetaEtapa[contacto.etapa_pipeline] ?? contacto.etapa_pipeline}
+                  {(contacto.etapa_id && nombrePorEtapa.get(contacto.etapa_id)) ?? "—"}
                 </span>
               </Link>
             </li>

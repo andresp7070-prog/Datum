@@ -4,12 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function cambiarEtapa(
   contactoId: string,
-  etapa: string,
+  etapaId: string,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("crm_contactos")
-    .update({ etapa_pipeline: etapa })
+    .update({ etapa_id: etapaId })
     .eq("id", contactoId);
 
   if (error) return { error: error.message };

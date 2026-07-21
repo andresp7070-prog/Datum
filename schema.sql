@@ -137,17 +137,155 @@ create table ventas (
 
 -- ------------------------------------------------------------
 -- 7. CRM
+-- Las etapas del embudo (crm_etapas) son personalizables por empresa: un
+-- negocio que vive de ventas directas (ej. Aseo Total) apenas las toca —
+-- casi todos sus contactos caen directo en la etapa de cierre porque
+-- nacen de una venta. Un negocio que vive de leads y cotizaciones antes de
+-- vender (ej. una empresa de servicios) necesita su propio embudo, con las
+-- etapas que le hagan sentido a su proceso, y reglas de inactividad que
+-- muevan solo a un lead que lleva mucho tiempo sin seguimiento.
 -- ------------------------------------------------------------
+create table crm_etapas (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  nombre text not null,
+  orden int not null,
+  -- La etapa a la que cae un contacto automáticamente en cuanto se le
+  -- registra una venta — exactamente una por empresa (ver el índice único
+  -- más abajo). Se marca con marcar_etapa_cierre(), nunca a mano con un
+  -- update directo, para garantizar que nunca haya cero o dos etapas de cierre.
+  es_cierre boolean not null default false,
+  -- Regla de inactividad, opcional: si un contacto lleva más de
+  -- "dias_inactividad" sin ninguna interacción registrada mientras está en
+  -- esta etapa, se mueve solo a "etapa_destino_inactividad_id". Los dos
+  -- campos van juntos — o los dos tienen valor, o ninguno.
+  dias_inactividad int,
+  etapa_destino_inactividad_id uuid references crm_etapas(id),
+  created_at timestamptz default now(),
+  unique (empresa_id, nombre),
+  unique (empresa_id, orden)
+);
+
+-- A lo sumo una etapa de cierre por empresa.
+create unique index crm_etapas_una_cierre_por_empresa on crm_etapas (empresa_id) where es_cierre;
+
+-- Toda empresa nueva arranca con las mismas 4 etapas de siempre — desde ahí
+-- cada una las agrega, renombra o reordena a su gusto. Así nadie tiene que
+-- acordarse de sembrarlas a mano cada vez que se crea una empresa cliente
+-- desde el panel de Supabase.
+create or replace function crear_etapas_por_defecto()
+returns trigger language plpgsql as $$
+begin
+  insert into crm_etapas (empresa_id, nombre, orden, es_cierre) values
+    (new.id, 'Nuevo', 1, false),
+    (new.id, 'Contactado', 2, false),
+    (new.id, 'Propuesta', 3, false),
+    (new.id, 'Cerrado', 4, true);
+  return new;
+end;
+$$;
+
+create trigger trigger_crear_etapas_por_defecto
+after insert on empresas
+for each row execute function crear_etapas_por_defecto();
+
 create table crm_contactos (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
   nombre text not null,
   telefono text,
   email text,
-  etapa_pipeline text default 'nuevo' check (etapa_pipeline in ('nuevo','contactado','propuesta','cerrado')),
+  etapa_id uuid references crm_etapas(id),
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: modelo de vehículo, preferencias, alergias, etc.
   created_at timestamptz default now()
 );
+
+-- Si se crea un contacto sin indicar en qué etapa arranca (ej. desde
+-- "Agregar cliente" a mano), cae en la primera etapa del embudo de esa
+-- empresa — no hace falta que cada punto de inserción lo calcule.
+create or replace function etapa_inicial_crm(p_empresa_id uuid)
+returns uuid language sql stable as $$
+  select id from crm_etapas where empresa_id = p_empresa_id order by orden asc limit 1;
+$$;
+
+-- La etapa de cierre de una empresa — a dónde cae un contacto en cuanto compra.
+create or replace function etapa_cierre_crm(p_empresa_id uuid)
+returns uuid language sql stable as $$
+  select id from crm_etapas where empresa_id = p_empresa_id and es_cierre limit 1;
+$$;
+
+create or replace function fijar_etapa_inicial_crm()
+returns trigger language plpgsql as $$
+begin
+  if new.etapa_id is null then
+    new.etapa_id := etapa_inicial_crm(new.empresa_id);
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trigger_etapa_inicial_crm
+before insert on crm_contactos
+for each row execute function fijar_etapa_inicial_crm();
+
+-- Cambia cuál es la etapa de cierre de una empresa, quitándosela a la
+-- anterior primero — así nunca queda ninguna, ni dos a la vez (lo que
+-- rompería el índice único de arriba).
+create or replace function marcar_etapa_cierre(p_etapa_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+begin
+  select empresa_id into v_empresa_id from crm_etapas where id = p_etapa_id;
+  if v_empresa_id is null then
+    raise exception 'Etapa no encontrada';
+  end if;
+  update crm_etapas set es_cierre = false where empresa_id = v_empresa_id and es_cierre;
+  update crm_etapas set es_cierre = true where id = p_etapa_id;
+end;
+$$;
+
+-- Mueve una etapa un lugar hacia arriba o hacia abajo en el orden del
+-- embudo, intercambiando su "orden" con el de la etapa vecina. Pasa por un
+-- valor temporal (-1) porque (empresa_id, orden) es único: si se intentara
+-- swapear con dos updates directos, el primero dejaría dos etapas con el
+-- mismo orden a mitad de camino y la base de datos lo rechazaría.
+create or replace function mover_etapa_crm(p_etapa_id uuid, p_direccion text)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+  v_orden_actual int;
+  v_vecino_id uuid;
+  v_vecino_orden int;
+begin
+  select empresa_id, orden into v_empresa_id, v_orden_actual from crm_etapas where id = p_etapa_id;
+  if v_empresa_id is null then
+    raise exception 'Etapa no encontrada';
+  end if;
+
+  if p_direccion = 'arriba' then
+    select id, orden into v_vecino_id, v_vecino_orden
+    from crm_etapas where empresa_id = v_empresa_id and orden < v_orden_actual
+    order by orden desc limit 1;
+  else
+    select id, orden into v_vecino_id, v_vecino_orden
+    from crm_etapas where empresa_id = v_empresa_id and orden > v_orden_actual
+    order by orden asc limit 1;
+  end if;
+
+  if v_vecino_id is null then
+    return; -- ya está en el extremo, no hay nada que mover
+  end if;
+
+  update crm_etapas set orden = -1 where id = p_etapa_id;
+  update crm_etapas set orden = v_orden_actual where id = v_vecino_id;
+  update crm_etapas set orden = v_vecino_orden where id = p_etapa_id;
+end;
+$$;
 
 create table crm_interacciones (
   id uuid primary key default gen_random_uuid(),
@@ -156,6 +294,40 @@ create table crm_interacciones (
   tipo text check (tipo in ('llamada','email','reunion','otro')),
   nota text
 );
+
+-- Aplica las reglas de inactividad de una empresa: por cada etapa que tenga
+-- una configurada, mueve a "etapa_destino_inactividad_id" a cualquier
+-- contacto que lleve más de "dias_inactividad" sin ninguna interacción
+-- registrada (o, si nunca ha tenido ninguna, desde que se creó el contacto).
+-- No corre como un proceso aparte en segundo plano (no hay servidor propio
+-- para eso) — la aplicación la llama cada vez que alguien abre el CRM, así
+-- que el movimiento ocurre la próxima vez que alguien entra a esa pantalla,
+-- no exactamente al minuto del vencimiento.
+create or replace function aplicar_reglas_inactividad_crm(p_empresa_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_etapa record;
+begin
+  for v_etapa in
+    select id, dias_inactividad, etapa_destino_inactividad_id
+    from crm_etapas
+    where empresa_id = p_empresa_id
+      and dias_inactividad is not null
+      and etapa_destino_inactividad_id is not null
+  loop
+    update crm_contactos c
+    set etapa_id = v_etapa.etapa_destino_inactividad_id
+    where c.empresa_id = p_empresa_id
+      and c.etapa_id = v_etapa.id
+      and coalesce(
+        (select max(i.fecha) from crm_interacciones i where i.contacto_id = c.id),
+        c.created_at::date
+      ) <= current_date - v_etapa.dias_inactividad;
+  end loop;
+end;
+$$;
 
 -- Una venta puede quedar asociada a un contacto del CRM (opcional)
 alter table ventas add column contacto_id uuid references crm_contactos(id);
@@ -1044,6 +1216,7 @@ alter table diagnosticos enable row level security;
 alter table suscripciones enable row level security;
 alter table ventas enable row level security;
 alter table ventas_items enable row level security;
+alter table crm_etapas enable row level security;
 alter table crm_contactos enable row level security;
 alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
@@ -1116,6 +1289,9 @@ create policy "ver mis ventas" on ventas
       and (mi_punto_venta_id() is null or punto_venta_id = mi_punto_venta_id()))
     or es_admin()
   );
+
+create policy "ver mis etapas de crm" on crm_etapas
+  for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mi crm" on crm_contactos
   for all using (empresa_id = mi_empresa_id() or es_admin());
@@ -1307,7 +1483,7 @@ begin
     set atributos = atributos || p_atributos_cliente,
         nombre = coalesce(p_cliente_nombre, nombre),
         email = coalesce(p_cliente_email, email),
-        etapa_pipeline = 'cerrado'
+        etapa_id = etapa_cierre_crm(p_empresa_id)
     where id = v_contacto_id;
   elsif coalesce(p_cliente_nombre, '') <> '' then
     select id into v_contacto_id
@@ -1316,15 +1492,15 @@ begin
     limit 1;
 
     if v_contacto_id is null then
-      insert into crm_contactos (empresa_id, nombre, telefono, email, atributos, etapa_pipeline)
-      values (p_empresa_id, p_cliente_nombre, p_cliente_telefono, p_cliente_email, p_atributos_cliente, 'cerrado')
+      insert into crm_contactos (empresa_id, nombre, telefono, email, atributos, etapa_id)
+      values (p_empresa_id, p_cliente_nombre, p_cliente_telefono, p_cliente_email, p_atributos_cliente, etapa_cierre_crm(p_empresa_id))
       returning id into v_contacto_id;
     else
       update crm_contactos
       set atributos = atributos || p_atributos_cliente,
           nombre = coalesce(p_cliente_nombre, nombre),
           email = coalesce(p_cliente_email, email),
-          etapa_pipeline = 'cerrado'
+          etapa_id = etapa_cierre_crm(p_empresa_id)
       where id = v_contacto_id;
     end if;
   else
@@ -1466,17 +1642,17 @@ begin
       limit 1;
 
       if v_contacto_id is null then
-        insert into crm_contactos (empresa_id, nombre, telefono, email, etapa_pipeline)
+        insert into crm_contactos (empresa_id, nombre, telefono, email, etapa_id)
         values (
           p_empresa_id,
           coalesce(nullif(v_fila->>'cliente_nombre', ''), 'Cliente sin nombre'),
           v_fila->>'cliente_telefono',
           nullif(v_fila->>'cliente_email', ''),
-          'cerrado'
+          etapa_cierre_crm(p_empresa_id)
         )
         returning id into v_contacto_id;
       else
-        update crm_contactos set etapa_pipeline = 'cerrado' where id = v_contacto_id;
+        update crm_contactos set etapa_id = etapa_cierre_crm(p_empresa_id) where id = v_contacto_id;
       end if;
     end if;
 

@@ -966,9 +966,18 @@ export function NuevaVentaForm({
               className="w-40 rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
             />
           </div>
-          <p className="text-sm font-semibold text-gray-900">
-            Precio total: {total.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-          </p>
+          <div className="text-right text-sm">
+            <p className="font-semibold text-gray-900">
+              Precio total: {total.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+            </p>
+            <p className="text-gray-500">
+              Falta:{" "}
+              {Math.max(0, total - (Number(abonoInicial) || 0)).toLocaleString("es-CO", {
+                style: "currency",
+                currency: "COP",
+              })}
+            </p>
+          </div>
         </div>
       ) : (
         <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">

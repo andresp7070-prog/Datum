@@ -42,6 +42,25 @@ export async function crearMovimiento(input: {
   return { error: null };
 }
 
+export async function borrarMovimiento(movimientoId: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No hay sesión activa." };
+
+  // pasivo_id is null: no se puede borrar el gasto que generó solo un abono
+  // de deuda — eso se corrige desde Deudas.
+  const { error } = await supabase
+    .from("finanzas_movimientos")
+    .delete()
+    .eq("id", movimientoId)
+    .is("pasivo_id", null);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 export async function actualizarMovimiento(input: {
   movimientoId: string;
   tipo: "ingreso" | "gasto";

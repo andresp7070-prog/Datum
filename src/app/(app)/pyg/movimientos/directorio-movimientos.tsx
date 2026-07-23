@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CampoMoneda } from "@/components/campo-moneda";
-import { actualizarMovimiento } from "./actions";
+import { actualizarMovimiento, borrarMovimiento } from "./actions";
 
 type Movimiento = {
   id: string;
@@ -37,6 +37,8 @@ function FilaMovimiento({ movimiento }: { movimiento: Movimiento }) {
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
+  const [borrando, setBorrando] = useState(false);
 
   const [tipo, setTipo] = useState<"gasto" | "ingreso">(movimiento.tipo);
   const [categoria, setCategoria] = useState(movimiento.categoria ?? "");
@@ -82,6 +84,18 @@ function FilaMovimiento({ movimiento }: { movimiento: Movimiento }) {
       return;
     }
     setEditando(false);
+    router.refresh();
+  }
+
+  async function borrar() {
+    setBorrando(true);
+    const resultado = await borrarMovimiento(movimiento.id);
+    setBorrando(false);
+    if (resultado.error) {
+      setError(resultado.error);
+      setConfirmandoBorrado(false);
+      return;
+    }
     router.refresh();
   }
 
@@ -199,40 +213,72 @@ function FilaMovimiento({ movimiento }: { movimiento: Movimiento }) {
   }
 
   return (
-    <li className="flex items-center justify-between gap-2 py-3">
-      <div>
-        <p className="text-sm font-medium text-gray-900">
-          {movimiento.categoria || (movimiento.tipo === "gasto" ? "Gasto sin categoría" : "Ingreso sin categoría")}
-        </p>
-        <p className="text-xs text-gray-400">
-          {[
-            new Date(`${movimiento.fecha}T00:00:00`).toLocaleDateString("es-CO"),
-            movimiento.recurrente && movimiento.frecuencia
-              ? `Se repite: ${etiquetaFrecuencia[movimiento.frecuencia] ?? movimiento.frecuencia}`
-              : null,
-            movimiento.nota,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+    <li className="py-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium text-gray-900">
+            {movimiento.categoria || (movimiento.tipo === "gasto" ? "Gasto sin categoría" : "Ingreso sin categoría")}
+          </p>
+          <p className="text-xs text-gray-400">
+            {[
+              new Date(`${movimiento.fecha}T00:00:00`).toLocaleDateString("es-CO"),
+              movimiento.recurrente && movimiento.frecuencia
+                ? `Se repite: ${etiquetaFrecuencia[movimiento.frecuencia] ?? movimiento.frecuencia}`
+                : null,
+              movimiento.nota,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className={`text-sm font-medium whitespace-nowrap ${
+              movimiento.tipo === "ingreso" ? "text-green-700" : "text-gray-900"
+            }`}
+          >
+            {movimiento.tipo === "ingreso" ? "+ " : "− "}
+            {formatoMoneda(movimiento.monto)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setEditando(true)}
+            className="text-xs text-gray-400 hover:text-gray-700"
+          >
+            Editar
+          </button>
+          {confirmandoBorrado ? (
+            <span className="flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500">¿Borrar?</span>
+              <button
+                type="button"
+                onClick={borrar}
+                disabled={borrando}
+                className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+              >
+                {borrando ? "..." : "Sí"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmandoBorrado(false)}
+                disabled={borrando}
+                className="text-gray-400 hover:text-gray-700"
+              >
+                No
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmandoBorrado(true)}
+              className="text-xs text-gray-400 hover:text-red-600"
+            >
+              Borrar
+            </button>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-3">
-        <span
-          className={`text-sm font-medium whitespace-nowrap ${
-            movimiento.tipo === "ingreso" ? "text-green-700" : "text-gray-900"
-          }`}
-        >
-          {movimiento.tipo === "ingreso" ? "+ " : "− "}
-          {formatoMoneda(movimiento.monto)}
-        </span>
-        <button
-          type="button"
-          onClick={() => setEditando(true)}
-          className="text-xs text-gray-400 hover:text-gray-700"
-        >
-          Editar
-        </button>
-      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </li>
   );
 }

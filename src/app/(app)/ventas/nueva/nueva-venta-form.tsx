@@ -957,6 +957,12 @@ export function NuevaVentaForm({
       {esApartado ? (
         <div className="mt-4 flex items-end justify-between gap-4 border-t border-gray-200 pt-3">
           <div>
+            <p className="text-xs font-medium text-gray-700">Precio total</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {total.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+            </p>
+          </div>
+          <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">
               Abono inicial *
             </label>
@@ -966,12 +972,9 @@ export function NuevaVentaForm({
               className="w-40 rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
             />
           </div>
-          <div className="text-right text-sm">
-            <p className="font-semibold text-gray-900">
-              Precio total: {total.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-            </p>
-            <p className="text-gray-500">
-              Falta:{" "}
+          <div className="text-right">
+            <p className="text-xs font-medium text-gray-700">Falta</p>
+            <p className="text-sm font-semibold text-gray-900">
               {Math.max(0, total - (Number(abonoInicial) || 0)).toLocaleString("es-CO", {
                 style: "currency",
                 currency: "COP",

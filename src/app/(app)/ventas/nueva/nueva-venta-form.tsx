@@ -150,6 +150,10 @@ export function NuevaVentaForm({
   const [metodoPago, setMetodoPago] = useState(metodosPago[0] ?? "");
   const [esApartado, setEsApartado] = useState(false);
   const [abonoInicial, setAbonoInicial] = useState("");
+  // Un apartado siempre parte de un producto real del catálogo, aunque la
+  // empresa no tenga el módulo de Inventario contratado (ej. Manantial) —
+  // por eso esto no es solo "inventarioActivo".
+  const usarCatalogo = inventarioActivo || esApartado;
 
   const [fecha, setFecha] = useState(ahoraFecha());
   const [hora, setHora] = useState(ahoraHora());
@@ -334,13 +338,13 @@ export function NuevaVentaForm({
 
     const lineasValidas = lineas.filter(
       (linea): linea is LineaVenta & { cantidad: number } =>
-        Boolean(inventarioActivo ? linea.itemId : linea.nombreLibre.trim()) &&
+        Boolean(usarCatalogo ? linea.itemId : linea.nombreLibre.trim()) &&
         linea.cantidad !== "" &&
         linea.cantidad > 0,
     );
     if (lineasValidas.length === 0) {
       setError(
-        inventarioActivo
+        usarCatalogo
           ? "Agrega al menos un producto con cantidad mayor a cero."
           : "Escribe al menos qué vendiste, con cantidad mayor a cero.",
       );
@@ -655,7 +659,7 @@ export function NuevaVentaForm({
             inventarioActivo && !esApartado ? promocionesAplicables(linea.itemId) : [];
           const promoSeleccionada = aplicables.find((p) => p.id === linea.promocionId) ?? null;
 
-          if (!inventarioActivo) {
+          if (!usarCatalogo) {
             return (
               <div key={linea.key} className="space-y-1">
                 <div className="grid grid-cols-12 items-end gap-2">

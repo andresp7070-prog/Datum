@@ -28,8 +28,11 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
+  // La raíz es la landing pública (src/app/page.tsx) — sin sesión, cualquiera
+  // la ve; con sesión, ese mismo archivo redirige adentro de la plataforma.
+  const esRutaPublica = isLoginPage || request.nextUrl.pathname === "/";
 
-  if (!user && !isLoginPage) {
+  if (!user && !esRutaPublica) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

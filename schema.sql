@@ -46,6 +46,9 @@ create table empresas (
   -- pago conectada todavía). El día que haya cobro automático, esto se
   -- reemplaza por la suma de los cobros reales, no por este campo.
   monto_mensual numeric(12,2),
+  -- Contador interno para numerar las ventas de esta empresa (Venta #1, #2,
+  -- #3...) — lo actualiza sola asignar_numero_venta(), nunca se edita a mano.
+  siguiente_numero_venta integer not null default 1,
   created_at timestamptz default now()
 );
 
@@ -145,8 +148,38 @@ create table ventas (
   metodo_pago text
     check (metodo_pago is null or metodo_pago in ('efectivo','tarjeta','transferencia','nequi','daviplata','otro')),
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: canal de venta, tipo de servicio, etc.
-  created_at timestamptz default now()
+  -- Número simple y consecutivo por empresa (Venta #1, #2...) para
+  -- referirse a una venta sin usar el id técnico — útil en recibos,
+  -- correos, devoluciones, y cuando haya facturación electrónica. Lo
+  -- asigna solo el trigger asignar_numero_venta(), nunca se manda a mano.
+  numero_venta integer,
+  created_at timestamptz default now(),
+  unique (empresa_id, numero_venta)
 );
+
+-- Le asigna a cada venta nueva el siguiente número consecutivo de su
+-- empresa, tomándolo de empresas.siguiente_numero_venta y subiéndolo en la
+-- misma operación — al ser un solo UPDATE sobre una fila, Postgres la
+-- bloquea mientras dura, así que dos ventas al mismo tiempo de la misma
+-- empresa nunca terminan con el mismo número.
+create or replace function asignar_numero_venta()
+returns trigger language plpgsql as $$
+declare
+  v_numero integer;
+begin
+  update empresas
+  set siguiente_numero_venta = siguiente_numero_venta + 1
+  where id = new.empresa_id
+  returning siguiente_numero_venta - 1 into v_numero;
+
+  new.numero_venta := v_numero;
+  return new;
+end;
+$$;
+
+create trigger trigger_asignar_numero_venta
+before insert on ventas
+for each row execute function asignar_numero_venta();
 
 -- ------------------------------------------------------------
 -- 7. CRM
@@ -1045,6 +1078,178 @@ from promociones p
 left join ventas_con_promo vc on vc.promocion_id = p.id
 group by p.id, p.empresa_id, p.nombre, p.tipo_promocion, p.codigo, p.fecha_inicio, p.fecha_fin;
 
+-- ------------------------------------------------------------
+-- 10.5. DEVOLUCIONES Y GARANTÍAS
+-- Un solo flujo para los dos casos (el cliente se arrepintió, o el
+-- producto vino defectuoso) — el campo 'tipo' distingue cuál es cuál, pero
+-- comparten la misma tabla y las mismas dos funciones. Se registra en
+-- 'pendiente' y se resuelve después (aceptada/rechazada), mismo patrón de
+-- dos pasos que ya usan los apartados en la rama de trabajo grande.
+-- ------------------------------------------------------------
+create table devoluciones (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  venta_id uuid references ventas(id) not null,
+  contacto_id uuid references crm_contactos(id),
+  tipo text not null check (tipo in ('devolucion','garantia')),
+  motivo text,
+  fecha timestamptz not null default now(),
+  estado text not null default 'pendiente' check (estado in ('pendiente','aceptada','rechazada')),
+  -- Los siguientes tres solo se llenan al aceptar, cada uno según la
+  -- resolución elegida.
+  resolucion text check (resolucion is null or resolucion in ('reembolso','cambio','cupon')),
+  monto_reembolso numeric(12,2),
+  item_cambio_id uuid references inventario_items(id),
+  created_at timestamptz default now()
+);
+
+-- item_id es opcional: si ya no existe en el catálogo, queda null y se usa
+-- nombre_libre — mismo patrón dual que ventas_items.
+create table devoluciones_items (
+  id uuid primary key default gen_random_uuid(),
+  devolucion_id uuid references devoluciones(id) not null,
+  item_id uuid references inventario_items(id),
+  nombre_libre text,
+  cantidad numeric(12,2) not null,
+  -- Se decide al momento de recibir el producto devuelto: si vuelve al
+  -- inventario disponible, o si queda dañado y aparte, sin volver a la venta.
+  estado_producto text not null check (estado_producto in ('buen_estado','danado')),
+  created_at timestamptz default now()
+);
+
+-- Crédito a favor de un cliente cuando la resolución de una devolución es
+-- 'cupon' — se aplica como parte del pago en una venta futura (ese
+-- descuento en el formulario de venta todavía no está construido).
+create table cupones (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  contacto_id uuid references crm_contactos(id) not null,
+  devolucion_id uuid references devoluciones(id),
+  monto numeric(12,2) not null,
+  monto_usado numeric(12,2) not null default 0,
+  fecha_vencimiento date,
+  estado text not null default 'activo' check (estado in ('activo','usado','vencido','cancelado')),
+  created_at timestamptz default now()
+);
+
+-- Registra una devolución o garantía en 'pendiente', con sus productos. No
+-- mueve nada de inventario ni de dinero todavía — eso solo pasa al
+-- resolverla con resolver_devolucion(), igual que un apartado no es una
+-- venta real hasta que se reclama.
+create or replace function registrar_devolucion(
+  p_empresa_id uuid,
+  p_venta_id uuid,
+  p_contacto_id uuid,
+  p_tipo text,   -- 'devolucion' o 'garantia'
+  p_motivo text,
+  p_items jsonb  -- [{"item_id":"...","nombre_libre":null,"cantidad":1,"estado_producto":"buen_estado"}, ...]
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_devolucion_id uuid;
+  v_item jsonb;
+begin
+  if p_tipo not in ('devolucion','garantia') then
+    raise exception 'Tipo inválido: debe ser devolucion o garantia.';
+  end if;
+
+  insert into devoluciones (empresa_id, venta_id, contacto_id, tipo, motivo)
+  values (p_empresa_id, p_venta_id, p_contacto_id, p_tipo, p_motivo)
+  returning id into v_devolucion_id;
+
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    insert into devoluciones_items (devolucion_id, item_id, nombre_libre, cantidad, estado_producto)
+    values (
+      v_devolucion_id,
+      nullif(v_item->>'item_id','')::uuid,
+      nullif(v_item->>'nombre_libre',''),
+      (v_item->>'cantidad')::numeric,
+      v_item->>'estado_producto'
+    );
+  end loop;
+
+  return v_devolucion_id;
+end;
+$$;
+
+-- Acepta o rechaza una devolución pendiente. Si se acepta: cada producto
+-- en buen estado vuelve al inventario disponible, con el mismo costo que
+-- quedó congelado en la venta original (igual criterio que deshacer_venta).
+-- Si la resolución es 'cupon', crea el crédito a favor del cliente.
+create or replace function resolver_devolucion(
+  p_devolucion_id uuid,
+  p_estado text,                          -- 'aceptada' o 'rechazada'
+  p_resolucion text default null,         -- 'reembolso' | 'cambio' | 'cupon', solo si aceptada
+  p_monto_reembolso numeric default null,
+  p_item_cambio_id uuid default null,
+  p_cupon_monto numeric default null,
+  p_cupon_vencimiento date default null
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_devolucion record;
+  v_item record;
+begin
+  select * into v_devolucion from devoluciones where id = p_devolucion_id;
+  if v_devolucion.id is null then
+    raise exception 'Devolución no encontrada';
+  end if;
+  if v_devolucion.estado <> 'pendiente' then
+    raise exception 'Esta devolución ya fue resuelta.';
+  end if;
+  if p_estado not in ('aceptada','rechazada') then
+    raise exception 'Estado inválido: debe ser aceptada o rechazada.';
+  end if;
+
+  if p_estado = 'aceptada' then
+    if p_resolucion is null or p_resolucion not in ('reembolso','cambio','cupon') then
+      raise exception 'Elige cómo se resuelve: reembolso, cambio o cupón.';
+    end if;
+
+    for v_item in
+      select di.item_id, di.cantidad, vi.costo_unitario
+      from devoluciones_items di
+      left join ventas_items vi on vi.venta_id = v_devolucion.venta_id and vi.item_id = di.item_id
+      where di.devolucion_id = p_devolucion_id
+        and di.estado_producto = 'buen_estado'
+        and di.item_id is not null
+    loop
+      insert into inventario_lotes (item_id, cantidad_disponible, costo_unitario)
+      values (v_item.item_id, v_item.cantidad, coalesce(v_item.costo_unitario, 0));
+
+      insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+      values (v_item.item_id, 'entrada', 'devolucion', v_item.cantidad, 'Devolución aceptada');
+
+      update inventario_items set cantidad = cantidad + v_item.cantidad where id = v_item.item_id;
+    end loop;
+
+    if p_resolucion = 'cupon' then
+      if v_devolucion.contacto_id is null then
+        raise exception 'Esta devolución no tiene cliente asociado — no se puede crear un cupón.';
+      end if;
+      if p_cupon_monto is null or p_cupon_monto <= 0 then
+        raise exception 'El monto del cupón debe ser mayor a cero.';
+      end if;
+
+      insert into cupones (empresa_id, contacto_id, devolucion_id, monto, fecha_vencimiento)
+      values (v_devolucion.empresa_id, v_devolucion.contacto_id, p_devolucion_id, p_cupon_monto, p_cupon_vencimiento);
+    end if;
+  end if;
+
+  update devoluciones
+  set estado = p_estado,
+      resolucion = case when p_estado = 'aceptada' then p_resolucion else null end,
+      monto_reembolso = case when p_resolucion = 'reembolso' then p_monto_reembolso else null end,
+      item_cambio_id = case when p_resolucion = 'cambio' then p_item_cambio_id else null end
+  where id = p_devolucion_id;
+end;
+$$;
+
 -- ============================================================
 -- ROW LEVEL SECURITY — el corazón del multi-tenant
 -- Cada empresa ve solo sus propias filas; el admin las ve todas.
@@ -1068,6 +1273,9 @@ alter table finanzas_movimientos enable row level security;
 alter table pasivos enable row level security;
 alter table promociones enable row level security;
 alter table promocion_items enable row level security;
+alter table devoluciones enable row level security;
+alter table devoluciones_items enable row level security;
+alter table cupones enable row level security;
 
 -- Funciones auxiliares, para no repetir la misma subconsulta en cada política.
 -- security definer es necesario aquí: la política de "perfiles" usa es_admin(),
@@ -1192,6 +1400,18 @@ create policy "ver productos de mis promociones" on promocion_items
     promocion_id in (select id from promociones where empresa_id = mi_empresa_id())
     or es_admin()
   );
+
+create policy "ver mis devoluciones" on devoluciones
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver items de mis devoluciones" on devoluciones_items
+  for all using (
+    devolucion_id in (select id from devoluciones where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver mis cupones" on cupones
+  for all using (empresa_id = mi_empresa_id() or es_admin());
 
 -- ============================================================
 -- STORAGE — fotos de productos

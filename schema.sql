@@ -105,15 +105,28 @@ create table diagnosticos (
 );
 
 -- ------------------------------------------------------------
--- 5. SUSCRIPCIONES
+-- 5. SUSCRIPCIONES — estado del cobro recurrente de cada empresa cliente.
+-- Nunca guarda datos de tarjeta (eso vive siempre en la pasarela de pago
+-- elegida) — solo el estado y las fechas que deciden cuándo cobrar.
+-- 'atributos' guarda lo específico de la pasarela (token, id de la
+-- transacción externa) para no tener que tocar esta tabla otra vez el día
+-- que se elija entre Wompi, Bold, u otra.
 -- ------------------------------------------------------------
 create table suscripciones (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
-  plan_id uuid references planes(id) not null,
-  estado text not null default 'activa' check (estado in ('activa','pausada','cancelada')),
-  fecha_inicio date default current_date,
-  proximo_cobro date
+  estado text not null default 'prueba'
+    check (estado in ('prueba','activa','vencida','cancelada')),
+  fecha_inicio_prueba timestamptz not null default now(),
+  fecha_fin_prueba timestamptz not null default (now() + interval '30 days'),
+  fecha_proximo_cobro timestamptz,
+  -- Precio congelado de esta empresa al momento de suscribirse — mismo
+  -- criterio que ventas_items.precio_unitario: si el plan sube de precio
+  -- después, esta empresa no cambia hasta que se renegocie.
+  monto_mensual numeric(12,2) not null,
+  proveedor_pago text check (proveedor_pago is null or proveedor_pago in ('wompi','bold')),
+  atributos jsonb not null default '{}',
+  created_at timestamptz default now()
 );
 
 -- ------------------------------------------------------------

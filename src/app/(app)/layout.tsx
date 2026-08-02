@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { createClient } from "@/lib/supabase/server";
-import { SignOutButton } from "@/components/signout-button";
 import { Sidebar } from "./sidebar";
 
 export default async function AppLayout({
@@ -58,7 +58,12 @@ export default async function AppLayout({
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <span className="text-sm text-gray-500">{perfil.nombre}</span>
-          <SignOutButton />
+          <Link
+            href="/cuenta"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Mi cuenta
+          </Link>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>

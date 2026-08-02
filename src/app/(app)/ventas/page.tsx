@@ -13,6 +13,7 @@ type ItemLinea = {
 
 type Venta = {
   id: string;
+  numero_venta: number | null;
   fecha: string;
   monto: number;
   cliente_nombre: string | null;
@@ -65,7 +66,7 @@ export default async function VentasPage({
   let query = supabase
     .from("ventas")
     .select(
-      "id, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) )",
+      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) )",
     )
     .eq("empresa_id", perfil.empresa_id)
     .order("fecha", { ascending: false });
@@ -194,6 +195,9 @@ export default async function VentasPage({
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     {venta.cliente_nombre ?? "Cliente sin nombre"}
+                    {venta.numero_venta !== null && (
+                      <span className="ml-2 font-normal text-gray-400">#{venta.numero_venta}</span>
+                    )}
                   </p>
                   <p className="text-xs text-gray-400">{new Date(venta.fecha).toLocaleString("es-CO")}</p>
                   <p className="mt-1 text-xs text-gray-500">{productos || "Sin productos"}</p>
@@ -210,6 +214,12 @@ export default async function VentasPage({
                       {etiquetaMetodoPago[venta.metodo_pago] ?? venta.metodo_pago}
                     </p>
                   )}
+                  <Link
+                    href={`/ventas/devoluciones/nueva?ventaId=${venta.id}`}
+                    className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"
+                  >
+                    Devolución
+                  </Link>
                 </div>
               </li>
             );

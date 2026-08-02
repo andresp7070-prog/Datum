@@ -18,6 +18,7 @@ const modulos = [
 const enlacesAdmin = [
   { nombre: "Panel", href: "/admin" },
   { nombre: "Enviar bienvenida", href: "/admin/bienvenida" },
+  { nombre: "Probar correos", href: "/admin/correos" },
 ];
 
 function IconoCandado() {

@@ -55,6 +55,13 @@ export default async function FichaClientePage({
     .eq("contacto_id", id)
     .order("fecha", { ascending: false });
 
+  const { data: cupones } = await supabase
+    .from("cupones")
+    .select("id, monto, monto_usado, fecha_vencimiento, estado")
+    .eq("contacto_id", id)
+    .eq("estado", "activo")
+    .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
+
   const diasPromedio = perfilCompra?.dias_promedio_entre_compras
     ? Math.ceil(Number(perfilCompra.dias_promedio_entre_compras))
     : null;
@@ -129,6 +136,29 @@ export default async function FichaClientePage({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {cupones && cupones.length > 0 && (
+        <div className="rounded-xl border border-gray-200 p-4">
+          <h2 className="mb-4 text-sm font-semibold text-gray-900">Cupones activos</h2>
+          <ul className="divide-y divide-gray-200">
+            {cupones.map((cupon) => {
+              const disponible = Number(cupon.monto) - Number(cupon.monto_usado);
+              return (
+                <li key={cupon.id} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-gray-500">
+                    {cupon.fecha_vencimiento
+                      ? `Vence el ${new Date(cupon.fecha_vencimiento).toLocaleDateString("es-CO")}`
+                      : "Sin fecha de vencimiento"}
+                  </span>
+                  <span className="font-medium text-gray-900">
+                    {disponible.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 

@@ -1100,6 +1100,7 @@ create table devoluciones (
   resolucion text check (resolucion is null or resolucion in ('reembolso','cambio','cupon')),
   monto_reembolso numeric(12,2),
   item_cambio_id uuid references inventario_items(id),
+  cantidad_cambio numeric(12,2),
   created_at timestamptz default now()
 );
 
@@ -1178,13 +1179,18 @@ $$;
 -- Acepta o rechaza una devolución pendiente. Si se acepta: cada producto
 -- en buen estado vuelve al inventario disponible, con el mismo costo que
 -- quedó congelado en la venta original (igual criterio que deshacer_venta).
--- Si la resolución es 'cupon', crea el crédito a favor del cliente.
+-- Si la resolución es 'cambio', además se descuenta del inventario el
+-- producto de reemplazo que se lleva el cliente (misma lógica de salida
+-- que una venta normal) — la cantidad la decide quien resuelve la
+-- devolución, no siempre es una unidad por una. Si la resolución es
+-- 'cupon', crea el crédito a favor del cliente.
 create or replace function resolver_devolucion(
   p_devolucion_id uuid,
   p_estado text,                          -- 'aceptada' o 'rechazada'
   p_resolucion text default null,         -- 'reembolso' | 'cambio' | 'cupon', solo si aceptada
   p_monto_reembolso numeric default null,
   p_item_cambio_id uuid default null,
+  p_cantidad_cambio numeric default null,
   p_cupon_monto numeric default null,
   p_cupon_vencimiento date default null
 )
@@ -1194,6 +1200,7 @@ as $$
 declare
   v_devolucion record;
   v_item record;
+  v_item_cambio record;
 begin
   select * into v_devolucion from devoluciones where id = p_devolucion_id;
   if v_devolucion.id is null then
@@ -1228,6 +1235,26 @@ begin
       update inventario_items set cantidad = cantidad + v_item.cantidad where id = v_item.item_id;
     end loop;
 
+    if p_resolucion = 'cambio' then
+      if p_item_cambio_id is null or p_cantidad_cambio is null or p_cantidad_cambio <= 0 then
+        raise exception 'Elige el producto de reemplazo y una cantidad mayor a cero.';
+      end if;
+
+      select id, cantidad into v_item_cambio from inventario_items where id = p_item_cambio_id;
+      if v_item_cambio.id is null then
+        raise exception 'El producto de reemplazo no existe.';
+      end if;
+      if v_item_cambio.cantidad < p_cantidad_cambio then
+        raise exception 'No hay suficiente stock del producto de reemplazo: quedan %, se necesitan %.',
+          v_item_cambio.cantidad, p_cantidad_cambio;
+      end if;
+
+      insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+      values (p_item_cambio_id, 'salida', 'devolucion', p_cantidad_cambio, 'Entregado como cambio');
+
+      update inventario_items set cantidad = cantidad - p_cantidad_cambio where id = p_item_cambio_id;
+    end if;
+
     if p_resolucion = 'cupon' then
       if v_devolucion.contacto_id is null then
         raise exception 'Esta devolución no tiene cliente asociado — no se puede crear un cupón.';
@@ -1245,7 +1272,8 @@ begin
   set estado = p_estado,
       resolucion = case when p_estado = 'aceptada' then p_resolucion else null end,
       monto_reembolso = case when p_resolucion = 'reembolso' then p_monto_reembolso else null end,
-      item_cambio_id = case when p_resolucion = 'cambio' then p_item_cambio_id else null end
+      item_cambio_id = case when p_resolucion = 'cambio' then p_item_cambio_id else null end,
+      cantidad_cambio = case when p_resolucion = 'cambio' then p_cantidad_cambio else null end
   where id = p_devolucion_id;
 end;
 $$;

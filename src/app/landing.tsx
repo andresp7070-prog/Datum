@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import "./landing.css";
+import { EcosistemaDemo } from "./ecosistema-demo";
 
 type Plan = {
   nombre: string;
@@ -62,7 +63,6 @@ export function Landing() {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const needleRef = useRef<SVGGElement>(null);
-  const ecoNetworkRef = useRef<HTMLDivElement>(null);
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
@@ -148,77 +148,6 @@ export function Landing() {
 
     window.addEventListener("mousemove", onMouseMove);
     return () => window.removeEventListener("mousemove", onMouseMove);
-  }, []);
-
-  // Red fija de conexiones: dibuja líneas del logo de Datum a cada módulo, y
-  // entre módulos vecinos de la misma fila, siguiendo la posición real de
-  // las tarjetas (para que funcione a cualquier ancho de pantalla).
-  useEffect(() => {
-    const ecoNet = ecoNetworkRef.current;
-    if (!ecoNet) return;
-
-    function centerOf(el: Element, cRect: DOMRect) {
-      const r = el.getBoundingClientRect();
-      return { x: r.left - cRect.left + r.width / 2, y: r.top - cRect.top + r.height / 2 };
-    }
-
-    function renderEcoNetwork() {
-      if (!ecoNet) return;
-      const svg = ecoNet.querySelector(".eco-network-svg") as SVGSVGElement | null;
-      const hub = ecoNet.querySelector(".eco-hub-mark");
-      const grids = ecoNet.querySelectorAll(".modulos-grid");
-      if (!svg || !hub || grids.length < 2) return;
-
-      const topCards = Array.from(grids[0].querySelectorAll(".modulo-card"));
-      const bottomCards = Array.from(grids[1].querySelectorAll(".modulo-card"));
-      const cRect = ecoNet.getBoundingClientRect();
-
-      svg.setAttribute("viewBox", `0 0 ${cRect.width} ${cRect.height}`);
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-
-      const svgns = "http://www.w3.org/2000/svg";
-      function addLine(a: { x: number; y: number }, b: { x: number; y: number }) {
-        const line = document.createElementNS(svgns, "line");
-        line.setAttribute("x1", String(a.x));
-        line.setAttribute("y1", String(a.y));
-        line.setAttribute("x2", String(b.x));
-        line.setAttribute("y2", String(b.y));
-        line.setAttribute("class", "eco-network-line");
-        svg!.appendChild(line);
-      }
-
-      const hubC = centerOf(hub, cRect);
-      [...topCards, ...bottomCards].forEach((card) => addLine(hubC, centerOf(card, cRect)));
-      for (let i = 0; i < topCards.length - 1; i++) {
-        addLine(centerOf(topCards[i], cRect), centerOf(topCards[i + 1], cRect));
-      }
-      for (let j = 0; j < bottomCards.length - 1; j++) {
-        addLine(centerOf(bottomCards[j], cRect), centerOf(bottomCards[j + 1], cRect));
-      }
-    }
-
-    renderEcoNetwork();
-    window.addEventListener("load", renderEcoNetwork);
-
-    let resizeTimer: ReturnType<typeof setTimeout>;
-    function onResize() {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(renderEcoNetwork, 150);
-    }
-    window.addEventListener("resize", onResize);
-
-    const ecoSection = document.getElementById("ecosistema");
-    function onTransitionEnd(e: TransitionEvent) {
-      if (e.propertyName === "transform") renderEcoNetwork();
-    }
-    ecoSection?.addEventListener("transitionend", onTransitionEnd);
-
-    return () => {
-      window.removeEventListener("load", renderEcoNetwork);
-      window.removeEventListener("resize", onResize);
-      ecoSection?.removeEventListener("transitionend", onTransitionEnd);
-      clearTimeout(resizeTimer);
-    };
   }, []);
 
   if (vistaMovil) {
@@ -390,93 +319,7 @@ export function Landing() {
               toda la gestión a un solo clic.
             </p>
           </div>
-          <div className="eco-network" ref={ecoNetworkRef}>
-            <svg className="eco-network-svg" aria-hidden="true" />
-            <div className="modulos-grid">
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <path d="M3 12h4l3 8 4-16 3 8h4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <h3>Ventas</h3>
-                <p>Registra una venta en segundos, desde una sola pantalla.</p>
-              </div>
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <circle cx="12" cy="8" r="3.4" />
-                  <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" strokeLinecap="round" />
-                </svg>
-                <h3>CRM</h3>
-                <p>Sabe quién te compra y cada cuánto vuelve.</p>
-              </div>
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <path d="M3 7l9-4 9 4-9 4-9-4Z" strokeLinejoin="round" />
-                  <path d="M3 7v10l9 4 9-4V7" strokeLinejoin="round" strokeLinecap="round" />
-                </svg>
-                <h3>Inventario</h3>
-                <p>Mira cuánto tienes de cada producto antes de que se acabe.</p>
-              </div>
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <path d="M4 20V10M12 20V4M20 20v-7" strokeLinecap="round" />
-                </svg>
-                <h3>Estado de resultados</h3>
-                <p>Cuánto ganas de verdad cada mes, después de gastos y deudas.</p>
-              </div>
-            </div>
-
-            <div className="eco-hub-band">
-              <div className="eco-hub-mark" aria-hidden="true">
-                <svg viewBox="0 0 200 200">
-                  <path
-                    d="M100 175 A75 75 0 1 1 151.34 154.68"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                  <path d="M100 42 L121 100 L79 100 Z" fill="currentColor" stroke="none" />
-                  <path d="M79 100 L100 158 L121 100" stroke="currentColor" strokeWidth="2" fill="none" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="modulos-grid">
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <path d="M20 12l-8 8-9-9V4h7l10 10Z" strokeLinejoin="round" strokeLinecap="round" />
-                  <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
-                </svg>
-                <h3>Promociones</h3>
-                <p>Descuentos y 2x1 que se registran solos.</p>
-              </div>
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <rect x="2.5" y="6" width="19" height="12" rx="2" />
-                  <circle cx="12" cy="12" r="2.6" />
-                  <path d="M6 9v0M18 15v0" strokeLinecap="round" strokeWidth="2" />
-                </svg>
-                <h3>Nómina</h3>
-                <p>Calcula el pago de tus empleados, con prestaciones y todo lo de ley.</p>
-              </div>
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.3 6.3l2 2M15.7 15.7l2 2M6.3 17.7l2-2M15.7 8.3l2-2" strokeLinecap="round" />
-                  <circle cx="12" cy="12" r="4" />
-                </svg>
-                <h3>Panel de control</h3>
-                <p>Tus números explicados, no solo mostrados.</p>
-              </div>
-              <div className="modulo-card">
-                <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-                  <path d="M3 16l4-6 3 4 4-8 4 5 3-3" strokeLinecap="round" strokeLinejoin="round" />
-                  <circle cx="14" cy="6" r="1.5" fill="currentColor" stroke="none" />
-                </svg>
-                <h3>Insights</h3>
-                <p>Detecta patrones y lo que se sale de lo normal, cruzando tus propios datos.</p>
-              </div>
-            </div>
-          </div>
+          <EcosistemaDemo />
         </div>
       </section>
 

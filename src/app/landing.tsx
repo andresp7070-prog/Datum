@@ -49,6 +49,15 @@ function IconoCheck() {
   );
 }
 
+// Barras de ejemplo para la vista previa del panel en el hero — mismo patrón
+// de énfasis que el motor de anomalías real de Insights: la mayoría en tono
+// apagado, solo las que se salen de lo normal resaltadas en dorado.
+const BARRAS_PREVIEW = [
+  { alto: 38 }, { alto: 44 }, { alto: 36 }, { alto: 52 },
+  { alto: 47 }, { alto: 56 }, { alto: 50 }, { alto: 60 },
+  { alto: 55, enfasis: true }, { alto: 64, enfasis: true }, { alto: 70, enfasis: true },
+];
+
 export function Landing() {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -316,9 +325,62 @@ export function Landing() {
             />
           </svg>
         </a>
+
+        <div className="hero-preview reveal">
+          <div className="preview-chrome">
+            <span className="preview-dot" />
+            <span className="preview-dot" />
+            <span className="preview-dot" />
+            <span className="preview-title">Panel de control</span>
+          </div>
+          <div className="preview-body">
+            <div className="preview-stats">
+              <div className="preview-stat">
+                <p className="label">Ventas del mes</p>
+                <p className="value">$48.320.000</p>
+                <p className="delta up">+12,4%</p>
+              </div>
+              <div className="preview-stat">
+                <p className="label">Utilidad neta</p>
+                <p className="value">$9.140.500</p>
+                <p className="delta up">+4,1%</p>
+              </div>
+              <div className="preview-stat">
+                <p className="label">Cartera vencida</p>
+                <p className="value">$3.275.000</p>
+                <p className="delta down">-8,3%</p>
+              </div>
+            </div>
+            <div className="preview-chart">
+              <p className="chart-title">Ventas vs. proyección</p>
+              <div className="chart-bars">
+                {BARRAS_PREVIEW.map((barra, i) => (
+                  <span
+                    key={i}
+                    className={`bar${barra.enfasis ? " is-enfasis" : ""}`}
+                    style={{ height: `${barra.alto}%` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <p className="preview-caption">Vista de ejemplo del panel de control de Datum.</p>
+        </div>
       </header>
 
-      <section className="chapter alt reveal" id="ecosistema">
+      <section className="chapter chapter-problema reveal">
+        <div className="wrap problema-grid">
+          <h2>El problema no es que te falte información. Es que vive repartida en cuatro lugares distintos, y en ninguno se puede confiar del todo.</h2>
+          <ul className="problema-list">
+            <li>Se te acaba un producto sin que nadie se entere — hasta que un cliente lo pide y le toca decirle que no hay.</li>
+            <li>Un vendedor renuncia y se lleva, en su celular, la relación con tus mejores clientes.</li>
+            <li>Cierras el mes creyendo que te fue bien, y tres semanas después el contador te dice que en realidad perdiste plata.</li>
+            <li>Sigues comprando lo mismo de siempre, sin saber cuánto capital tienes quieto en productos que casi no se venden.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="chapter chapter-oscuro reveal" id="ecosistema">
         <div className="wrap">
           <div className="chapter-head">
             <h2>Nuestro ecosistema.</h2>
@@ -418,7 +480,33 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="chapter reveal" id="precios">
+      <section className="chapter alt chapter-pasos reveal">
+        <div className="wrap">
+          <div className="chapter-head">
+            <p className="tag-label">Cómo funciona</p>
+            <h2>Puesto en marcha en días, no en meses.</h2>
+          </div>
+          <div className="pasos-grid">
+            <div className="paso">
+              <span className="paso-num">01</span>
+              <h3>Conectas tu negocio</h3>
+              <p>Subes tu catálogo, das de alta a tu equipo, y activamos los módulos que tu negocio necesita.</p>
+            </div>
+            <div className="paso">
+              <span className="paso-num">02</span>
+              <h3>Operas el día a día</h3>
+              <p>Cada venta, cada cliente, cada movimiento de inventario queda registrado solo, sin doble digitación.</p>
+            </div>
+            <div className="paso">
+              <span className="paso-num">03</span>
+              <h3>Decides con datos</h3>
+              <p>Cada mañana ves qué pasó, qué viene y qué te conviene hacer, sin pedirle reportes a nadie.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="chapter chapter-oscuro reveal" id="precios">
         <div className="wrap">
           <div className="chapter-head">
             <h2>Nos adaptamos a lo que necesitas.</h2>

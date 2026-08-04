@@ -176,10 +176,21 @@
     min-height: 92svh;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; overflow: hidden; padding: 120px 0 80px;
+    /* Primer bloque de la página en el navy de marca — el mismo tono del
+       logo — con los tokens de texto/línea reescalados para que el resto
+       de reglas (h1, .lede, .more, etc.) siga funcionando sin duplicarlas. */
+    background: #1a1b33;
+    --ink: #f3f2ee;
+    --ink-soft: #c3c2d6;
+    --ink-faint: #9698ad;
+    --line: rgba(243, 242, 238, 0.22);
+    --line-strong: rgba(243, 242, 238, 0.45);
+    --motif-color: #d9d6ea;
+    color: var(--ink);
   }
   .hero-motif {
     position: absolute; inset: 0; margin: auto; width: min(1000px, 130vw); height: min(1000px, 130vw);
-    color: var(--accent); pointer-events: none;
+    color: var(--motif-color, var(--accent)); pointer-events: none;
   }
   .hero-motif .ring { opacity: 0.27; }
   .hero-motif .needle {
@@ -215,6 +226,89 @@
   .hero .more svg { width: 14px; height: 14px; animation: bob 2.2s ease-in-out infinite; }
   @media (prefers-reduced-motion: reduce) { .hero .more svg { animation: none; } }
   @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+  .hero-preview {
+    position: relative; margin: 64px auto 0; max-width: 900px; width: min(100%, 900px);
+    background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+    box-shadow: 0 30px 60px -30px rgba(20, 21, 31, 0.28);
+    overflow: hidden; text-align: left;
+    /* La tarjeta es una "isla" clara independiente del bloque que la rodea
+       (el hero navy la envuelve, pero ella siempre se ve igual). */
+    --ink: #14151f; --ink-soft: #5b5d6e; --ink-faint: #9092a3;
+    --line: #c7c4d2; --line-strong: #1a1b33;
+    color: var(--ink);
+  }
+  .preview-chrome {
+    display: flex; align-items: center; gap: 7px;
+    padding: 14px 18px; border-bottom: 1px solid var(--line);
+  }
+  .preview-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .preview-title {
+    margin-left: 8px; font-family: "Public Sans", sans-serif; font-size: 12.5px;
+    font-weight: 600; color: var(--ink-faint);
+  }
+  .preview-body { padding: clamp(20px, 3vw, 32px); }
+  .preview-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .preview-stat {
+    background: var(--bg-alt); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+  }
+  .preview-stat .label { margin: 0; font-family: "Public Sans", sans-serif; font-size: 12.5px; color: var(--ink-faint); }
+  .preview-stat .value {
+    margin: 6px 0 0; font-family: "Fraunces", serif; font-weight: 600;
+    font-size: clamp(18px, 2vw, 22px); color: var(--ink);
+  }
+  .preview-stat .delta { margin: 4px 0 0; font-family: "Public Sans", sans-serif; font-size: 12.5px; font-weight: 600; }
+  .preview-stat .delta.up { color: var(--highlight); }
+  .preview-stat .delta.down { color: #b23434; }
+  .preview-chart {
+    background: var(--bg-alt); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 18px 14px;
+  }
+  .chart-title { margin: 0 0 16px; font-family: "Public Sans", sans-serif; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+  .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
+  .chart-bars .bar {
+    flex: 1; min-width: 0; height: 4%; border-radius: 3px 3px 0 0;
+    background: var(--line-strong); opacity: 0.3;
+  }
+  .chart-bars .bar.is-enfasis { background: var(--highlight); opacity: 1; }
+  .preview-caption {
+    margin: 0; padding: 12px 18px 18px; text-align: center;
+    font-family: "Public Sans", sans-serif; font-size: 12.5px; color: var(--ink-faint);
+  }
+  @media (max-width: 640px) {
+    .preview-stats { grid-template-columns: 1fr; }
+    .hero-preview { margin-top: 44px; }
+  }
+
+  .chapter-problema { padding: clamp(72px, 10vw, 120px) 0; }
+  .problema-grid {
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(32px, 5vw, 64px); align-items: start;
+  }
+  .problema-grid h2 { font-size: clamp(26px, 3.2vw, 38px); line-height: 1.15; }
+  .problema-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+  .problema-list li {
+    position: relative; padding-left: 22px; color: var(--ink-soft); font-size: 16px; line-height: 1.5;
+  }
+  .problema-list li::before {
+    content: ""; position: absolute; left: 0; top: 8px;
+    width: 7px; height: 7px; border-radius: 50%; background: #b23434;
+  }
+  @media (max-width: 760px) {
+    .problema-grid { grid-template-columns: 1fr; }
+  }
+
+  .chapter-pasos .chapter-head { margin-bottom: 56px; }
+  .pasos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(28px, 4vw, 48px); }
+  .paso { border-top: 1.5px solid var(--line-strong); padding-top: 20px; }
+  .paso-num {
+    display: block; font-family: "Fraunces", serif; font-weight: 600; font-size: 15px; color: var(--highlight);
+    margin-bottom: 14px;
+  }
+  .paso h3 { font-size: 20px; margin-bottom: 10px; }
+  .paso p { margin: 0; color: var(--ink-soft); font-size: 15px; line-height: 1.55; }
+  @media (max-width: 760px) {
+    .pasos-grid { grid-template-columns: 1fr; gap: 32px; }
+  }
 
   section.chapter { padding: clamp(96px, 14vw, 180px) 0; }
   section.chapter.alt { background: var(--bg-alt); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -278,6 +372,11 @@
     position: relative; min-width: 0; box-sizing: border-box;
     background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 32px 22px;
     transition: background 0.25s ease, border-color 0.25s ease;
+    /* Isla clara independiente del bloque que la rodea, igual que
+       .hero-preview — así se ve igual sin importar si el fondo es navy. */
+    --ink: #14151f; --ink-soft: #5b5d6e; --ink-faint: #9092a3;
+    --line: #c7c4d2; --accent: #1a1b33;
+    color: var(--ink);
   }
   .modulo-card:hover { background: var(--bg-alt); }
   .modulo-card svg.icon { width: 30px; height: 30px; color: var(--accent); margin-bottom: 24px; }
@@ -304,6 +403,41 @@
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
   .precios-cta:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  /* Precios también en navy — el dorado pasa a un tono más claro (el mismo
+     que ya usa este archivo para modo oscuro) para que se lea bien encima,
+     y el plan recomendado se resalta con un navy más claro en vez del beige
+     que usa en la versión clara. */
+  #precios.chapter-oscuro {
+    background: #1a1b33;
+    border-top: 1px solid rgba(243, 242, 238, 0.14);
+    --ink: #f3f2ee;
+    --ink-soft: #c3c2d6;
+    --ink-faint: #9698ad;
+    --line: rgba(243, 242, 238, 0.22);
+    --line-strong: rgba(243, 242, 238, 0.4);
+    --accent: #e3a748;
+    --good: #6fbf94;
+    color: var(--ink);
+  }
+  #precios.chapter-oscuro .billing-toggle { background: rgba(243, 242, 238, 0.1); }
+  #precios.chapter-oscuro .billing-btn.is-active { color: #14151f; }
+  #precios.chapter-oscuro .plan.destacado { background: rgba(243, 242, 238, 0.07); }
+  #precios.chapter-oscuro .plan-flag { color: #1a1b33; }
+  #precios.chapter-oscuro .precios-cta:hover { color: #1a1b33; }
+
+  /* Ecosistema también en navy, para que combine con el hero y Precios. */
+  #ecosistema.chapter-oscuro {
+    background: #1a1b33;
+    --ink: #f3f2ee;
+    --ink-soft: #c3c2d6;
+    --ink-faint: #9698ad;
+    --line: rgba(243, 242, 238, 0.22);
+    --line-strong: rgba(243, 242, 238, 0.4);
+    --accent: #e3a748;
+    color: var(--ink);
+  }
+  #ecosistema.chapter-oscuro .eco-hub-mark { background: var(--card); color: #1a1b33; }
   @media (max-width: 760px) {
     .precios-cta-row { grid-template-columns: 1fr; gap: 14px; margin-top: 20px; }
   }

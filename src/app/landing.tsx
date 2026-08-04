@@ -249,7 +249,7 @@ export function Landing() {
 
       <section className="chapter chapter-problema reveal">
         <div className="wrap problema-grid">
-          <h2>El problema no es que te falte información. Es que vive repartida en cuatro lugares distintos, y en ninguno se puede confiar del todo.</h2>
+          <h2>El problema no es que te falte información. Es que está repartida en cuatro lugares distintos, y no se comunican entre sí.</h2>
           <ul className="problema-list">
             <li>Se te acaba un producto sin que nadie se entere — hasta que un cliente lo pide y le toca decirle que no hay.</li>
             <li>Un vendedor renuncia y se lleva, en su celular, la relación con tus mejores clientes.</li>

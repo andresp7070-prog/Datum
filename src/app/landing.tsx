@@ -50,15 +50,6 @@ function IconoCheck() {
   );
 }
 
-// Barras de ejemplo para la vista previa del panel en el hero — mismo patrón
-// de énfasis que el motor de anomalías real de Insights: la mayoría en tono
-// apagado, solo las que se salen de lo normal resaltadas en dorado.
-const BARRAS_PREVIEW = [
-  { alto: 38 }, { alto: 44 }, { alto: 36 }, { alto: 52 },
-  { alto: 47 }, { alto: 56 }, { alto: 50 }, { alto: 60 },
-  { alto: 55, enfasis: true }, { alto: 64, enfasis: true }, { alto: 70, enfasis: true },
-];
-
 export function Landing() {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -254,47 +245,6 @@ export function Landing() {
             />
           </svg>
         </a>
-
-        <div className="hero-preview reveal">
-          <div className="preview-chrome">
-            <span className="preview-dot" />
-            <span className="preview-dot" />
-            <span className="preview-dot" />
-            <span className="preview-title">Panel de control</span>
-          </div>
-          <div className="preview-body">
-            <div className="preview-stats">
-              <div className="preview-stat">
-                <p className="label">Ventas del mes</p>
-                <p className="value">$48.320.000</p>
-                <p className="delta up">+12,4%</p>
-              </div>
-              <div className="preview-stat">
-                <p className="label">Utilidad neta</p>
-                <p className="value">$9.140.500</p>
-                <p className="delta up">+4,1%</p>
-              </div>
-              <div className="preview-stat">
-                <p className="label">Cartera vencida</p>
-                <p className="value">$3.275.000</p>
-                <p className="delta down">-8,3%</p>
-              </div>
-            </div>
-            <div className="preview-chart">
-              <p className="chart-title">Ventas vs. proyección</p>
-              <div className="chart-bars">
-                {BARRAS_PREVIEW.map((barra, i) => (
-                  <span
-                    key={i}
-                    className={`bar${barra.enfasis ? " is-enfasis" : ""}`}
-                    style={{ height: `${barra.alto}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="preview-caption">Vista de ejemplo del panel de control de Datum.</p>
-        </div>
       </header>
 
       <section className="chapter chapter-problema reveal">

@@ -227,59 +227,6 @@
   @media (prefers-reduced-motion: reduce) { .hero .more svg { animation: none; } }
   @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 
-  .hero-preview {
-    position: relative; margin: 64px auto 0; max-width: 900px; width: min(100%, 900px);
-    background: var(--card); border: 1px solid var(--line); border-radius: 20px;
-    box-shadow: 0 30px 60px -30px rgba(20, 21, 31, 0.28);
-    overflow: hidden; text-align: left;
-    /* La tarjeta es una "isla" clara independiente del bloque que la rodea
-       (el hero navy la envuelve, pero ella siempre se ve igual). */
-    --ink: #14151f; --ink-soft: #5b5d6e; --ink-faint: #9092a3;
-    --line: #c7c4d2; --line-strong: #1a1b33;
-    color: var(--ink);
-  }
-  .preview-chrome {
-    display: flex; align-items: center; gap: 7px;
-    padding: 14px 18px; border-bottom: 1px solid var(--line);
-  }
-  .preview-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
-  .preview-title {
-    margin-left: 8px; font-family: "Public Sans", sans-serif; font-size: 12.5px;
-    font-weight: 600; color: var(--ink-faint);
-  }
-  .preview-body { padding: clamp(20px, 3vw, 32px); }
-  .preview-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-  .preview-stat {
-    background: var(--bg-alt); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
-  }
-  .preview-stat .label { margin: 0; font-family: "Public Sans", sans-serif; font-size: 12.5px; color: var(--ink-faint); }
-  .preview-stat .value {
-    margin: 6px 0 0; font-family: "Fraunces", serif; font-weight: 600;
-    font-size: clamp(18px, 2vw, 22px); color: var(--ink);
-  }
-  .preview-stat .delta { margin: 4px 0 0; font-family: "Public Sans", sans-serif; font-size: 12.5px; font-weight: 600; }
-  .preview-stat .delta.up { color: var(--highlight); }
-  .preview-stat .delta.down { color: #b23434; }
-  .preview-chart {
-    background: var(--bg-alt); border: 1px solid var(--line); border-radius: 14px;
-    padding: 18px 18px 14px;
-  }
-  .chart-title { margin: 0 0 16px; font-family: "Public Sans", sans-serif; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
-  .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
-  .chart-bars .bar {
-    flex: 1; min-width: 0; height: 4%; border-radius: 3px 3px 0 0;
-    background: var(--line-strong); opacity: 0.3;
-  }
-  .chart-bars .bar.is-enfasis { background: var(--highlight); opacity: 1; }
-  .preview-caption {
-    margin: 0; padding: 12px 18px 18px; text-align: center;
-    font-family: "Public Sans", sans-serif; font-size: 12.5px; color: var(--ink-faint);
-  }
-  @media (max-width: 640px) {
-    .preview-stats { grid-template-columns: 1fr; }
-    .hero-preview { margin-top: 44px; }
-  }
-
   .chapter-problema { padding: clamp(72px, 10vw, 120px) 0; }
   .problema-grid {
     display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(32px, 5vw, 64px); align-items: start;
@@ -449,7 +396,33 @@
   .app-progreso span { width: 6px; height: 6px; border-radius: 50%; background: var(--line); transition: background 0.2s ease; }
   .app-progreso span.activo { background: var(--highlight); }
 
-  .app-body { display: flex; min-height: 420px; text-align: left; }
+  /* Alto fijo, calculado para el cuadro más alto de los 7 módulos — así el
+     tamaño de la tarjeta no "respira" cuadro a cuadro mientras se reproduce
+     sola y el resto de la página no se mueve debajo de ella. */
+  .app-body { display: flex; min-height: 600px; text-align: left; position: relative; }
+
+  .demo-cursor {
+    position: absolute; top: 0; left: 0; width: 22px; height: 22px;
+    margin: -3px 0 0 -3px; pointer-events: none; z-index: 5;
+    transition: transform 0.32s cubic-bezier(.4, 0, .2, 1);
+    filter: drop-shadow(0 2px 4px rgba(20, 21, 31, 0.35));
+  }
+  .demo-cursor svg { width: 100%; height: 100%; display: block; }
+  .demo-cursor-anillo {
+    position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; border: 2px solid var(--accent); opacity: 0;
+  }
+  .demo-cursor.clic .demo-cursor-anillo { animation: demo-cursor-clic 0.4s ease-out; }
+  @keyframes demo-cursor-clic {
+    0% { opacity: 0.7; transform: scale(0.4); }
+    100% { opacity: 0; transform: scale(2.2); }
+  }
+  @media (prefers-reduced-motion: reduce) { .demo-cursor { display: none; } }
+
+  .demo-link-mini {
+    display: inline-block; margin-top: 6px; font-family: "Public Sans", sans-serif;
+    font-size: 11.5px; font-weight: 600; color: var(--accent); cursor: pointer;
+  }
   .demo-sidebar {
     width: 168px; flex-shrink: 0; padding: 18px 12px; border-right: 1px solid var(--line);
     background: var(--bg-alt);
@@ -513,8 +486,8 @@
   .demo-fila-venta .monto { font-weight: 700; }
   .demo-fila-venta .metodo { font-size: 11px; color: var(--ink-faint); }
 
-  .demo-entra { animation: demo-entra 0.4s ease both; }
-  @keyframes demo-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .demo-entra { animation: demo-entra 0.28s ease-out both; }
+  @keyframes demo-entra { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
   @media (prefers-reduced-motion: reduce) { .demo-entra { animation: none; } }
 
   .demo-fila-receta { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
@@ -549,6 +522,9 @@
   .demo-ficha-cabecera .sub { font-family: "Public Sans", sans-serif; font-size: 11.5px; color: var(--ink-soft); margin: 0 0 6px; }
   .demo-estrellas span { color: var(--line); font-size: 13px; }
   .demo-estrellas span.llena { color: var(--highlight); }
+  .demo-star-in { animation: demo-star-in 0.32s ease-out both; }
+  @keyframes demo-star-in { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .demo-star-in { animation: none; } }
   .demo-badge-etapa {
     display: inline-flex; padding: 3px 10px; border-radius: 999px; background: var(--bg-alt);
     font-family: "Public Sans", sans-serif; font-size: 11px; font-weight: 700; white-space: nowrap;
@@ -603,7 +579,10 @@
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 
   @media (max-width: 760px) {
-    .app-body { flex-direction: column; }
+    /* En móvil el sidebar se apila arriba del contenido en vez de ir al
+       lado, así que el cuadro más alto necesita bastante más espacio que
+       en escritorio — mismo criterio, alto fijo para que no "respire". */
+    .app-body { flex-direction: column; min-height: 820px; }
     .demo-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; }
     .demo-nav-list { display: none; }
     .demo-stat-cards, .demo-field-grid.three, .demo-pyg-grid, .demo-perfil-grid, .demo-nomina-totales { grid-template-columns: 1fr; }

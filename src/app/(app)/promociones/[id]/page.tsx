@@ -30,6 +30,7 @@ const etiquetaTipo: Record<string, string> = {
   descuento_fijo: "Descuento fijo",
   "2x1": "2x1",
   lleve_x_gratis: "Lleve X gratis",
+  fidelidad: "Fidelidad",
 };
 
 function formatoMoneda(valor: number) {
@@ -80,13 +81,15 @@ export default async function PromocionDetallePage({
   const estado = estadoPromocion(promocion);
 
   const aplicaA =
-    promocion.productos.length > 0
-      ? `Producto${promocion.productos.length > 1 ? "s" : ""}: ${promocion.productos
-          .map((p) => p.item.nombre)
-          .join(", ")}`
-      : promocion.aplica_a_categoria
-        ? `Categoría: ${promocion.aplica_a_categoria}`
-        : "Todo el catálogo";
+    promocion.tipo_promocion === "fidelidad"
+      ? `Cada ${promocion.valor} compras de ${promocion.regalo?.nombre ?? "este producto"}`
+      : promocion.productos.length > 0
+        ? `Producto${promocion.productos.length > 1 ? "s" : ""}: ${promocion.productos
+            .map((p) => p.item.nombre)
+            .join(", ")}`
+        : promocion.aplica_a_categoria
+          ? `Categoría: ${promocion.aplica_a_categoria}`
+          : "Todo el catálogo";
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -118,7 +121,7 @@ export default async function PromocionDetallePage({
             <p className="text-gray-400">Aplica a</p>
             <p className="font-medium text-gray-900">{aplicaA}</p>
           </div>
-          {promocion.valor !== null && (
+          {promocion.valor !== null && promocion.tipo_promocion !== "fidelidad" && (
             <div>
               <p className="text-gray-400">Valor</p>
               <p className="font-medium text-gray-900">

@@ -20,13 +20,14 @@ type PuntoVenta = {
   nombre: string;
 };
 
-type TipoPromocion = "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis";
+type TipoPromocion = "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis" | "fidelidad";
 
 const TIPOS: { value: TipoPromocion; label: string }[] = [
   { value: "descuento_porcentaje", label: "Descuento %" },
   { value: "descuento_fijo", label: "Descuento fijo" },
   { value: "2x1", label: "2x1" },
   { value: "lleve_x_gratis", label: "Lleve X gratis" },
+  { value: "fidelidad", label: "Fidelidad (cada N compras, una gratis)" },
 ];
 
 function filtrarItems(items: Item[], query: string) {
@@ -71,6 +72,7 @@ export function NuevaPromocionForm({
   const [tipoPromocion, setTipoPromocion] = useState<TipoPromocion>("descuento_porcentaje");
   const [valorPorcentaje, setValorPorcentaje] = useState("");
   const [valorFijo, setValorFijo] = useState("");
+  const [comprasNecesarias, setComprasNecesarias] = useState("");
 
   const [aplicaA, setAplicaA] = useState<"todo" | "producto" | "categoria">("todo");
   const [busquedaProducto, setBusquedaProducto] = useState("");
@@ -119,18 +121,31 @@ export function NuevaPromocionForm({
         return;
       }
       valor = n;
+    } else if (tipoPromocion === "fidelidad") {
+      const n = Number(comprasNecesarias);
+      if (comprasNecesarias.trim() === "" || !Number.isInteger(n) || n <= 0) {
+        setError("Las compras necesarias deben ser un número entero mayor a cero.");
+        return;
+      }
+      valor = n;
     }
 
-    if (aplicaA === "producto" && productosSeleccionados.length === 0) {
-      setError("Busca y elige al menos un producto al que aplica la promoción.");
-      return;
+    if (tipoPromocion !== "fidelidad") {
+      if (aplicaA === "producto" && productosSeleccionados.length === 0) {
+        setError("Busca y elige al menos un producto al que aplica la promoción.");
+        return;
+      }
+      if (aplicaA === "categoria" && !categoriaSeleccionada.trim()) {
+        setError("Escribe la categoría a la que aplica la promoción.");
+        return;
+      }
     }
-    if (aplicaA === "categoria" && !categoriaSeleccionada.trim()) {
-      setError("Escribe la categoría a la que aplica la promoción.");
-      return;
-    }
-    if (tipoPromocion === "lleve_x_gratis" && !regaloSeleccionado) {
-      setError("Busca y elige el producto que se regala.");
+    if ((tipoPromocion === "lleve_x_gratis" || tipoPromocion === "fidelidad") && !regaloSeleccionado) {
+      setError(
+        tipoPromocion === "fidelidad"
+          ? "Busca y elige el producto de la fidelidad."
+          : "Busca y elige el producto que se regala.",
+      );
       return;
     }
     if (!fechaInicio || !fechaFin) {
@@ -149,9 +164,16 @@ export function NuevaPromocionForm({
         codigo: codigo.trim(),
         tipoPromocion,
         valor,
-        aplicaAItemIds: aplicaA === "producto" ? productosSeleccionados.map((p) => p.id) : [],
-        aplicaACategoria: aplicaA === "categoria" ? categoriaSeleccionada.trim() : null,
-        itemRegaloId: tipoPromocion === "lleve_x_gratis" ? regaloSeleccionado!.id : null,
+        aplicaAItemIds:
+          tipoPromocion !== "fidelidad" && aplicaA === "producto"
+            ? productosSeleccionados.map((p) => p.id)
+            : [],
+        aplicaACategoria:
+          tipoPromocion !== "fidelidad" && aplicaA === "categoria" ? categoriaSeleccionada.trim() : null,
+        itemRegaloId:
+          tipoPromocion === "lleve_x_gratis" || tipoPromocion === "fidelidad"
+            ? regaloSeleccionado!.id
+            : null,
         fechaInicio,
         fechaFin,
         activo,
@@ -262,6 +284,28 @@ export function NuevaPromocionForm({
           />
         )}
 
+        {tipoPromocion === "fidelidad" && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Compras necesarias antes del regalo *
+            </label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={comprasNecesarias}
+              onChange={(e) => setComprasNecesarias(e.target.value)}
+              placeholder="Ej. 10"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Ej. 10: el cliente compra 10 unidades del producto de abajo, y la número 11 sale
+              gratis. El conteo se reinicia después de cada regalo.
+            </p>
+          </div>
+        )}
+
+        {tipoPromocion !== "fidelidad" && (
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Aplica a *</label>
           <div className="flex gap-2">
@@ -281,8 +325,9 @@ export function NuevaPromocionForm({
             ))}
           </div>
         </div>
+        )}
 
-        {aplicaA === "producto" && (
+        {aplicaA === "producto" && tipoPromocion !== "fidelidad" && (
           <div className="relative">
             <label className="mb-1 block text-sm font-medium text-gray-700">Productos *</label>
             <input
@@ -339,7 +384,7 @@ export function NuevaPromocionForm({
           </div>
         )}
 
-        {aplicaA === "categoria" && (
+        {aplicaA === "categoria" && tipoPromocion !== "fidelidad" && (
           <div className="relative">
             <label className="mb-1 block text-sm font-medium text-gray-700">Categoría *</label>
             <input
@@ -374,10 +419,10 @@ export function NuevaPromocionForm({
           </div>
         )}
 
-        {tipoPromocion === "lleve_x_gratis" && (
+        {(tipoPromocion === "lleve_x_gratis" || tipoPromocion === "fidelidad") && (
           <div className="relative">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Producto que se regala *
+              {tipoPromocion === "fidelidad" ? "Producto de la fidelidad *" : "Producto que se regala *"}
             </label>
             <input
               value={busquedaRegalo}
@@ -411,7 +456,10 @@ export function NuevaPromocionForm({
               </ul>
             )}
             {regaloSeleccionado && (
-              <p className="mt-1 text-xs text-green-600">Se regala: {regaloSeleccionado.nombre}</p>
+              <p className="mt-1 text-xs text-green-600">
+                {tipoPromocion === "fidelidad" ? "Producto: " : "Se regala: "}
+                {regaloSeleccionado.nombre}
+              </p>
             )}
           </div>
         )}

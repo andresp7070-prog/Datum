@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function crearPromocion(input: {
   nombre: string;
   codigo: string;
-  tipoPromocion: "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis";
+  tipoPromocion: "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis" | "fidelidad";
   valor: number | null;
   aplicaAItemIds: string[];
   aplicaACategoria: string | null;

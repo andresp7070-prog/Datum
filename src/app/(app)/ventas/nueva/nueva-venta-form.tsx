@@ -7,7 +7,14 @@ import { ahoraFecha, ahoraHora } from "@/lib/fecha";
 import { sinTildes } from "@/lib/texto";
 import { etiquetaUnidad } from "@/lib/unidades";
 import { EntradaMoneda } from "@/components/campo-moneda";
-import { buscarClientes, guardarVenta, deshacerVenta, type ClienteEncontrado } from "./actions";
+import {
+  buscarClientes,
+  guardarVenta,
+  deshacerVenta,
+  registrarApartado,
+  obtenerProgresoFidelidad,
+  type ClienteEncontrado,
+} from "./actions";
 
 const SEGUNDOS_PARA_DESHACER = 60;
 
@@ -30,7 +37,7 @@ function etiquetaProducto(item: ItemCatalogo) {
 type Promocion = {
   id: string;
   nombre: string;
-  tipoPromocion: "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis";
+  tipoPromocion: "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis" | "fidelidad";
   valor: number | null;
   aplicaACategoria: string | null;
   itemIds: string[];
@@ -44,6 +51,7 @@ const etiquetaTipoPromocion: Record<Promocion["tipoPromocion"], string> = {
   descuento_fijo: "Descuento fijo",
   "2x1": "2x1",
   lleve_x_gratis: "Lleve X gratis",
+  fidelidad: "Fidelidad",
 };
 
 const etiquetaMetodoPago: Record<string, string> = {
@@ -127,6 +135,7 @@ export function NuevaVentaForm({
   promociones,
   crmActivo,
   puntoVentaId = null,
+  permiteApartados = false,
 }: {
   items: ItemCatalogo[];
   sugerenciasProductos: string[];
@@ -135,11 +144,14 @@ export function NuevaVentaForm({
   promociones: Promocion[];
   crmActivo: boolean;
   puntoVentaId?: string | null;
+  permiteApartados?: boolean;
 }) {
   const router = useRouter();
 
   const [orden, setOrden] = useState<"cliente-primero" | "productos-primero">("cliente-primero");
   const [metodoPago, setMetodoPago] = useState(metodosPago[0] ?? "");
+  const [esApartado, setEsApartado] = useState(false);
+  const [abonoInicial, setAbonoInicial] = useState("");
 
   const [fecha, setFecha] = useState(ahoraFecha());
   const [hora, setHora] = useState(ahoraHora());
@@ -264,12 +276,42 @@ export function NuevaVentaForm({
   function promocionesAplicables(itemId: string): Promocion[] {
     const item = items.find((i) => i.id === itemId);
     if (!item) return [];
+    // Fidelidad no se elige a mano de un menú — se sugiere sola cuando el
+    // cliente ya la completó (ver promocionesFidelidad más abajo).
     return promociones.filter((promo) => {
+      if (promo.tipoPromocion === "fidelidad") return false;
       if (promo.itemIds.length > 0) return promo.itemIds.includes(item.id);
       if (promo.aplicaACategoria) return promo.aplicaACategoria === item.categoria;
       return true;
     });
   }
+
+  const promocionesFidelidad = promociones.filter((p) => p.tipoPromocion === "fidelidad");
+
+  // Cuántas compras lleva el cliente confirmado en cada promoción de
+  // fidelidad — se pide de nuevo solo cuando cambia de cliente, no en cada
+  // edición del carrito (el progreso es de antes de esta venta).
+  const [progresoFidelidad, setProgresoFidelidad] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    // Sin cliente confirmado no hay historial que mirar — la sugerencia de
+    // fidelidad ya exige `contactoId` para mostrarse, así que no hace falta
+    // limpiar el progreso anterior aquí, solo dejar de pedirlo.
+    const fidelidad = promociones.filter((p) => p.tipoPromocion === "fidelidad");
+    if (!contactoId || fidelidad.length === 0) return;
+    let cancelado = false;
+    (async () => {
+      const entradas = await Promise.all(
+        fidelidad.map(
+          async (promo) => [promo.id, await obtenerProgresoFidelidad(contactoId, promo.id)] as const,
+        ),
+      );
+      if (!cancelado) setProgresoFidelidad(Object.fromEntries(entradas));
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [contactoId, promociones]);
 
   function aplicarPromocion(linea: LineaVenta, promo: Promocion | null) {
     if (!promo) {
@@ -369,12 +411,53 @@ export function NuevaVentaForm({
         return;
       }
     }
-    if (!metodoPago) {
+    if (esApartado) {
+      const abonoNum = Number(abonoInicial) || 0;
+      if (!abonoInicial.trim() || abonoNum <= 0) {
+        setError("El abono inicial es obligatorio y debe ser mayor a cero.");
+        return;
+      }
+      if (abonoNum > total) {
+        setError("El abono inicial no puede ser mayor al precio total.");
+        return;
+      }
+    } else if (!metodoPago) {
       setError("Selecciona un método de pago.");
       return;
     }
 
     setGuardando(true);
+
+    if (esApartado) {
+      try {
+        const resultado = await registrarApartado({
+          contactoId,
+          clienteNombre: nombre.trim(),
+          clienteTelefono: telefono.trim(),
+          clienteEmail: email.trim(),
+          montoInicial: Number(abonoInicial) || 0,
+          puntoVentaId,
+          items: lineasValidas.map((linea) => ({
+            itemId: inventarioActivo ? linea.itemId : null,
+            nombreLibre: inventarioActivo ? null : linea.nombreLibre.trim(),
+            costoUnitario: inventarioActivo || linea.costoUnitario === "" ? null : linea.costoUnitario,
+            cantidad: linea.cantidad,
+            precioUnitario: linea.precioUnitario,
+          })),
+        });
+        if (resultado.error || !resultado.apartadoId) {
+          setError(resultado.error ?? "No se pudo registrar el apartado.");
+          setGuardando(false);
+          return;
+        }
+        router.push(`/ventas/apartados/${resultado.apartadoId}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo registrar el apartado.");
+        setGuardando(false);
+      }
+      return;
+    }
+
     try {
       const fechaHora = new Date(`${fecha}T${hora}:00`).toISOString();
       const resultado = await guardarVenta({
@@ -602,7 +685,8 @@ export function NuevaVentaForm({
             );
           }
 
-          const aplicables = inventarioActivo ? promocionesAplicables(linea.itemId) : [];
+          const aplicables =
+            inventarioActivo && !esApartado ? promocionesAplicables(linea.itemId) : [];
           const promoSeleccionada = aplicables.find((p) => p.id === linea.promocionId) ?? null;
 
           if (!inventarioActivo) {
@@ -896,6 +980,33 @@ export function NuevaVentaForm({
         })}
       </div>
 
+      {inventarioActivo && !esApartado && promocionesFidelidad.map((promo) => {
+        const progreso = progresoFidelidad[promo.id] ?? 0;
+        const enCarrito = lineas
+          .filter((l) => !l.esGratis && l.itemId === promo.itemRegaloId)
+          .reduce((suma, l) => suma + (l.cantidad === "" ? 0 : l.cantidad), 0);
+        const yaAgregado = lineas.some((l) => l.esGratis && l.promocionId === promo.id);
+        const elegible = !yaAgregado && contactoId && promo.valor && progreso + enCarrito >= promo.valor;
+        if (!elegible) return null;
+        return (
+          <div
+            key={promo.id}
+            className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700"
+          >
+            <span>
+              Este cliente ya completó su fidelidad — el próximo {promo.regaloNombre} es gratis.
+            </span>
+            <button
+              type="button"
+              onClick={() => agregarRegalo(promo)}
+              className="whitespace-nowrap rounded-lg border border-green-300 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+            >
+              + Agregar gratis
+            </button>
+          </div>
+        );
+      })}
+
       <button
         type="button"
         onClick={agregarLinea}
@@ -904,28 +1015,58 @@ export function NuevaVentaForm({
         + Agregar producto
       </button>
 
-      <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">
-            Método de pago *
-          </label>
-          <select
-            value={metodoPago}
-            onChange={(e) => setMetodoPago(e.target.value)}
-            className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
-          >
-            {metodosPago.length === 0 && <option value="">Sin métodos configurados</option>}
-            {metodosPago.map((valor) => (
-              <option key={valor} value={valor}>
-                {etiquetaMetodoPago[valor] ?? valor}
-              </option>
-            ))}
-          </select>
+      {esApartado ? (
+        <div className="mt-4 flex items-end justify-between gap-4 border-t border-gray-200 pt-3">
+          <div>
+            <p className="text-xs font-medium text-gray-700">Precio total</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {total.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+            </p>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Abono inicial *
+            </label>
+            <EntradaMoneda
+              value={abonoInicial}
+              onChange={setAbonoInicial}
+              className="w-40 rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-medium text-gray-700">Falta</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {Math.max(0, total - (Number(abonoInicial) || 0)).toLocaleString("es-CO", {
+                style: "currency",
+                currency: "COP",
+              })}
+            </p>
+          </div>
         </div>
-        <p className="text-sm font-semibold text-gray-900">
-          Total: {total.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-        </p>
-      </div>
+      ) : (
+        <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Método de pago *
+            </label>
+            <select
+              value={metodoPago}
+              onChange={(e) => setMetodoPago(e.target.value)}
+              className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            >
+              {metodosPago.length === 0 && <option value="">Sin métodos configurados</option>}
+              {metodosPago.map((valor) => (
+                <option key={valor} value={valor}>
+                  {etiquetaMetodoPago[valor] ?? valor}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-sm font-semibold text-gray-900">
+            Total: {total.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+          </p>
+        </div>
+      )}
     </section>
   );
 
@@ -990,6 +1131,22 @@ export function NuevaVentaForm({
           />
         </div>
       </div>
+
+      {permiteApartados && (
+        <label className="mb-6 flex items-start gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={esApartado}
+            onChange={(e) => setEsApartado(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Es un apartado — el cliente paga una parte hoy y el resto después. La prenda se
+            separa del inventario de inmediato y tiene 30 días para reclamarla; si no, el
+            abono queda como ingreso y la prenda vuelve a estar disponible.
+          </span>
+        </label>
+      )}
 
       <div className="space-y-6">{secciones}</div>
 

@@ -35,6 +35,38 @@ create table empresas (
   modulos_activos text[] default '{}',        -- ajuste manual sobre el plan
   pagina_entrada text not null default 'ventas'
     check (pagina_entrada in ('ventas','crm','inventario','pyg','insights')),  -- en qué módulo aterriza al iniciar sesión; lo decide el diagnóstico, no el cliente
+  -- 'ventas': el CRM se comporta como siempre — embudo fijo de 4 etapas, sin
+  -- pantalla de configuración, contactos que nacen casi todos ya cerrados
+  -- porque vienen de una venta (ej. Aseo Total, Café Mensajero). 'leads':
+  -- habilita "Configurar etapas" y las reglas de inactividad, para un
+  -- negocio que vive de cotizar/negociar antes de vender. Se activa a mano,
+  -- igual que modulos_activos y pagina_entrada — nunca lo decide el cliente.
+  crm_modo text not null default 'ventas' check (crm_modo in ('ventas','leads')),
+  -- Desarrollo a la medida de un solo cliente (Manantial, tienda de ropa):
+  -- habilita el check "Es un apartado" en Agregar venta y la pantalla
+  -- "Apartados". Se activa a mano, nunca lo decide el cliente — el mismo
+  -- criterio que crm_modo, pero esto ni siquiera es un módulo de precios,
+  -- es una función hecha a la medida (ver la sección de Planes y precios).
+  permite_apartados boolean not null default false,
+  -- Horario real del negocio, para que Panel de control no muestre datos que
+  -- no le aplican: horas fuera de atención en "Ventas por hora del día", o
+  -- la comparación de festivos si nunca abre esos días. Sin configurar
+  -- (el valor por defecto de cada una), el comportamiento es el de
+  -- siempre — se activa a mano, empresa por empresa, igual que crm_modo.
+  hora_apertura time,
+  hora_cierre time,
+  atiende_festivos boolean not null default true,
+  -- Cómo paga nómina esta empresa — solo aplica si tiene el módulo 'nomina'
+  -- activo en modulos_activos; esto define el cómo, no el si.
+  nomina_frecuencia_pago text not null default 'mensual' check (nomina_frecuencia_pago in ('mensual','quincenal')),
+  -- Nómina fase 2 (aportes patronales): clase de riesgo ARL única para toda
+  -- la empresa (I es la más baja/barata — la mayoría de pymes de oficina,
+  -- tiendas, aseo caen ahí). exonerado_ley_1607: casi toda pyme colombiana
+  -- (menos de 10 salarios mínimos por empleado) está exonerada de pagar
+  -- salud patronal, ICBF y SENA — por eso el default es true. Se ajustan a
+  -- mano por empresa, mismo criterio que crm_modo.
+  arl_clase_riesgo integer not null default 1 check (arl_clase_riesgo between 1 and 5),
+  exonerado_ley_1607 boolean not null default true,
   fecha_diagnostico date,
   -- Catálogo fijo de métodos de pago (igual para toda la plataforma); cada
   -- empresa activa cuáles acepta. Editable por ahora en la tabla de Supabase.
@@ -71,6 +103,20 @@ create table puntos_venta (
 );
 
 -- ------------------------------------------------------------
+-- Actualizaciones de la plataforma — anuncios cortos que se muestran una
+-- sola vez, la siguiente vez que la persona inicia sesión (ver
+-- perfiles.ultima_actualizacion_vista_id más abajo). No hay pantalla propia
+-- para crearlas todavía: se agregan a mano desde la tabla de Supabase,
+-- igual que festivos. Solo la más reciente se le muestra a cada quien.
+-- ------------------------------------------------------------
+create table actualizaciones (
+  id uuid primary key default gen_random_uuid(),
+  titulo text not null,
+  contenido text not null,
+  created_at timestamptz default now()
+);
+
+-- ------------------------------------------------------------
 -- 4. PERFILES — une el login de Supabase (auth.users) con una empresa y un rol
 -- ------------------------------------------------------------
 create table perfiles (
@@ -93,6 +139,9 @@ create table perfiles (
   punto_venta_id uuid references puntos_venta(id),
   nombre text,
   debe_cambiar_password boolean not null default true,  -- true al crear la cuenta; se apaga solo cuando cambia su contraseña por primera vez
+  -- Cuál fue la última actualización (de la tabla actualizaciones) que esta
+  -- persona ya cerró en el pop-up. null = todavía no ha visto ninguna.
+  ultima_actualizacion_vista_id uuid references actualizaciones(id),
   created_at timestamptz default now()
 );
 
@@ -183,17 +232,155 @@ for each row execute function asignar_numero_venta();
 
 -- ------------------------------------------------------------
 -- 7. CRM
+-- Las etapas del embudo (crm_etapas) son personalizables por empresa: un
+-- negocio que vive de ventas directas (ej. Aseo Total) apenas las toca —
+-- casi todos sus contactos caen directo en la etapa de cierre porque
+-- nacen de una venta. Un negocio que vive de leads y cotizaciones antes de
+-- vender (ej. una empresa de servicios) necesita su propio embudo, con las
+-- etapas que le hagan sentido a su proceso, y reglas de inactividad que
+-- muevan solo a un lead que lleva mucho tiempo sin seguimiento.
 -- ------------------------------------------------------------
+create table crm_etapas (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  nombre text not null,
+  orden int not null,
+  -- La etapa a la que cae un contacto automáticamente en cuanto se le
+  -- registra una venta — exactamente una por empresa (ver el índice único
+  -- más abajo). Se marca con marcar_etapa_cierre(), nunca a mano con un
+  -- update directo, para garantizar que nunca haya cero o dos etapas de cierre.
+  es_cierre boolean not null default false,
+  -- Regla de inactividad, opcional: si un contacto lleva más de
+  -- "dias_inactividad" sin ninguna interacción registrada mientras está en
+  -- esta etapa, se mueve solo a "etapa_destino_inactividad_id". Los dos
+  -- campos van juntos — o los dos tienen valor, o ninguno.
+  dias_inactividad int,
+  etapa_destino_inactividad_id uuid references crm_etapas(id),
+  created_at timestamptz default now(),
+  unique (empresa_id, nombre),
+  unique (empresa_id, orden)
+);
+
+-- A lo sumo una etapa de cierre por empresa.
+create unique index crm_etapas_una_cierre_por_empresa on crm_etapas (empresa_id) where es_cierre;
+
+-- Toda empresa nueva arranca con las mismas 4 etapas de siempre — desde ahí
+-- cada una las agrega, renombra o reordena a su gusto. Así nadie tiene que
+-- acordarse de sembrarlas a mano cada vez que se crea una empresa cliente
+-- desde el panel de Supabase.
+create or replace function crear_etapas_por_defecto()
+returns trigger language plpgsql as $$
+begin
+  insert into crm_etapas (empresa_id, nombre, orden, es_cierre) values
+    (new.id, 'Nuevo', 1, false),
+    (new.id, 'Contactado', 2, false),
+    (new.id, 'Propuesta', 3, false),
+    (new.id, 'Cerrado', 4, true);
+  return new;
+end;
+$$;
+
+create trigger trigger_crear_etapas_por_defecto
+after insert on empresas
+for each row execute function crear_etapas_por_defecto();
+
 create table crm_contactos (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
   nombre text not null,
   telefono text,
   email text,
-  etapa_pipeline text default 'nuevo' check (etapa_pipeline in ('nuevo','contactado','propuesta','cerrado')),
+  etapa_id uuid references crm_etapas(id),
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: modelo de vehículo, preferencias, alergias, etc.
   created_at timestamptz default now()
 );
+
+-- Si se crea un contacto sin indicar en qué etapa arranca (ej. desde
+-- "Agregar cliente" a mano), cae en la primera etapa del embudo de esa
+-- empresa — no hace falta que cada punto de inserción lo calcule.
+create or replace function etapa_inicial_crm(p_empresa_id uuid)
+returns uuid language sql stable as $$
+  select id from crm_etapas where empresa_id = p_empresa_id order by orden asc limit 1;
+$$;
+
+-- La etapa de cierre de una empresa — a dónde cae un contacto en cuanto compra.
+create or replace function etapa_cierre_crm(p_empresa_id uuid)
+returns uuid language sql stable as $$
+  select id from crm_etapas where empresa_id = p_empresa_id and es_cierre limit 1;
+$$;
+
+create or replace function fijar_etapa_inicial_crm()
+returns trigger language plpgsql as $$
+begin
+  if new.etapa_id is null then
+    new.etapa_id := etapa_inicial_crm(new.empresa_id);
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trigger_etapa_inicial_crm
+before insert on crm_contactos
+for each row execute function fijar_etapa_inicial_crm();
+
+-- Cambia cuál es la etapa de cierre de una empresa, quitándosela a la
+-- anterior primero — así nunca queda ninguna, ni dos a la vez (lo que
+-- rompería el índice único de arriba).
+create or replace function marcar_etapa_cierre(p_etapa_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+begin
+  select empresa_id into v_empresa_id from crm_etapas where id = p_etapa_id;
+  if v_empresa_id is null then
+    raise exception 'Etapa no encontrada';
+  end if;
+  update crm_etapas set es_cierre = false where empresa_id = v_empresa_id and es_cierre;
+  update crm_etapas set es_cierre = true where id = p_etapa_id;
+end;
+$$;
+
+-- Mueve una etapa un lugar hacia arriba o hacia abajo en el orden del
+-- embudo, intercambiando su "orden" con el de la etapa vecina. Pasa por un
+-- valor temporal (-1) porque (empresa_id, orden) es único: si se intentara
+-- swapear con dos updates directos, el primero dejaría dos etapas con el
+-- mismo orden a mitad de camino y la base de datos lo rechazaría.
+create or replace function mover_etapa_crm(p_etapa_id uuid, p_direccion text)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+  v_orden_actual int;
+  v_vecino_id uuid;
+  v_vecino_orden int;
+begin
+  select empresa_id, orden into v_empresa_id, v_orden_actual from crm_etapas where id = p_etapa_id;
+  if v_empresa_id is null then
+    raise exception 'Etapa no encontrada';
+  end if;
+
+  if p_direccion = 'arriba' then
+    select id, orden into v_vecino_id, v_vecino_orden
+    from crm_etapas where empresa_id = v_empresa_id and orden < v_orden_actual
+    order by orden desc limit 1;
+  else
+    select id, orden into v_vecino_id, v_vecino_orden
+    from crm_etapas where empresa_id = v_empresa_id and orden > v_orden_actual
+    order by orden asc limit 1;
+  end if;
+
+  if v_vecino_id is null then
+    return; -- ya está en el extremo, no hay nada que mover
+  end if;
+
+  update crm_etapas set orden = -1 where id = p_etapa_id;
+  update crm_etapas set orden = v_orden_actual where id = v_vecino_id;
+  update crm_etapas set orden = v_vecino_orden where id = p_etapa_id;
+end;
+$$;
 
 create table crm_interacciones (
   id uuid primary key default gen_random_uuid(),
@@ -203,8 +390,46 @@ create table crm_interacciones (
   nota text
 );
 
+-- Aplica las reglas de inactividad de una empresa: por cada etapa que tenga
+-- una configurada, mueve a "etapa_destino_inactividad_id" a cualquier
+-- contacto que lleve más de "dias_inactividad" sin ninguna interacción
+-- registrada (o, si nunca ha tenido ninguna, desde que se creó el contacto).
+-- No corre como un proceso aparte en segundo plano (no hay servidor propio
+-- para eso) — la aplicación la llama cada vez que alguien abre el CRM, así
+-- que el movimiento ocurre la próxima vez que alguien entra a esa pantalla,
+-- no exactamente al minuto del vencimiento.
+create or replace function aplicar_reglas_inactividad_crm(p_empresa_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_etapa record;
+begin
+  for v_etapa in
+    select id, dias_inactividad, etapa_destino_inactividad_id
+    from crm_etapas
+    where empresa_id = p_empresa_id
+      and dias_inactividad is not null
+      and etapa_destino_inactividad_id is not null
+  loop
+    update crm_contactos c
+    set etapa_id = v_etapa.etapa_destino_inactividad_id
+    where c.empresa_id = p_empresa_id
+      and c.etapa_id = v_etapa.id
+      and coalesce(
+        (select max(i.fecha) from crm_interacciones i where i.contacto_id = c.id),
+        c.created_at::date
+      ) <= current_date - v_etapa.dias_inactividad;
+  end loop;
+end;
+$$;
+
 -- Una venta puede quedar asociada a un contacto del CRM (opcional)
 alter table ventas add column contacto_id uuid references crm_contactos(id);
+
+-- Calificación manual del cliente, de 0 a 5 estrellas — se ve en el
+-- directorio de CRM y en su ficha. Nula mientras nadie la haya puesto.
+alter table crm_contactos add column calificacion smallint check (calificacion between 0 and 5);
 
 -- ------------------------------------------------------------
 -- 8. INVENTARIO
@@ -360,7 +585,10 @@ begin
   -- Una venta histórica importada (importar_ventas_historicas) no debe volver
   -- a descontar inventario ni recalcular el costo — eso ya pasó de verdad con
   -- el sistema anterior del cliente, y el costo ya viene puesto a mano.
-  if current_setting('app.importando_historico', true) = 'true' then
+  -- Un apartado reclamado (reclamar_apartado) tampoco: la prenda ya se
+  -- descontó cuando se apartó, no cuando se terminó de pagar.
+  if current_setting('app.importando_historico', true) = 'true'
+     or current_setting('app.apartado_ya_descontado', true) = 'true' then
     return new;
   end if;
 
@@ -693,6 +921,322 @@ end;
 $$;
 
 -- ------------------------------------------------------------
+-- 8.5. APARTADOS — desarrollo a la medida de Manantial (empresas.permite_apartados)
+-- Venta parcial: el cliente paga un abono, la prenda se separa del
+-- inventario disponible de inmediato, y tiene 30 días para completar el
+-- pago. Si completa, se convierte en una venta real. Si no, lo abonado
+-- queda como ingreso y la prenda vuelve a estar disponible. Las cifras de
+-- venta solo cuentan la plata que de verdad entró en cada momento (mismo
+-- criterio de caja que ya usan los pasivos) — nunca el precio completo por
+-- adelantado, así vista_estado_resultados no necesita ningún cambio: un
+-- apartado no le genera ninguna fila a "ventas" hasta que se resuelve.
+-- ------------------------------------------------------------
+create table apartados (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  punto_venta_id uuid references puntos_venta(id),
+  contacto_id uuid references crm_contactos(id),
+  cliente_nombre text,
+  cliente_telefono text,
+  cliente_email text,
+  monto_total numeric(12,2) not null,
+  monto_abonado numeric(12,2) not null default 0,
+  fecha date not null default current_date,
+  fecha_limite date not null,
+  estado text not null default 'activo' check (estado in ('activo','reclamado','vencido')),
+  -- Se llena cuando se resuelve (reclamado o vencido) — enlaza a la venta
+  -- real que sí cuenta en el P y G. Null mientras sigue activo.
+  venta_id uuid references ventas(id),
+  created_at timestamptz default now()
+);
+
+-- item_id es opcional: si la empresa tiene catálogo (Inventario activo), la
+-- prenda se separa de ahí (FIFO) igual que una venta normal. Si no (ej.
+-- Manantial, que no tiene el módulo de Inventario), queda null y se usa
+-- nombre_libre + costo_unitario escrito a mano — el mismo patrón dual que ya
+-- usa ventas_items, y sin catálogo no hay nada que descontar ni devolver.
+create table apartados_items (
+  id uuid primary key default gen_random_uuid(),
+  apartado_id uuid references apartados(id) not null,
+  item_id uuid references inventario_items(id),
+  nombre_libre text,
+  cantidad numeric(12,2) not null,
+  precio_unitario numeric(12,2) not null,
+  costo_unitario numeric(12,2)  -- congelado vía FIFO si hay item_id; escrito a mano si no
+);
+
+create table apartados_abonos (
+  id uuid primary key default gen_random_uuid(),
+  apartado_id uuid references apartados(id) not null,
+  monto numeric(12,2) not null,
+  fecha date not null default current_date,
+  created_at timestamptz default now()
+);
+
+-- Convierte un apartado ya pagado por completo en una venta real. Las
+-- prendas con item_id ya se descontaron del inventario cuando se
+-- apartaron, así que se usa la bandera app.apartado_ya_descontado para que
+-- el trigger de descuento automático (pensado para una venta normal) no
+-- las reste otra vez. Las líneas con nombre_libre (sin catálogo) nunca
+-- tocan inventario, ni al apartar ni al reclamar — igual que una venta
+-- normal sin catálogo.
+create or replace function reclamar_apartado(p_apartado_id uuid)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_apartado record;
+  v_venta_id uuid;
+  v_item record;
+begin
+  select * into v_apartado from apartados where id = p_apartado_id;
+  if v_apartado.id is null then
+    raise exception 'Apartado no encontrado';
+  end if;
+
+  insert into ventas (empresa_id, punto_venta_id, monto, contacto_id, cliente_nombre, atributos, fecha)
+  values (
+    v_apartado.empresa_id, v_apartado.punto_venta_id, v_apartado.monto_total,
+    v_apartado.contacto_id, v_apartado.cliente_nombre,
+    jsonb_build_object('origen', 'apartado', 'apartado_id', v_apartado.id), now()
+  )
+  returning id into v_venta_id;
+
+  perform set_config('app.apartado_ya_descontado', 'true', true);
+
+  for v_item in
+    select item_id, nombre_libre, cantidad, precio_unitario, costo_unitario
+    from apartados_items where apartado_id = p_apartado_id
+  loop
+    insert into ventas_items (venta_id, item_id, nombre_libre, cantidad, precio_unitario, costo_unitario)
+    values (v_venta_id, v_item.item_id, v_item.nombre_libre, v_item.cantidad, v_item.precio_unitario, v_item.costo_unitario);
+  end loop;
+
+  perform set_config('app.apartado_ya_descontado', 'false', true);
+
+  update apartados set estado = 'reclamado', venta_id = v_venta_id where id = p_apartado_id;
+
+  -- Ya hay una venta real de por medio — el contacto pasa a la etapa de
+  -- cierre, exactamente igual que con cualquier otra venta.
+  if v_apartado.contacto_id is not null then
+    update crm_contactos set etapa_id = etapa_cierre_crm(v_apartado.empresa_id) where id = v_apartado.contacto_id;
+  end if;
+
+  return v_venta_id;
+end;
+$$;
+
+-- Registra un abono sobre un apartado activo. Si con este abono se
+-- completa el precio total, el apartado se resuelve solo — no hace falta
+-- un botón aparte para "entregar" la prenda.
+create or replace function agregar_abono_apartado(
+  p_apartado_id uuid,
+  p_monto numeric,
+  p_fecha date default current_date
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_estado text;
+  v_monto_total numeric;
+  v_monto_abonado numeric;
+begin
+  select estado, monto_total into v_estado, v_monto_total from apartados where id = p_apartado_id;
+
+  if v_estado is null then
+    raise exception 'Apartado no encontrado';
+  end if;
+  if v_estado <> 'activo' then
+    raise exception 'Este apartado ya no está activo — no se le pueden agregar más abonos.';
+  end if;
+  if p_monto <= 0 then
+    raise exception 'El abono debe ser mayor a cero.';
+  end if;
+
+  insert into apartados_abonos (apartado_id, monto, fecha) values (p_apartado_id, p_monto, p_fecha);
+
+  update apartados set monto_abonado = monto_abonado + p_monto where id = p_apartado_id;
+
+  select monto_abonado into v_monto_abonado from apartados where id = p_apartado_id;
+
+  if v_monto_abonado >= v_monto_total then
+    perform reclamar_apartado(p_apartado_id);
+  end if;
+end;
+$$;
+
+-- Crea un apartado nuevo y arranca el plazo de 30 días. Cada línea puede
+-- venir con item_id (empresa con catálogo: la prenda se separa del
+-- inventario disponible de inmediato, FIFO, igual que una venta) o con
+-- nombre_libre + costo escrito a mano (empresa sin catálogo, ej. Manantial —
+-- no hay nada que descontar ni devolver, exactamente igual que una venta
+-- normal sin Inventario). El contacto del CRM se busca o se crea igual que
+-- en registrar_venta(), pero sin moverlo a la etapa de cierre todavía — eso
+-- solo pasa cuando el apartado se resuelve de verdad (reclamado o vencido).
+create or replace function registrar_apartado(
+  p_empresa_id uuid,
+  p_contacto_id uuid,
+  p_cliente_nombre text,
+  p_cliente_telefono text,
+  p_cliente_email text,
+  p_items jsonb,  -- [{"item_id":"...","nombre_libre":null,"cantidad":1,"precio_unitario":80000,"costo_unitario":null}, ...]
+                   -- o, sin catálogo: [{"item_id":null,"nombre_libre":"Vestido azul","cantidad":1,"precio_unitario":80000,"costo_unitario":40000}, ...]
+  p_monto_inicial numeric,
+  p_punto_venta_id uuid default null
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_contacto_id uuid;
+  v_apartado_id uuid;
+  v_monto_total numeric(12,2);
+  v_item jsonb;
+  v_item_id uuid;
+  v_cantidad numeric;
+  v_precio numeric;
+  v_costo numeric;
+  v_stock numeric;
+  v_nombre text;
+  v_es_insumo boolean;
+  v_tipo text;
+begin
+  if p_contacto_id is not null then
+    v_contacto_id := p_contacto_id;
+    update crm_contactos
+    set nombre = coalesce(p_cliente_nombre, nombre), email = coalesce(p_cliente_email, email)
+    where id = v_contacto_id;
+  elsif coalesce(p_cliente_nombre, '') <> '' then
+    select id into v_contacto_id
+    from crm_contactos where empresa_id = p_empresa_id and telefono = p_cliente_telefono
+    limit 1;
+
+    if v_contacto_id is null then
+      insert into crm_contactos (empresa_id, nombre, telefono, email)
+      values (p_empresa_id, p_cliente_nombre, p_cliente_telefono, p_cliente_email)
+      returning id into v_contacto_id;
+    else
+      update crm_contactos
+      set nombre = coalesce(p_cliente_nombre, nombre), email = coalesce(p_cliente_email, email)
+      where id = v_contacto_id;
+    end if;
+  else
+    v_contacto_id := null;
+  end if;
+
+  select sum((item->>'cantidad')::numeric * (item->>'precio_unitario')::numeric)
+  into v_monto_total
+  from jsonb_array_elements(p_items) as item;
+
+  insert into apartados (empresa_id, punto_venta_id, contacto_id, cliente_nombre, cliente_telefono, cliente_email, monto_total, fecha, fecha_limite)
+  values (p_empresa_id, p_punto_venta_id, v_contacto_id, p_cliente_nombre, p_cliente_telefono, p_cliente_email, v_monto_total, current_date, current_date + interval '30 days')
+  returning id into v_apartado_id;
+
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_item_id := nullif(v_item->>'item_id', '')::uuid;
+    v_cantidad := (v_item->>'cantidad')::numeric;
+    v_precio := (v_item->>'precio_unitario')::numeric;
+
+    if v_item_id is not null then
+      -- Empresa con catálogo: se separa del inventario disponible, FIFO,
+      -- igual que una venta.
+      select tipo, cantidad, nombre, es_insumo into v_tipo, v_stock, v_nombre, v_es_insumo
+      from inventario_items where id = v_item_id;
+
+      if v_es_insumo then
+        raise exception '"%" es material de receta y no se vende individualmente.', v_nombre;
+      end if;
+      if v_stock < v_cantidad then
+        raise exception 'No hay suficiente stock de "%": quedan % y se intentó apartar %.', v_nombre, v_stock, v_cantidad;
+      end if;
+
+      v_costo := consumir_lotes_fifo(v_item_id, v_cantidad);
+
+      insert into inventario_movimientos (item_id, tipo, cantidad, nota)
+      values (v_item_id, 'salida', v_cantidad, 'Apartado — separado del inventario disponible');
+
+      update inventario_items set cantidad = cantidad - v_cantidad where id = v_item_id;
+
+      insert into apartados_items (apartado_id, item_id, cantidad, precio_unitario, costo_unitario)
+      values (v_apartado_id, v_item_id, v_cantidad, v_precio, v_costo);
+    else
+      -- Sin catálogo: nombre y costo escritos a mano, nada que descontar.
+      insert into apartados_items (apartado_id, nombre_libre, cantidad, precio_unitario, costo_unitario)
+      values (v_apartado_id, nullif(v_item->>'nombre_libre', ''), v_cantidad, v_precio, nullif(v_item->>'costo_unitario', '')::numeric);
+    end if;
+  end loop;
+
+  if p_monto_inicial > 0 then
+    perform agregar_abono_apartado(v_apartado_id, p_monto_inicial, current_date);
+  end if;
+
+  return v_apartado_id;
+end;
+$$;
+
+-- Revisa los apartados vencidos de una empresa (más de 30 días sin
+-- completar el pago) y los resuelve: lo abonado hasta ese momento queda
+-- como ingreso (el cliente lo pierde), y la prenda vuelve a estar
+-- disponible en el inventario. No corre sola en segundo plano (no hay
+-- servidor propio para eso) — se llama cada vez que alguien abre la
+-- pantalla de Apartados, así que el cierre ocurre en la próxima visita a
+-- esa pantalla, no exactamente al minuto del vencimiento.
+create or replace function aplicar_vencimiento_apartados(p_empresa_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_apartado record;
+  v_venta_id uuid;
+  v_item record;
+begin
+  for v_apartado in
+    select * from apartados
+    where empresa_id = p_empresa_id and estado = 'activo' and fecha_limite < current_date
+  loop
+    if v_apartado.monto_abonado > 0 then
+      insert into ventas (empresa_id, punto_venta_id, monto, contacto_id, cliente_nombre, fecha, atributos)
+      values (
+        v_apartado.empresa_id, v_apartado.punto_venta_id, v_apartado.monto_abonado,
+        v_apartado.contacto_id, v_apartado.cliente_nombre, v_apartado.fecha_limite,
+        jsonb_build_object('origen', 'apartado_vencido', 'apartado_id', v_apartado.id)
+      )
+      returning id into v_venta_id;
+
+      insert into ventas_items (venta_id, nombre_libre, cantidad, precio_unitario, costo_unitario)
+      values (v_venta_id, 'Apartado vencido — abono no reclamado', 1, v_apartado.monto_abonado, 0);
+
+      if v_apartado.contacto_id is not null then
+        update crm_contactos set etapa_id = etapa_cierre_crm(v_apartado.empresa_id) where id = v_apartado.contacto_id;
+      end if;
+    else
+      v_venta_id := null;
+    end if;
+
+    -- Solo las líneas con catálogo (item_id) tienen algo que devolver — las
+    -- de nombre_libre nunca descontaron nada al apartar.
+    for v_item in
+      select item_id, cantidad, costo_unitario
+      from apartados_items
+      where apartado_id = v_apartado.id and item_id is not null
+    loop
+      insert into inventario_lotes (item_id, cantidad_disponible, costo_unitario)
+      values (v_item.item_id, v_item.cantidad, coalesce(v_item.costo_unitario, 0));
+
+      insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+      values (v_item.item_id, 'entrada', 'devolucion', v_item.cantidad, 'Apartado vencido — vuelve a estar disponible');
+
+      update inventario_items set cantidad = cantidad + v_item.cantidad where id = v_item.item_id;
+    end loop;
+
+    update apartados set estado = 'vencido', venta_id = v_venta_id where id = v_apartado.id;
+  end loop;
+end;
+$$;
+
+-- ------------------------------------------------------------
 -- 9. FINANZAS — alimenta el estado de pérdidas y ganancias
 -- ------------------------------------------------------------
 create table finanzas_movimientos (
@@ -899,6 +1443,84 @@ where v.fecha >= now() - interval '30 days'
 group by i.empresa_id, vi.item_id;
 
 -- ------------------------------------------------------------
+-- Vista: Historial de compras por producto — última vez que se
+-- reabasteció y cada cuántos días en promedio, según cada lote
+-- (inventario_lotes) que se le ha agregado. También alimenta la
+-- pestaña "Proyecciones" de Inventario. Nota: cuenta cualquier
+-- entrada de stock (reabastecer, deshacer una venta, un apartado
+-- vencido que vuelve a inventario, un ajuste hacia arriba) — no
+-- distingue si fue exactamente una compra, así que en un producto
+-- con devoluciones frecuentes el promedio puede verse un poco más
+-- seguido de lo real.
+-- ------------------------------------------------------------
+create or replace view vista_compras_producto as
+select
+  i.empresa_id,
+  l.item_id,
+  count(l.id) as total_compras,
+  min(l.fecha) as primera_compra,
+  max(l.fecha) as ultima_compra,
+  case
+    when count(l.id) > 1
+    then round(extract(epoch from (max(l.fecha) - min(l.fecha))) / 86400.0 / (count(l.id) - 1), 1)
+    else null
+  end as dias_promedio_entre_compras
+from inventario_lotes l
+join inventario_items i on i.id = l.item_id
+group by i.empresa_id, l.item_id;
+
+-- ------------------------------------------------------------
+-- Vista: Resumen por proveedor — última vez que se le compró, el costo
+-- promedio pagado, la categoría que más se le compra, y la rentabilidad
+-- que dejan sus productos al venderse. Se basa en inventario_lotes (cada
+-- reabastecimiento), igual que vista_compras_producto, porque hoy es lo
+-- único que guarda el costo y la fecha exactos de cada compra —
+-- inventario_movimientos todavía no registra compras.
+-- "Costo promedio" es el costo unitario promedio pagado, no el valor total
+-- de una compra — un lote no guarda cuánto se compró originalmente una vez
+-- se empieza a vender (solo lo que queda disponible).
+-- "Categoría más comprada" es la de más reabastecimientos (lotes), no la de
+-- mayor cantidad — por la misma razón.
+-- ------------------------------------------------------------
+create or replace view vista_proveedores as
+with lotes_proveedor as (
+  select i.proveedor_id, i.empresa_id, i.categoria, l.costo_unitario, l.fecha
+  from inventario_lotes l
+  join inventario_items i on i.id = l.item_id
+  where i.proveedor_id is not null
+),
+categoria_conteo as (
+  select proveedor_id, categoria, count(*) as veces
+  from lotes_proveedor
+  group by proveedor_id, categoria
+),
+categoria_top as (
+  select distinct on (proveedor_id) proveedor_id, categoria
+  from categoria_conteo
+  order by proveedor_id, veces desc
+),
+rentabilidad as (
+  select i.proveedor_id, sum(u.utilidad) as utilidad_generada
+  from vista_utilidad_por_producto u
+  join inventario_items i on i.id = u.item_id
+  where i.proveedor_id is not null
+  group by i.proveedor_id
+)
+select
+  p.id as proveedor_id,
+  p.empresa_id,
+  p.nombre,
+  max(lp.fecha) as ultima_compra,
+  round(avg(lp.costo_unitario), 2) as costo_promedio,
+  ct.categoria as categoria_mas_comprada,
+  coalesce(r.utilidad_generada, 0) as rentabilidad
+from proveedores p
+left join lotes_proveedor lp on lp.proveedor_id = p.id
+left join categoria_top ct on ct.proveedor_id = p.id
+left join rentabilidad r on r.proveedor_id = p.id
+group by p.id, p.empresa_id, p.nombre, ct.categoria, r.utilidad_generada;
+
+-- ------------------------------------------------------------
 -- Festivos de Colombia — tabla de referencia, compartida por
 -- todas las empresas (no es un dato de ninguna en particular,
 -- por eso no lleva empresa_id ni Row Level Security).
@@ -995,6 +1617,21 @@ items_cliente as (
   join ventas_items vi on vi.venta_id = v.id
   join inventario_items i on i.id = vi.item_id
   where v.contacto_id is not null
+),
+items_frecuentes as (
+  select
+    contacto_id,
+    producto_nombre,
+    unidades,
+    row_number() over (partition by contacto_id order by unidades desc) as rn_frecuente
+  from (
+    select v.contacto_id, i.nombre as producto_nombre, sum(vi.cantidad) as unidades
+    from ventas v
+    join ventas_items vi on vi.venta_id = v.id
+    join inventario_items i on i.id = vi.item_id
+    where v.contacto_id is not null
+    group by v.contacto_id, i.nombre
+  ) sub
 )
 select
   a.contacto_id,
@@ -1008,10 +1645,13 @@ select
   barato.producto_nombre as producto_mas_economico,
   barato.precio_unitario as precio_mas_economico,
   caro.producto_nombre as producto_mas_costoso,
-  caro.precio_unitario as precio_mas_costoso
+  caro.precio_unitario as precio_mas_costoso,
+  frecuente.producto_nombre as producto_mas_comprado,
+  frecuente.unidades as unidades_producto_mas_comprado
 from agregados a
 left join (select * from items_cliente where rn_barato = 1) barato on barato.contacto_id = a.contacto_id
-left join (select * from items_cliente where rn_caro = 1) caro on caro.contacto_id = a.contacto_id;
+left join (select * from items_cliente where rn_caro = 1) caro on caro.contacto_id = a.contacto_id
+left join (select * from items_frecuentes where rn_frecuente = 1) frecuente on frecuente.contacto_id = a.contacto_id;
 
 -- ------------------------------------------------------------
 -- 10. PROMOCIONES Y DESCUENTOS
@@ -1114,7 +1754,7 @@ group by p.id, p.empresa_id, p.nombre, p.tipo_promocion, p.codigo, p.fecha_inici
 -- producto vino defectuoso) — el campo 'tipo' distingue cuál es cuál, pero
 -- comparten la misma tabla y las mismas dos funciones. Se registra en
 -- 'pendiente' y se resuelve después (aceptada/rechazada), mismo patrón de
--- dos pasos que ya usan los apartados en la rama de trabajo grande.
+-- dos pasos que ya usan los apartados.
 -- ------------------------------------------------------------
 create table devoluciones (
   id uuid primary key default gen_random_uuid(),
@@ -1308,6 +1948,647 @@ begin
 end;
 $$;
 
+-- ------------------------------------------------------------
+-- 11. NÓMINA — módulo propio (empresas.modulos_activos), fase 1: solo
+-- salario fijo mensual/quincenal. Cubre lo que sí afecta el pago de cada
+-- período (salario, auxilio de transporte, salud y pensión del empleado) y
+-- el desprendible de pago. Los aportes patronales (lo que paga la empresa
+-- aparte, no se le descuenta al empleado) y la provisión de prestaciones
+-- sociales (cesantías, prima, vacaciones) quedan para una fase 2.
+-- ------------------------------------------------------------
+create table empleados (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  nombre text not null,
+  cedula text,
+  cargo text,
+  salario_base numeric(12,2) not null,
+  fecha_ingreso date not null default current_date,
+  fecha_retiro date,
+  activo boolean not null default true,
+  -- Determina qué regla de indemnización aplica en finalizar_contrato_empleado()
+  -- si el contrato termina sin justa causa. 'indefinido' es el caso por
+  -- defecto y el único con cálculo automático por ahora — 'fijo' y
+  -- 'obra_labor' quedan marcados para calcular la indemnización a mano
+  -- (dependen del plazo pactado / de la obra, no solo del tiempo servido).
+  tipo_contrato text not null default 'indefinido'
+    check (tipo_contrato in ('indefinido','fijo','obra_labor')),
+  created_at timestamptz default now()
+);
+
+-- Salario mínimo y auxilio de transporte de cada año — cambian por decreto
+-- cada enero. Sin Row Level Security: es información pública de la ley, no
+-- de ninguna empresa en particular (mismo criterio que "festivos"). Hay que
+-- agregar la fila del año nuevo a mano — no hay ninguna fórmula que la
+-- calcule sola.
+create table nomina_parametros_legales (
+  anio integer primary key,
+  salario_minimo numeric(12,2) not null,
+  auxilio_transporte numeric(12,2) not null
+);
+
+-- Cada "corrida" de nómina de una empresa (ej. "1-15 de julio 2026").
+create table nomina_periodos (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  fecha_inicio date not null,
+  fecha_fin date not null,
+  fecha_pago date not null,
+  -- 'borrador' no ha movido plata todavía; al marcarlo 'pagado' es cuando de
+  -- verdad genera el gasto en finanzas_movimientos (criterio de caja, mismo
+  -- principio que los abonos de pasivos).
+  estado text not null default 'borrador' check (estado in ('borrador','pagado')),
+  created_at timestamptz default now()
+);
+
+-- Una fila por empleado dentro de cada período — el desprendible de pago
+-- sale directo de aquí. salario_base queda congelado al momento de generar
+-- la nómina (igual que ventas_items.precio_unitario): si después cambia el
+-- sueldo del empleado, los desprendibles ya generados no se alteran.
+create table nomina_detalles (
+  id uuid primary key default gen_random_uuid(),
+  periodo_id uuid references nomina_periodos(id) not null,
+  empleado_id uuid references empleados(id) not null,
+  salario_base numeric(12,2) not null,
+  auxilio_transporte numeric(12,2) not null default 0,
+  deduccion_salud numeric(12,2) not null default 0,
+  deduccion_pension numeric(12,2) not null default 0,
+  total_devengado numeric(12,2) not null,
+  total_deducido numeric(12,2) not null,
+  neto_pagado numeric(12,2) not null,
+  -- Fase 2 — aportes patronales: lo que paga la empresa aparte, nunca se le
+  -- descuenta al empleado, no aparece en su desprendible. Se paga junto con
+  -- la nómina (mismo criterio de caja: solo se genera el gasto real cuando
+  -- el período se marca 'pagado', ver marcar_nomina_pagada()).
+  aporte_salud_patronal numeric(12,2) not null default 0,
+  aporte_pension_patronal numeric(12,2) not null default 0,
+  aporte_arl numeric(12,2) not null default 0,
+  aporte_caja_compensacion numeric(12,2) not null default 0,
+  aporte_icbf numeric(12,2) not null default 0,
+  aporte_sena numeric(12,2) not null default 0,
+  total_aportes_patronales numeric(12,2) not null default 0,
+  -- Fase 2 — prestaciones sociales: se acumulan cada período (provisión).
+  -- Cesantías, intereses y prima generan su gasto real automático al marcar
+  -- el período como pagado (ver marcar_nomina_pagada()); el pago real
+  -- después (consignar cesantías, pagar la prima) no se vuelve a registrar,
+  -- para no duplicar. Vacaciones es la excepción: no genera un gasto propio
+  -- — no es plata extra, es el mismo salario en días no trabajados — así
+  -- que este campo es puramente informativo, para calcular cuánto valen los
+  -- días pendientes el día que se liquide un contrato.
+  provision_cesantias numeric(12,2) not null default 0,
+  provision_intereses_cesantias numeric(12,2) not null default 0,
+  provision_prima numeric(12,2) not null default 0,
+  provision_vacaciones numeric(12,2) not null default 0,
+  unique (periodo_id, empleado_id)
+);
+
+-- Vacaciones tomadas por un empleado: fechas concretas, no solo un número de
+-- días. Esto es lo que permite que generar_nomina() sepa, para un período
+-- dado, cuántos días de ese período caen en vacaciones y le quite el
+-- auxilio de transporte proporcional a esos días (el salario NO cambia — el
+-- empleado cobra igual, solo que el auxilio no aplica en días que no va a
+-- trabajar). "Finalizar contrato" con la liquidación de los días pendientes
+-- en dinero queda para una fase futura.
+create table nomina_vacaciones (
+  id uuid primary key default gen_random_uuid(),
+  empleado_id uuid references empleados(id) not null,
+  fecha_inicio date not null,
+  fecha_fin date not null,
+  dias integer not null,
+  created_at timestamptz default now()
+);
+
+-- Vista: cuántos días de vacaciones lleva causados cada empleado (15 días
+-- hábiles por año trabajado, aproximado como 1.25 días por mes — la misma
+-- aproximación que usa la mayoría del software de nómina en Colombia para
+-- llevar el saldo mes a mes) contra cuántos ya se ha tomado. La resta
+-- (causados - tomados) es lo que se muestra como "días pendientes" en la
+-- ficha del empleado.
+create or replace view vista_vacaciones_empleado as
+select
+  e.id as empleado_id,
+  e.empresa_id,
+  floor((coalesce(e.fecha_retiro, current_date) - e.fecha_ingreso) / 30.0 * 1.25) as dias_causados,
+  coalesce((select sum(v.dias) from nomina_vacaciones v where v.empleado_id = e.id), 0) as dias_tomados
+from empleados e;
+
+-- Genera un período de nómina completo: crea nomina_periodos y una fila en
+-- nomina_detalles por cada empleado activo que estuvo vinculado en algún
+-- momento del rango (no prorratea por entrada/salida a mitad de período —
+-- un empleado que entra o sale a mitad de período de todos modos cuenta el
+-- período completo, por ahora; la salida real se maneja aparte con
+-- finalizar_contrato_empleado(), que sí prorratea por día exacto).
+--
+-- Lo que SÍ se prorratea es el período completo según
+-- empresas.nomina_frecuencia_pago: 'mensual' paga el salario íntegro (100%),
+-- 'quincenal' la mitad (50%) — sin esto, una empresa quincenal que genera
+-- dos períodos al mes le pagaría a cada empleado el salario completo dos
+-- veces. Los umbrales de elegibilidad (auxilio de transporte hasta 2 SMLV,
+-- exoneración hasta 10 SMLV) se evalúan sobre el salario mensual completo
+-- del empleado, no sobre la porción de este período — es el nivel salarial
+-- real de la persona, no cuánto le toca cobrar esta quincena.
+--
+-- Deducciones del empleado: salud y pensión son 4% cada una (fijo por ley),
+-- sobre lo que de verdad se paga este período.
+-- Aportes patronales: pensión 12% y caja de compensación 4% siempre se
+-- pagan; ARL según la clase de riesgo de la empresa (tarifas fijas por ley,
+-- no cambian por año); salud patronal (8.5%), ICBF (3%) y SENA (2%) solo se
+-- pagan si la empresa NO está exonerada por la Ley 1607 o el empleado gana
+-- 10 salarios mínimos o más.
+-- Prestaciones sociales (provisión, no genera gasto — ver nomina_detalles):
+-- cesantías y prima son 8.33% cada una sobre salario + auxilio; vacaciones
+-- 4.17% solo sobre el salario (por ley, el auxilio de transporte no cuenta
+-- para vacaciones). Los intereses de cesantías (12% anual) se aproximan
+-- aquí como 1% de la cesantía de ese mismo período — una simplificación
+-- mensual razonable, no el cálculo exacto sobre el saldo acumulado del año
+-- que se usaría en una liquidación real.
+create or replace function generar_nomina(
+  p_empresa_id uuid,
+  p_fecha_inicio date,
+  p_fecha_fin date,
+  p_fecha_pago date
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_periodo_id uuid;
+  v_anio integer;
+  v_smlv numeric(12,2);
+  v_auxilio numeric(12,2);
+  v_arl_clase integer;
+  v_exonerado boolean;
+  v_frecuencia text;
+  v_fraccion numeric(3,2);
+  v_tasa_arl numeric(7,5);
+  v_empleado record;
+  v_salario_pago numeric(12,2);
+  v_aux numeric(12,2);
+  v_salud numeric(12,2);
+  v_pension numeric(12,2);
+  v_salud_patronal numeric(12,2);
+  v_pension_patronal numeric(12,2);
+  v_arl numeric(12,2);
+  v_caja numeric(12,2);
+  v_icbf numeric(12,2);
+  v_sena numeric(12,2);
+  v_cesantias numeric(12,2);
+  v_intereses_cesantias numeric(12,2);
+  v_prima numeric(12,2);
+  v_vacaciones numeric(12,2);
+  v_dias_vacaciones integer;
+begin
+  v_anio := extract(year from p_fecha_fin);
+
+  select salario_minimo, auxilio_transporte into v_smlv, v_auxilio
+  from nomina_parametros_legales where anio = v_anio;
+
+  if v_smlv is null then
+    raise exception 'Faltan los parámetros legales (salario mínimo, auxilio de transporte) del año % en nomina_parametros_legales.', v_anio;
+  end if;
+
+  select arl_clase_riesgo, exonerado_ley_1607, nomina_frecuencia_pago
+  into v_arl_clase, v_exonerado, v_frecuencia
+  from empresas where id = p_empresa_id;
+
+  v_tasa_arl := case v_arl_clase
+    when 1 then 0.00522
+    when 2 then 0.01044
+    when 3 then 0.02436
+    when 4 then 0.04350
+    when 5 then 0.06960
+    else 0.00522
+  end;
+
+  v_fraccion := case when v_frecuencia = 'quincenal' then 0.5 else 1.0 end;
+
+  insert into nomina_periodos (empresa_id, fecha_inicio, fecha_fin, fecha_pago)
+  values (p_empresa_id, p_fecha_inicio, p_fecha_fin, p_fecha_pago)
+  returning id into v_periodo_id;
+
+  for v_empleado in
+    select id, salario_base
+    from empleados
+    where empresa_id = p_empresa_id
+      and activo
+      and fecha_ingreso <= p_fecha_fin
+      and (fecha_retiro is null or fecha_retiro >= p_fecha_inicio)
+  loop
+    v_salario_pago := round(v_empleado.salario_base * v_fraccion);
+    v_aux := case when v_empleado.salario_base <= v_smlv * 2 then round(v_auxilio * v_fraccion) else 0 end;
+
+    -- Días de este período que caen en vacaciones registradas del
+    -- empleado (nomina_vacaciones) — el salario no cambia, pero el
+    -- auxilio de transporte se descuenta proporcional (mes comercial de
+    -- 30 días, la convención estándar de nómina en Colombia).
+    select coalesce(sum(
+      greatest(0, least(v.fecha_fin, p_fecha_fin) - greatest(v.fecha_inicio, p_fecha_inicio) + 1)
+    ), 0)
+    into v_dias_vacaciones
+    from nomina_vacaciones v
+    where v.empleado_id = v_empleado.id
+      and v.fecha_inicio <= p_fecha_fin
+      and v.fecha_fin >= p_fecha_inicio;
+
+    if v_dias_vacaciones > 0 then
+      v_aux := greatest(0, v_aux - round((v_auxilio / 30.0) * v_dias_vacaciones));
+    end if;
+
+    v_salud := round(v_salario_pago * 0.04);
+    v_pension := round(v_salario_pago * 0.04);
+
+    v_pension_patronal := round(v_salario_pago * 0.12);
+    v_arl := round(v_salario_pago * v_tasa_arl);
+    v_caja := round(v_salario_pago * 0.04);
+
+    if v_exonerado and v_empleado.salario_base < v_smlv * 10 then
+      v_salud_patronal := 0;
+      v_icbf := 0;
+      v_sena := 0;
+    else
+      v_salud_patronal := round(v_salario_pago * 0.085);
+      v_icbf := round(v_salario_pago * 0.03);
+      v_sena := round(v_salario_pago * 0.02);
+    end if;
+
+    v_cesantias := round((v_salario_pago + v_aux) * 0.0833);
+    v_intereses_cesantias := round(v_cesantias * 0.01);
+    v_prima := round((v_salario_pago + v_aux) * 0.0833);
+    v_vacaciones := round(v_salario_pago * 0.0417);
+
+    insert into nomina_detalles (
+      periodo_id, empleado_id, salario_base, auxilio_transporte,
+      deduccion_salud, deduccion_pension, total_devengado, total_deducido, neto_pagado,
+      aporte_salud_patronal, aporte_pension_patronal, aporte_arl, aporte_caja_compensacion,
+      aporte_icbf, aporte_sena, total_aportes_patronales,
+      provision_cesantias, provision_intereses_cesantias, provision_prima, provision_vacaciones
+    )
+    values (
+      v_periodo_id, v_empleado.id, v_salario_pago, v_aux,
+      v_salud, v_pension,
+      v_salario_pago + v_aux,
+      v_salud + v_pension,
+      v_salario_pago + v_aux - v_salud - v_pension,
+      v_salud_patronal, v_pension_patronal, v_arl, v_caja, v_icbf, v_sena,
+      v_salud_patronal + v_pension_patronal + v_arl + v_caja + v_icbf + v_sena,
+      v_cesantias, v_intereses_cesantias, v_prima, v_vacaciones
+    );
+  end loop;
+
+  return v_periodo_id;
+end;
+$$;
+
+-- Marca un período como pagado y ahí sí genera el gasto real en
+-- finanzas_movimientos (criterio de caja: el gasto se registra cuando la
+-- plata de verdad sale, no cuando se arma el borrador).
+create or replace function marcar_nomina_pagada(p_periodo_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+  v_fecha_pago date;
+  v_estado text;
+  v_total_neto numeric(12,2);
+  v_total_aportes numeric(12,2);
+  v_total_prestaciones numeric(12,2);
+begin
+  select empresa_id, fecha_pago, estado into v_empresa_id, v_fecha_pago, v_estado
+  from nomina_periodos where id = p_periodo_id;
+
+  if v_empresa_id is null then
+    raise exception 'Período de nómina no encontrado';
+  end if;
+  if v_estado = 'pagado' then
+    raise exception 'Este período ya está marcado como pagado';
+  end if;
+
+  -- Vacaciones queda afuera de esta suma a propósito: no es plata extra
+  -- (el empleado cobra el mismo salario de siempre, solo que en días que no
+  -- trabaja), y ese salario ya se cuenta completo en el gasto de 'nómina'
+  -- de cada mes — sumarlo aparte contaría el mismo dinero dos veces.
+  -- Cesantías, sus intereses y la prima sí son plata extra real.
+  select
+    coalesce(sum(neto_pagado), 0),
+    coalesce(sum(total_aportes_patronales), 0),
+    coalesce(sum(provision_cesantias + provision_intereses_cesantias + provision_prima), 0)
+  into v_total_neto, v_total_aportes, v_total_prestaciones
+  from nomina_detalles where periodo_id = p_periodo_id;
+
+  insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+  values (v_empresa_id, 'gasto', 'nómina', v_total_neto, v_fecha_pago, 'Nómina generada automáticamente');
+
+  -- Aportes patronales: gasto real y aparte (nunca se le descuenta al
+  -- empleado) — se paga en el mismo momento que la nómina, así que sigue el
+  -- mismo criterio de caja.
+  if v_total_aportes > 0 then
+    insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+    values (v_empresa_id, 'gasto', 'aportes patronales', v_total_aportes, v_fecha_pago, 'Aportes patronales generados automáticamente');
+  end if;
+
+  -- Cesantías, intereses y prima: a diferencia de nómina y aportes
+  -- patronales, acá SÍ se reconoce el gasto por causación (lo que se
+  -- acumula ese período), no cuando de verdad se paga la prima o se
+  -- consignan las cesantías — para que el P y G refleje el costo real de
+  -- tener a cada empleado sin que haya que registrar nada a mano después.
+  -- Por eso, cuando llegue el momento real de pagarlas, ESE pago no se
+  -- debe registrar de nuevo en "Gastos e ingresos" — ya quedó contado
+  -- aquí, mes a mes, y contarlo dos veces inflaría el gasto. Vacaciones sí
+  -- se sigue registrando a mano cuando el empleado las toma (ver arriba).
+  if v_total_prestaciones > 0 then
+    insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+    values (v_empresa_id, 'gasto', 'prestaciones sociales', v_total_prestaciones, v_fecha_pago, 'Provisión de prestaciones sociales generada automáticamente');
+  end if;
+
+  update nomina_periodos set estado = 'pagado' where id = p_periodo_id;
+end;
+$$;
+
+-- Liquidación de contrato — salario de días trabajados no pagados aún,
+-- cesantías/intereses/prima proporcionales a esos días, vacaciones
+-- pendientes pagadas en dinero, y (solo si aplica) indemnización por
+-- despido sin justa causa.
+--
+-- p_motivo decide si hay indemnización: 'renuncia' y
+-- 'despido_justa_causa' nunca la generan (por ley); solo
+-- 'despido_sin_justa_causa' la calcula, y SOLO para contrato indefinido
+-- (empleados.tipo_contrato) — para 'fijo' u 'obra_labor' la regla depende
+-- del plazo pactado o de la obra, no solo del tiempo servido, así que se
+-- deja marcada para calcular a mano en vez de arriesgar un número mal
+-- calculado (indemnizacion_requiere_calculo_manual = true).
+--
+-- Indemnización para término indefinido (art. 64 CST, Ley 789 de 2002):
+-- salario < 10 SMLMV → 30 días si llevaba 1 año o menos, + 20 días por
+-- cada año adicional (proporcional la fracción); salario >= 10 SMLMV →
+-- 20 días el primer año, + 15 días por cada año adicional. Se calcula
+-- sobre el salario base (sin auxilio de transporte), el criterio estándar
+-- porque el auxilio no es factor salarial.
+--
+-- A diferencia de generar_nomina() (que siempre paga el salario mensual
+-- completo, sin importar cuántos días tenga el período), acá SÍ se
+-- prorratea por día exacto — es la única situación donde es obligatorio,
+-- porque nadie se retira justo el último día de un período ya generado.
+--
+-- p_simular = true: calcula y devuelve el desglose, SIN escribir nada — es
+-- lo que usa la pantalla para mostrar "cuánto se debe pagar y por qué"
+-- antes de confirmar. p_simular = false: además de devolver el mismo
+-- desglose, sí registra todo (nuevo período de nómina con lo pendiente, sus
+-- gastos reales, el pago de vacaciones, la indemnización si aplica, y
+-- marca al empleado como retirado).
+create or replace function finalizar_contrato_empleado(
+  p_empleado_id uuid,
+  p_fecha_retiro date,
+  p_motivo text,
+  p_simular boolean default false
+)
+returns table (
+  fecha_desde date,
+  dias_periodo integer,
+  salario_proporcional numeric,
+  auxilio_proporcional numeric,
+  deducciones_empleado numeric,
+  neto_periodo numeric,
+  aportes_patronales numeric,
+  cesantias_intereses_prima numeric,
+  dias_vacaciones_pendientes numeric,
+  monto_vacaciones_pendientes numeric,
+  dias_indemnizacion numeric,
+  monto_indemnizacion numeric,
+  indemnizacion_requiere_calculo_manual boolean,
+  total_a_pagar_empleado numeric
+)
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+  v_salario_base numeric(12,2);
+  v_fecha_ingreso date;
+  v_activo boolean;
+  v_tipo_contrato text;
+  v_ultimo_fin date;
+  v_fecha_desde date;
+  v_dias integer;
+  v_anio integer;
+  v_smlv numeric(12,2);
+  v_auxilio_mensual numeric(12,2);
+  v_arl_clase integer;
+  v_exonerado boolean;
+  v_tasa_arl numeric(7,5);
+  v_aux numeric(12,2) := 0;
+  v_salario_prop numeric(12,2) := 0;
+  v_salud numeric(12,2) := 0;
+  v_pension numeric(12,2) := 0;
+  v_salud_patronal numeric(12,2) := 0;
+  v_pension_patronal numeric(12,2) := 0;
+  v_arl numeric(12,2) := 0;
+  v_caja numeric(12,2) := 0;
+  v_icbf numeric(12,2) := 0;
+  v_sena numeric(12,2) := 0;
+  v_total_aportes numeric(12,2) := 0;
+  v_cesantias numeric(12,2) := 0;
+  v_intereses numeric(12,2) := 0;
+  v_prima numeric(12,2) := 0;
+  v_periodo_id uuid;
+  v_dias_causados numeric;
+  v_dias_tomados numeric;
+  v_dias_pendientes numeric;
+  v_monto_vacaciones numeric(12,2);
+  v_tenure_dias integer;
+  v_dias_extra integer;
+  v_anios_extra_completos integer;
+  v_dias_fraccion integer;
+  v_base_dias numeric;
+  v_tasa_extra_dias numeric;
+  v_dias_indemnizacion numeric(10,4) := 0;
+  v_monto_indemnizacion numeric(12,2) := 0;
+  v_requiere_manual boolean := false;
+begin
+  if p_motivo not in ('renuncia', 'despido_justa_causa', 'despido_sin_justa_causa') then
+    raise exception 'Motivo de salida inválido: %', p_motivo;
+  end if;
+
+  select empresa_id, salario_base, fecha_ingreso, activo, tipo_contrato
+  into v_empresa_id, v_salario_base, v_fecha_ingreso, v_activo, v_tipo_contrato
+  from empleados where id = p_empleado_id;
+
+  if v_empresa_id is null then
+    raise exception 'Empleado no encontrado';
+  end if;
+  if not v_activo then
+    raise exception 'Este empleado ya está retirado';
+  end if;
+
+  v_anio := extract(year from p_fecha_retiro);
+  select salario_minimo, auxilio_transporte into v_smlv, v_auxilio_mensual
+  from nomina_parametros_legales where anio = v_anio;
+  if v_smlv is null then
+    raise exception 'Faltan los parámetros legales (salario mínimo, auxilio de transporte) del año % en nomina_parametros_legales.', v_anio;
+  end if;
+
+  select arl_clase_riesgo, exonerado_ley_1607 into v_arl_clase, v_exonerado
+  from empresas where id = v_empresa_id;
+  v_tasa_arl := case v_arl_clase
+    when 1 then 0.00522
+    when 2 then 0.01044
+    when 3 then 0.02436
+    when 4 then 0.04350
+    when 5 then 0.06960
+    else 0.00522
+  end;
+
+  select max(np.fecha_fin) into v_ultimo_fin
+  from nomina_periodos np
+  join nomina_detalles nd on nd.periodo_id = np.id
+  where nd.empleado_id = p_empleado_id;
+
+  v_fecha_desde := coalesce(v_ultimo_fin + 1, v_fecha_ingreso);
+  v_dias := greatest(0, p_fecha_retiro - v_fecha_desde + 1);
+
+  if v_dias > 0 then
+    v_salario_prop := round((v_salario_base / 30.0) * v_dias);
+    v_aux := case when v_salario_base <= v_smlv * 2
+      then round((v_auxilio_mensual / 30.0) * v_dias)
+      else 0
+    end;
+    v_salud := round(v_salario_prop * 0.04);
+    v_pension := round(v_salario_prop * 0.04);
+    v_pension_patronal := round(v_salario_prop * 0.12);
+    v_arl := round(v_salario_prop * v_tasa_arl);
+    v_caja := round(v_salario_prop * 0.04);
+
+    if v_exonerado and v_salario_base < v_smlv * 10 then
+      v_salud_patronal := 0;
+      v_icbf := 0;
+      v_sena := 0;
+    else
+      v_salud_patronal := round(v_salario_prop * 0.085);
+      v_icbf := round(v_salario_prop * 0.03);
+      v_sena := round(v_salario_prop * 0.02);
+    end if;
+
+    v_total_aportes := v_salud_patronal + v_pension_patronal + v_arl + v_caja + v_icbf + v_sena;
+    v_cesantias := round((v_salario_prop + v_aux) * 0.0833);
+    v_intereses := round(v_cesantias * 0.01);
+    v_prima := round((v_salario_prop + v_aux) * 0.0833);
+  end if;
+
+  select vve.dias_causados, vve.dias_tomados into v_dias_causados, v_dias_tomados
+  from vista_vacaciones_empleado vve where vve.empleado_id = p_empleado_id;
+
+  v_dias_pendientes := greatest(0, coalesce(v_dias_causados, 0) - coalesce(v_dias_tomados, 0));
+  v_monto_vacaciones := round(v_dias_pendientes * (v_salario_base / 30.0));
+
+  if p_motivo = 'despido_sin_justa_causa' then
+    if v_tipo_contrato <> 'indefinido' then
+      v_requiere_manual := true;
+    else
+      v_tenure_dias := p_fecha_retiro - v_fecha_ingreso;
+      v_base_dias := case when v_salario_base < v_smlv * 10 then 30 else 20 end;
+      v_tasa_extra_dias := case when v_salario_base < v_smlv * 10 then 20 else 15 end;
+
+      if v_tenure_dias <= 360 then
+        v_dias_indemnizacion := v_base_dias;
+      else
+        v_dias_extra := v_tenure_dias - 360;
+        v_anios_extra_completos := floor(v_dias_extra / 360.0);
+        v_dias_fraccion := v_dias_extra - (v_anios_extra_completos * 360);
+        v_dias_indemnizacion := v_base_dias
+          + v_tasa_extra_dias * v_anios_extra_completos
+          + v_tasa_extra_dias * (v_dias_fraccion / 360.0);
+      end if;
+
+      v_monto_indemnizacion := round((v_salario_base / 30.0) * v_dias_indemnizacion);
+    end if;
+  end if;
+
+  if not p_simular then
+    if v_dias > 0 then
+      insert into nomina_periodos (empresa_id, fecha_inicio, fecha_fin, fecha_pago, estado)
+      values (v_empresa_id, v_fecha_desde, p_fecha_retiro, p_fecha_retiro, 'pagado')
+      returning id into v_periodo_id;
+
+      insert into nomina_detalles (
+        periodo_id, empleado_id, salario_base, auxilio_transporte,
+        deduccion_salud, deduccion_pension, total_devengado, total_deducido, neto_pagado,
+        aporte_salud_patronal, aporte_pension_patronal, aporte_arl, aporte_caja_compensacion,
+        aporte_icbf, aporte_sena, total_aportes_patronales,
+        provision_cesantias, provision_intereses_cesantias, provision_prima, provision_vacaciones
+      )
+      values (
+        v_periodo_id, p_empleado_id, v_salario_prop, v_aux,
+        v_salud, v_pension, v_salario_prop + v_aux, v_salud + v_pension,
+        v_salario_prop + v_aux - v_salud - v_pension,
+        v_salud_patronal, v_pension_patronal, v_arl, v_caja, v_icbf, v_sena, v_total_aportes,
+        v_cesantias, v_intereses, v_prima, 0
+      );
+
+      insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+      values (
+        v_empresa_id, 'gasto', 'nómina', v_salario_prop + v_aux - v_salud - v_pension, p_fecha_retiro,
+        'Liquidación: salario de los últimos ' || v_dias || ' días trabajados'
+      );
+
+      if v_total_aportes > 0 then
+        insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+        values (v_empresa_id, 'gasto', 'aportes patronales', v_total_aportes, p_fecha_retiro, 'Aportes patronales de la liquidación');
+      end if;
+
+      if v_cesantias + v_intereses + v_prima > 0 then
+        insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+        values (
+          v_empresa_id, 'gasto', 'prestaciones sociales', v_cesantias + v_intereses + v_prima, p_fecha_retiro,
+          'Cesantías, intereses y prima proporcionales de la liquidación'
+        );
+      end if;
+    end if;
+
+    if v_monto_vacaciones > 0 then
+      insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+      values (
+        v_empresa_id, 'gasto', 'liquidación', v_monto_vacaciones, p_fecha_retiro,
+        'Pago de ' || v_dias_pendientes || ' días de vacaciones pendientes'
+      );
+    end if;
+
+    if v_monto_indemnizacion > 0 then
+      insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+      values (
+        v_empresa_id, 'gasto', 'liquidación', v_monto_indemnizacion, p_fecha_retiro,
+        'Indemnización por despido sin justa causa (' || round(v_dias_indemnizacion, 1) || ' días)'
+      );
+    end if;
+
+    update empleados set activo = false, fecha_retiro = p_fecha_retiro where id = p_empleado_id;
+  end if;
+
+  return query select
+    v_fecha_desde, v_dias, v_salario_prop, v_aux, (v_salud + v_pension),
+    (v_salario_prop + v_aux - v_salud - v_pension), v_total_aportes,
+    (v_cesantias + v_intereses + v_prima), v_dias_pendientes, v_monto_vacaciones,
+    v_dias_indemnizacion, v_monto_indemnizacion, v_requiere_manual,
+    (v_salario_prop + v_aux - v_salud - v_pension + v_cesantias + v_intereses + v_prima
+      + v_monto_vacaciones + v_monto_indemnizacion);
+end;
+$$;
+
+-- Insights — resumen ejecutivo en lenguaje natural, generado por Claude
+-- (capa opcional encima del motor de anomalías, que sigue siendo 100%
+-- Postgres/TypeScript propio). No reemplaza las gráficas: lee las mismas
+-- anomalías que el motor ya detectó y las redacta priorizadas en un párrafo
+-- corto. Se genera como máximo una vez al día por empresa — la aplicación
+-- revisa si ya existe una fila de hoy antes de llamar la API, para
+-- mantener el costo mínimo (mismo patrón de "corre cuando alguien abre la
+-- pantalla" que ya usan las reglas de inactividad del CRM y el vencimiento
+-- de apartados, solo que aquí el límite es una vez al día en vez de cada
+-- vez, porque esta sí tiene un costo real por llamada).
+create table insights_resumen_ia (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  contenido text not null,
+  generado_en timestamptz default now()
+);
+
 -- ============================================================
 -- ROW LEVEL SECURITY — el corazón del multi-tenant
 -- Cada empresa ve solo sus propias filas; el admin las ve todas.
@@ -1316,10 +2597,12 @@ $$;
 alter table empresas enable row level security;
 alter table puntos_venta enable row level security;
 alter table perfiles enable row level security;
+alter table actualizaciones enable row level security;
 alter table diagnosticos enable row level security;
 alter table suscripciones enable row level security;
 alter table ventas enable row level security;
 alter table ventas_items enable row level security;
+alter table crm_etapas enable row level security;
 alter table crm_contactos enable row level security;
 alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
@@ -1334,6 +2617,14 @@ alter table promocion_items enable row level security;
 alter table devoluciones enable row level security;
 alter table devoluciones_items enable row level security;
 alter table cupones enable row level security;
+alter table apartados enable row level security;
+alter table apartados_items enable row level security;
+alter table apartados_abonos enable row level security;
+alter table empleados enable row level security;
+alter table nomina_periodos enable row level security;
+alter table nomina_detalles enable row level security;
+alter table nomina_vacaciones enable row level security;
+alter table insights_resumen_ia enable row level security;
 
 -- Funciones auxiliares, para no repetir la misma subconsulta en cada política.
 -- security definer es necesario aquí: la política de "perfiles" usa es_admin(),
@@ -1380,6 +2671,11 @@ create policy "actualizar mi propio perfil" on perfiles
   for update using (id = auth.uid() or es_admin())
   with check (id = auth.uid() or es_admin());
 
+-- No es un dato de ninguna empresa en particular (como festivos) — cualquier
+-- persona con sesión puede leerlas, para que el pop-up funcione.
+create policy "ver actualizaciones con sesión activa" on actualizaciones
+  for select using (auth.uid() is not null);
+
 create policy "ver mis diagnosticos" on diagnosticos
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
@@ -1395,6 +2691,9 @@ create policy "ver mis ventas" on ventas
       and (mi_punto_venta_id() is null or punto_venta_id = mi_punto_venta_id()))
     or es_admin()
   );
+
+create policy "ver mis etapas de crm" on crm_etapas
+  for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mi crm" on crm_contactos
   for all using (empresa_id = mi_empresa_id() or es_admin());
@@ -1421,6 +2720,25 @@ create policy "ver mis pasivos" on pasivos
 
 create policy "ver mis promociones" on promociones
   for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver mis apartados" on apartados
+  for all using (
+    (empresa_id = mi_empresa_id()
+      and (mi_punto_venta_id() is null or punto_venta_id = mi_punto_venta_id()))
+    or es_admin()
+  );
+
+create policy "ver items de mis apartados" on apartados_items
+  for all using (
+    apartado_id in (select id from apartados where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver abonos de mis apartados" on apartados_abonos
+  for all using (
+    apartado_id in (select id from apartados where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
 
 -- Tablas sin empresa_id directo: se filtran a través de su tabla padre
 create policy "ver interacciones de mi crm" on crm_interacciones
@@ -1469,6 +2787,27 @@ create policy "ver items de mis devoluciones" on devoluciones_items
   );
 
 create policy "ver mis cupones" on cupones
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver mis empleados" on empleados
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver mis periodos de nomina" on nomina_periodos
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver detalles de mi nomina" on nomina_detalles
+  for all using (
+    periodo_id in (select id from nomina_periodos where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver vacaciones de mis empleados" on nomina_vacaciones
+  for all using (
+    empleado_id in (select id from empleados where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver resumen de insights de mi empresa" on insights_resumen_ia
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 -- ============================================================
@@ -1598,7 +2937,7 @@ begin
     set atributos = atributos || p_atributos_cliente,
         nombre = coalesce(p_cliente_nombre, nombre),
         email = coalesce(p_cliente_email, email),
-        etapa_pipeline = 'cerrado'
+        etapa_id = etapa_cierre_crm(p_empresa_id)
     where id = v_contacto_id;
   elsif coalesce(p_cliente_nombre, '') <> '' then
     select id into v_contacto_id
@@ -1607,15 +2946,15 @@ begin
     limit 1;
 
     if v_contacto_id is null then
-      insert into crm_contactos (empresa_id, nombre, telefono, email, atributos, etapa_pipeline)
-      values (p_empresa_id, p_cliente_nombre, p_cliente_telefono, p_cliente_email, p_atributos_cliente, 'cerrado')
+      insert into crm_contactos (empresa_id, nombre, telefono, email, atributos, etapa_id)
+      values (p_empresa_id, p_cliente_nombre, p_cliente_telefono, p_cliente_email, p_atributos_cliente, etapa_cierre_crm(p_empresa_id))
       returning id into v_contacto_id;
     else
       update crm_contactos
       set atributos = atributos || p_atributos_cliente,
           nombre = coalesce(p_cliente_nombre, nombre),
           email = coalesce(p_cliente_email, email),
-          etapa_pipeline = 'cerrado'
+          etapa_id = etapa_cierre_crm(p_empresa_id)
       where id = v_contacto_id;
     end if;
   else
@@ -1757,17 +3096,17 @@ begin
       limit 1;
 
       if v_contacto_id is null then
-        insert into crm_contactos (empresa_id, nombre, telefono, email, etapa_pipeline)
+        insert into crm_contactos (empresa_id, nombre, telefono, email, etapa_id)
         values (
           p_empresa_id,
           coalesce(nullif(v_fila->>'cliente_nombre', ''), 'Cliente sin nombre'),
           v_fila->>'cliente_telefono',
           nullif(v_fila->>'cliente_email', ''),
-          'cerrado'
+          etapa_cierre_crm(p_empresa_id)
         )
         returning id into v_contacto_id;
       else
-        update crm_contactos set etapa_pipeline = 'cerrado' where id = v_contacto_id;
+        update crm_contactos set etapa_id = etapa_cierre_crm(p_empresa_id) where id = v_contacto_id;
       end if;
     end if;
 

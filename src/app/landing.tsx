@@ -249,10 +249,10 @@ export function Landing() {
 
       <section className="chapter chapter-problema reveal">
         <div className="wrap problema-grid">
-          <h2>El problema no es que te falte información. Es que está repartida en cuatro lugares distintos, y no se comunican entre sí.</h2>
+          <h2>El problema no es que te falte información. Es que está repartida en lugares distintos, y no se comunican entre sí.</h2>
           <ul className="problema-list">
-            <li>Se te acaba un producto sin que nadie se entere — hasta que un cliente lo pide y le toca decirle que no hay.</li>
-            <li>Un vendedor renuncia y se lleva, en su celular, la relación con tus mejores clientes.</li>
+            <li>Se te acaba un producto sin que nadie se entere — hasta que un cliente lo pide y toca decirle que no hay.</li>
+            <li>Necesitas muchas plataformas para ver toda la información de tu empresa.</li>
             <li>Cierras el mes creyendo que te fue bien, y tres semanas después el contador te dice que en realidad perdiste plata.</li>
             <li>Sigues comprando lo mismo de siempre, sin saber cuánto capital tienes quieto en productos que casi no se venden.</li>
           </ul>
@@ -270,10 +270,18 @@ export function Landing() {
             </p>
           </div>
           <EcosistemaDemo />
+          <div className="chapter-cta">
+            <a
+              className="btn"
+              href="mailto:andresp7070@gmail.com?subject=Quiero%20agendar%20una%20demo%20gratis%20con%20Datum"
+            >
+              Agenda tu demo gratis
+            </a>
+          </div>
         </div>
       </section>
 
-      <section className="chapter alt chapter-pasos reveal">
+      <section className="chapter alt chapter-pasos reveal" id="como-funciona">
         <div className="wrap">
           <div className="chapter-head">
             <p className="tag-label">Cómo funciona</p>
@@ -295,6 +303,14 @@ export function Landing() {
               <h3>Decides con datos</h3>
               <p>Cada mañana ves qué pasó, qué viene y qué te conviene hacer, sin pedirle reportes a nadie.</p>
             </div>
+          </div>
+          <div className="chapter-cta">
+            <a
+              className="btn"
+              href="mailto:andresp7070@gmail.com?subject=Quiero%20agendar%20una%20demo%20gratis%20con%20Datum"
+            >
+              Agenda tu demo gratis
+            </a>
           </div>
         </div>
       </section>

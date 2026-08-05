@@ -42,87 +42,110 @@ const NAV_ITEMS = [
 type Modulo = {
   id: string;
   nombre: string;
-  icono: string;
   url: string;
   totalCuadros: number;
   highlights: string[];
 };
 
+// `highlights` combina dos cosas: lo que el video sí muestra, y lo que no
+// (para no dejarlo gigantesco mostrando cada función paso a paso) — así el
+// texto de abajo del demo cuenta la historia completa del módulo, no solo
+// la parte animada.
 const MODULOS: Modulo[] = [
   {
     id: "Ventas",
     nombre: "Ventas",
-    icono: "🧾",
     url: "app.datum.co/ventas",
     totalCuadros: 5,
-    highlights: ["Una sola pantalla", "El cliente se busca solo", "Un clic, todo queda registrado"],
+    highlights: [
+      "Una sola pantalla",
+      "El cliente se busca solo",
+      "Un clic, todo queda registrado",
+      "Proyecciones a mes, trimestre y año",
+      "Devoluciones y garantías, sin salir de Ventas",
+      "Descarga el historial en CSV",
+    ],
   },
   {
     id: "Inventario",
     nombre: "Inventario",
-    icono: "📦",
     url: "app.datum.co/inventario",
     totalCuadros: 4,
-    highlights: ["Alta manual o masiva", "Recetas con cálculo automático", "Nunca se calcula a mano"],
+    highlights: [
+      "Alta manual o masiva",
+      "Recetas con cálculo automático",
+      "Nunca se calcula a mano",
+      "Trasvase automático (a granel a detal)",
+      "Rentabilidad y últimas compras por proveedor",
+      "Fotos de tus productos",
+    ],
   },
   {
     id: "CRM",
     nombre: "CRM",
-    icono: "🤝",
     url: "app.datum.co/crm",
     totalCuadros: 5,
     highlights: [
       "Un cliente que compra ya queda aquí, sin crearlo a mano",
       "Perfil de compra calculado solo",
       "El historial nunca se duplica",
+      "Buscas un cliente por nombre, teléfono o placa",
+      "Etapas de embudo a tu medida",
+      "Cupones y calificación en la misma ficha",
     ],
   },
   {
     id: "P y G",
     nombre: "Estado P y G",
-    icono: "📊",
     url: "app.datum.co/pyg",
     totalCuadros: 5,
     highlights: [
       "Utilidad real, no solo ingresos menos gastos a ojo",
       "Las deudas no cuentan hasta que se abonan",
       "Un abono mueve los dos números a la vez",
+      "Gastos recurrentes o puntuales, diferenciados",
+      "Cualquier rango de fechas, un clic para volver al mes actual",
     ],
   },
   {
     id: "Panel de control",
     nombre: "Panel de control",
-    icono: "🧠",
     url: "app.datum.co/insights",
     totalCuadros: 4,
     highlights: [
       "Se compara contra tu propio historial, no un número inventado",
       "Resalta solo lo que se sale de lo normal",
       "Resumen en lenguaje natural, automático",
+      "Cruza margen, rotación e inversión por cliente",
+      "Filtra con un clic, y los filtros se combinan",
+      "Respeta el horario real de tu negocio",
     ],
   },
   {
     id: "Nómina",
     nombre: "Nómina",
-    icono: "👥",
     url: "app.datum.co/nomina",
     totalCuadros: 4,
     highlights: [
       "El salario queda congelado en cada período",
       "Aportes patronales y prestaciones se calculan solos",
       "El gasto real solo aparece al marcar pagada",
+      "Desprendible de pago listo para imprimir",
+      "Vacaciones y liquidación con indemnización",
+      "Prestaciones sociales acumuladas, siempre a la vista",
     ],
   },
   {
     id: "Promociones",
     nombre: "Promociones",
-    icono: "🏷️",
     url: "app.datum.co/promociones",
     totalCuadros: 4,
     highlights: [
       "El 2x1 se descuenta solo, sin cálculos manuales",
       "Compara la campaña contra el resto del período",
       "Un clic y ves todo su desempeño",
+      "También descuento %, monto fijo y lleve-y-gratis",
+      "Se marca sola en las gráficas de ventas",
     ],
   },
 ];
@@ -828,7 +851,6 @@ export function EcosistemaDemo() {
             className={`demo-tab-modulo${i === indiceModulo ? " activo" : ""}`}
             onClick={() => saltarAModulo(i)}
           >
-            <span className="icono">{m.icono}</span>
             {m.nombre}
           </button>
         ))}

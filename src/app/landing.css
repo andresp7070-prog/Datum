@@ -259,7 +259,7 @@
 
   section.chapter { padding: clamp(96px, 14vw, 180px) 0; }
   section.chapter.alt { background: var(--bg-alt); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  #ecosistema, #precios, #contacto { padding-top: clamp(48px, 6vw, 88px); }
+  #ecosistema, #precios, #contacto, #como-funciona { padding-top: clamp(48px, 6vw, 88px); }
   .chapter-head { max-width: 640px; margin: 0 auto 64px; text-align: center; }
   .chapter-head h2 { font-size: clamp(32px, 4.4vw, 56px); line-height: 1.08; }
   .chapter-head .subtitle { margin: 18px 0 0; font-family: "Fraunces", serif; font-weight: 560; font-size: clamp(19px, 2vw, 24px); color: var(--ink); }
@@ -377,7 +377,6 @@
   }
   .demo-tab-modulo:hover { background: rgba(243, 242, 238, 0.14); }
   .demo-tab-modulo.activo { background: var(--card); color: #1a1b33; border-color: var(--card); }
-  .demo-tab-modulo .icono { font-size: 14px; }
 
   .app-frame {
     background: var(--card); border: 1px solid var(--line); border-radius: 20px;
@@ -636,12 +635,13 @@
   .plan-feats svg { width: 15px; height: 15px; margin-top: 2px; flex-shrink: 0; color: var(--accent); }
 
   .cta-final p.sub { color: var(--ink-soft); font-size: 18px; max-width: 54ch; margin: 20px auto 0; text-wrap: balance; }
-  .cta-final .btn {
+  .btn {
     display: inline-flex; margin-top: 40px; padding: 16px 34px; border-radius: 999px;
     background: var(--accent); color: var(--bg); font-weight: 600; font-size: 15.5px;
     transition: background 0.2s ease, transform 0.2s ease;
   }
-  .cta-final .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+  .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+  .chapter-cta { text-align: center; margin-top: 48px; }
 
   footer { border-top: 1px solid var(--line); padding: 64px 0 0; }
   .footer-top {

@@ -33,12 +33,18 @@ export default async function NuevaVentaPage() {
 
   const { data: empresa } = await supabase
     .from("empresas")
-    .select("metodos_pago_disponibles, modulos_activos")
+    .select("metodos_pago_disponibles, modulos_activos, permite_apartados")
     .eq("id", perfil.empresa_id)
     .single();
 
   const crmActivo = (empresa?.modulos_activos ?? []).includes("crm");
   const inventarioActivo = (empresa?.modulos_activos ?? []).includes("inventario");
+  // permite_apartados no depende de tener el módulo de Inventario contratado
+  // — son cosas aparte. Una empresa sin Inventario (ej. Manantial) arma un
+  // apartado exactamente igual que una venta normal sin catálogo: nombre y
+  // costo escritos a mano — el check de apartado solo le agrega el campo
+  // de abono inicial, nada de cambiar cómo se cargan los productos.
+  const permiteApartados = Boolean(empresa?.permite_apartados);
 
   // Sin el módulo de Inventario, la empresa no tiene catálogo — la persona
   // escribe libremente qué vendió, y solo le ayudamos con lo que ya haya
@@ -64,6 +70,7 @@ export default async function NuevaVentaPage() {
         promociones={[]}
         crmActivo={crmActivo}
         puntoVentaId={puntoSeleccionado}
+        permiteApartados={permiteApartados}
       />
     );
   }
@@ -93,51 +100,74 @@ export default async function NuevaVentaPage() {
     diasRestantes: calcularDiasRestantes(item.cantidad, velocidadPorItem.get(item.id)),
   }));
 
-  const hoy = new Date().toISOString().slice(0, 10);
-  let promocionesQuery = supabase
-    .from("promociones")
-    .select(
-      "id, nombre, tipo_promocion, valor, aplica_a_categoria, item_regalo_id, promocion_items ( item_id )",
-    )
-    .eq("empresa_id", perfil.empresa_id)
-    .eq("activo", true)
-    .lte("fecha_inicio", hoy)
-    .gte("fecha_fin", hoy);
+  // Las promociones son parte del módulo de Inventario propiamente dicho —
+  // una empresa que solo tiene apartados (sin Inventario contratado) no las
+  // ve, aunque igual tenga acceso al catálogo para elegir qué se apartó.
+  let promociones: {
+    id: string;
+    nombre: string;
+    tipoPromocion: "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis" | "fidelidad";
+    valor: number | null;
+    aplicaACategoria: string | null;
+    itemIds: string[];
+    itemRegaloId: string | null;
+    regaloNombre: string | null;
+    regaloPrecio: number;
+  }[] = [];
 
-  // Promociones de este punto en particular, más las que aplican a todos
-  // los puntos (punto_venta_id null).
-  if (puntoSeleccionado) {
-    promocionesQuery = promocionesQuery.or(
-      `punto_venta_id.is.null,punto_venta_id.eq.${puntoSeleccionado}`,
-    );
+  if (inventarioActivo) {
+    const hoy = new Date().toISOString().slice(0, 10);
+    let promocionesQuery = supabase
+      .from("promociones")
+      .select(
+        "id, nombre, tipo_promocion, valor, aplica_a_categoria, item_regalo_id, promocion_items ( item_id )",
+      )
+      .eq("empresa_id", perfil.empresa_id)
+      .eq("activo", true)
+      .lte("fecha_inicio", hoy)
+      .gte("fecha_fin", hoy);
+
+    // Promociones de este punto en particular, más las que aplican a todos
+    // los puntos (punto_venta_id null).
+    if (puntoSeleccionado) {
+      promocionesQuery = promocionesQuery.or(
+        `punto_venta_id.is.null,punto_venta_id.eq.${puntoSeleccionado}`,
+      );
+    }
+
+    const { data: promocionesData } = await promocionesQuery;
+
+    promociones = (promocionesData ?? []).map((p) => {
+      const regalo = p.item_regalo_id ? items.find((i) => i.id === p.item_regalo_id) : null;
+      return {
+        id: p.id,
+        nombre: p.nombre,
+        tipoPromocion: p.tipo_promocion as
+          | "descuento_porcentaje"
+          | "descuento_fijo"
+          | "2x1"
+          | "lleve_x_gratis"
+          | "fidelidad",
+        valor: p.valor,
+        aplicaACategoria: p.aplica_a_categoria,
+        itemIds: (p.promocion_items ?? []).map((pi) => pi.item_id),
+        itemRegaloId: p.item_regalo_id,
+        regaloNombre: regalo?.nombre ?? null,
+        regaloPrecio: regalo?.precio_venta ?? 0,
+      };
+    });
   }
-
-  const { data: promocionesData } = await promocionesQuery;
-
-  const promociones = (promocionesData ?? []).map((p) => {
-    const regalo = p.item_regalo_id ? items.find((i) => i.id === p.item_regalo_id) : null;
-    return {
-      id: p.id,
-      nombre: p.nombre,
-      tipoPromocion: p.tipo_promocion as "descuento_porcentaje" | "descuento_fijo" | "2x1" | "lleve_x_gratis",
-      valor: p.valor,
-      aplicaACategoria: p.aplica_a_categoria,
-      itemIds: (p.promocion_items ?? []).map((pi) => pi.item_id),
-      itemRegaloId: p.item_regalo_id,
-      regaloNombre: regalo?.nombre ?? null,
-      regaloPrecio: regalo?.precio_venta ?? 0,
-    };
-  });
 
   return (
     <NuevaVentaForm
       items={items}
       sugerenciasProductos={[]}
-      inventarioActivo
+      inventarioActivo={inventarioActivo}
       metodosPago={empresa?.metodos_pago_disponibles ?? []}
       promociones={promociones}
       crmActivo={crmActivo}
       puntoVentaId={puntoSeleccionado}
+      permiteApartados={permiteApartados}
     />
   );
 }

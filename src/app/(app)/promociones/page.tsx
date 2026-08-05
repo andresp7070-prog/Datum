@@ -20,6 +20,7 @@ const etiquetaTipo: Record<string, string> = {
   descuento_fijo: "Descuento fijo",
   "2x1": "2x1",
   lleve_x_gratis: "Lleve X gratis",
+  fidelidad: "Fidelidad",
 };
 
 function estadoPromocion(p: Promocion) {

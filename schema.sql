@@ -1025,10 +1025,15 @@ create table promociones (
   nombre text not null,                             -- ej. 'Cambio de aceite 20% - Julio'
   codigo text,                                       -- código de cupón, opcional
   tipo_promocion text not null
-    check (tipo_promocion in ('descuento_porcentaje','descuento_fijo','2x1','lleve_x_gratis')),
-  valor numeric(12,2),                                -- 20 (=20%) o 10000 (=$10.000); null para 2x1 y lleve_x_gratis
+    check (tipo_promocion in ('descuento_porcentaje','descuento_fijo','2x1','lleve_x_gratis','fidelidad')),
+  -- 20 (=20%), 10000 (=$10.000), o para 'fidelidad' el número de compras
+  -- necesarias antes del regalo (ej. 10); null para 2x1 y lleve_x_gratis
+  valor numeric(12,2),
   aplica_a_categoria text,                            -- alternativa: toda una categoría
-  item_regalo_id uuid references inventario_items(id),  -- solo para 'lleve_x_gratis': qué producto se regala
+  -- Para 'lleve_x_gratis': qué producto se regala (distinto del que se compra).
+  -- Para 'fidelidad': el producto que se cuenta Y el que se regala son el
+  -- mismo (ej. cada 10 cafés, el 11 es gratis) — mismo campo, doble uso.
+  item_regalo_id uuid references inventario_items(id),
   fecha_inicio date not null,
   fecha_fin date not null,
   activo boolean not null default true,
@@ -1045,6 +1050,31 @@ create table promocion_items (
 
 alter table ventas_items add constraint ventas_items_promocion_id_fkey
   foreign key (promocion_id) references promociones(id);
+
+-- Progreso de un cliente en una promoción de fidelidad: cuántas unidades del
+-- producto lleva compradas (pagadas) desde su último canje, o desde siempre
+-- si nunca ha canjeado. No se guarda en ninguna tabla aparte — se calcula al
+-- vuelo desde el historial real de ventas, para que nunca se desincronice.
+create or replace function progreso_fidelidad(p_promocion_id uuid, p_contacto_id uuid)
+returns integer
+language sql stable
+as $$
+  with ultimo_canje as (
+    select max(v.fecha) as fecha
+    from ventas_items vi
+    join ventas v on v.id = vi.venta_id
+    where vi.promocion_id = p_promocion_id
+      and v.contacto_id = p_contacto_id
+  )
+  select coalesce(sum(vi.cantidad), 0)::integer
+  from ventas_items vi
+  join ventas v on v.id = vi.venta_id
+  join promociones p on p.id = p_promocion_id
+  where v.contacto_id = p_contacto_id
+    and vi.item_id = p.item_regalo_id
+    and (vi.promocion_id is null or vi.promocion_id <> p_promocion_id)
+    and v.fecha > coalesce((select fecha from ultimo_canje), '-infinity'::timestamptz);
+$$;
 
 -- Vista: desempeño completo de cada promoción — ventas que la usaron, ticket promedio
 -- de esas ventas, unidades movidas con descuento, cuánto dinero se regaló, y las ventas

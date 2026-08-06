@@ -423,9 +423,9 @@ export function Landing() {
           </div>
           <div className="nosotros-text">
             <p className="tag-label">Nosotros</p>
-            <h2>Un ecosistema hecho por alguien que cree en las empresas pequeñas</h2>
+            <h2>Un ecosistema hecho por alguien que cree en las empresas</h2>
             <p>
-              Fundador de Datum. Después de ver de cerca cuánto tiempo y dinero pierden los
+              Después de ver de cerca cuánto tiempo y dinero pierden los
               negocios por no tener sus datos en un solo lugar, decidí construir la herramienta
               que a mí me hubiera gustado tener: un punto de partida claro, hecho a la medida de
               cada negocio, para que cualquier empresa pueda crecer sin necesitar su propio

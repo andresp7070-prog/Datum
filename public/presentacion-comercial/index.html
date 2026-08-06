@@ -81,7 +81,7 @@ html, body { height: 100%; overflow: hidden; }
 
 /* ---------- Portada ---------- */
 .btn-presentar {
-  position: absolute; top: clamp(16px, 3vh, 28px); right: clamp(20px, 4vw, 56px);
+  position: absolute; top: clamp(16px, 3vh, 28px); right: clamp(20px, 4vw, 56px); z-index: 2;
   font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 999px;
   background: var(--ink); color: var(--bg); border: none;
   transition: background 0.15s ease, transform 0.15s ease;
@@ -100,50 +100,44 @@ html, body { height: 100%; overflow: hidden; }
 .home-intro h1 { font-size: clamp(38px, 7.5vh, 76px); line-height: 1; }
 .home-tagline { margin: 0; color: var(--ink-soft); font-size: clamp(14px, 1.8vh, 18px); }
 
-/* Fase 2: los 7 módulos en círculo, quietos, alrededor del logo */
-.orbit-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; }
-.orbit-diagram { position: relative; width: min(82vh, 64vw, 820px); height: min(82vh, 64vw, 820px); flex-shrink: 0; }
-
-.orbit-ring {
-  position: absolute; inset: 0;
-  opacity: 0; transform: scale(0.85);
+/* Fase 2: los 7 módulos en una vitrina tipo app, quieta */
+.orbit-wrap {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 0; width: 100%; gap: clamp(18px, 3vh, 32px);
+  opacity: 0; transform: scale(0.96);
   transition: opacity 0.6s cubic-bezier(.2,.8,.3,1.05), transform 0.6s cubic-bezier(.2,.8,.3,1.05);
 }
-.slide-home:not([data-fase="intro"]) .orbit-ring { opacity: 1; transform: scale(1); }
+.slide-home:not([data-fase="intro"]) .orbit-wrap { opacity: 1; transform: scale(1); }
 
-.orbit-spoke {
-  position: absolute; top: 50%; left: 50%; height: 1px;
-  width: min(33vh, 26vw, 330px);
-  background: linear-gradient(to right, transparent, var(--line) 45%, var(--line));
-  transform-origin: 0 50%;
-  transform: rotate(var(--angle));
-}
-.orbit-node {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%) rotate(var(--angle)) translate(min(33vh, 26vw, 330px)) rotate(calc(-1 * var(--angle)));
-}
+.bento-top { text-align: center; }
+.bento-logo { width: clamp(30px, 4vh, 40px); height: clamp(30px, 4vh, 40px); color: var(--accent); margin: 0 auto clamp(8px, 1.2vh, 12px); }
+.bento-logo svg { width: 100%; height: 100%; }
+.bento-top h1 { font-size: clamp(28px, 4.5vh, 38px); }
+.bento-top p { margin: clamp(6px, 1vh, 8px) 0 0; color: var(--ink-soft); font-size: clamp(13px, 1.6vh, 14.5px); }
 
-.orbit-hub {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  pointer-events: none; z-index: 1;
+.bento-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: clamp(96px, 14vh, 128px);
+  gap: clamp(10px, 1.4vw, 14px); width: min(940px, 90vw);
 }
-.orbit-hub-bg {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(30vh, 24vw, 280px); height: min(30vh, 24vw, 280px);
-  border-radius: 50%; background: var(--bg); z-index: -1;
-}
-.orbit-hub h1 { font-size: clamp(32px, 6.5vh, 68px); line-height: 1; }
-
 .modulo-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  min-width: 96px; padding: 13px 12px; border-radius: 16px;
-  border: 1px solid var(--line); background: var(--card); color: var(--ink);
-  font-family: "Public Sans", sans-serif; font-size: 12.5px; font-weight: 600;
-  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+  text-align: left; gap: 8px; padding: clamp(14px, 2vh, 22px);
+  border-radius: 20px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-family: "Public Sans", sans-serif;
+  transition: transform 0.2s cubic-bezier(.2,.8,.3,1.1), box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.modulo-btn .icono { font-size: 21px; }
-.modulo-btn:hover { border-color: var(--accent); transform: translateY(-2px); background: var(--bg-alt); }
+.modulo-btn:hover { transform: translateY(-4px); box-shadow: 0 26px 44px -22px rgba(20, 21, 31, 0.3); border-color: var(--accent); }
+.modulo-btn .icono { width: clamp(20px, 2.6vh, 26px); height: clamp(20px, 2.6vh, 26px); flex-shrink: 0; }
+.modulo-btn .icono svg { width: 100%; height: 100%; }
+.modulo-btn .nombre { display: block; font-family: "Fraunces", serif; font-weight: 600; font-size: clamp(13.5px, 1.9vh, 16px); }
+.modulo-btn .sub { display: block; font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+
+.modulo-btn[data-modulo="ventas"] { grid-column: span 2; grid-row: span 2; background: var(--accent); color: #fff; }
+.modulo-btn[data-modulo="ventas"] .sub { color: rgba(255, 255, 255, 0.62); }
+.modulo-btn[data-modulo="ventas"] .nombre { font-size: clamp(17px, 2.5vh, 23px); }
+.modulo-btn[data-modulo="ventas"] .icono { width: clamp(24px, 3vh, 30px); height: clamp(24px, 3vh, 30px); }
+.modulo-btn[data-modulo="crm"] { grid-column: span 2; grid-row: span 1; }
+.modulo-btn[data-modulo="promociones"] { grid-column: span 2; grid-row: span 1; }
 
 /* ---------- Pantalla de conexión de un módulo (accesible desde cualquier nodo del círculo) ---------- */
 .home-flujo { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(8px, 1.6vh, 16px); min-height: 0; width: 100%; }
@@ -404,18 +398,16 @@ html, body { height: 100%; overflow: hidden; }
   .app-sidebar-foot { display: none; }
   .fila-datos { display: none; }
   .home-intro h1 { font-size: clamp(30px, 6vh, 52px); }
-  .orbit-hub h1 { font-size: clamp(26px, 5.5vh, 48px); }
-  .orbit-diagram { width: min(68vh, 80vw, 540px); height: min(68vh, 80vw, 540px); }
-  .orbit-spoke { width: min(25vh, 32vw, 200px); }
-  .orbit-node { transform: translate(-50%, -50%) rotate(var(--angle)) translate(min(25vh, 32vw, 200px)) rotate(calc(-1 * var(--angle))); }
-  .modulo-btn { min-width: 72px; padding: 9px 8px; font-size: 10.5px; }
-  .modulo-btn .icono { font-size: 16px; }
+  .bento-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 108px; width: min(420px, 88vw); }
+  .modulo-btn[data-modulo="ventas"],
+  .modulo-btn[data-modulo="crm"],
+  .modulo-btn[data-modulo="promociones"] { grid-column: span 2; grid-row: span 1; }
   .pyg-grid, .panel-bento, .perfil-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* ---------- Reiniciar todo el ecosistema (portada) ---------- */
 .btn-reiniciar-todo {
-  position: absolute; top: clamp(16px, 3vh, 28px); left: clamp(20px, 4vw, 56px);
+  position: absolute; top: clamp(16px, 3vh, 28px); left: clamp(20px, 4vw, 56px); z-index: 2;
   font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 999px;
   background: transparent; color: var(--ink-soft); border: 1px solid var(--line);
   transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
@@ -512,43 +504,46 @@ html, body { height: 100%; overflow: hidden; }
   </div>
 
   <div class="orbit-wrap" id="orbit-wrap" hidden>
-    <div class="orbit-diagram" id="orbit-diagram">
-      <div class="orbit-ring" id="orbit-ring">
-        <div class="orbit-spoke" style="--angle:-90deg"></div>
-        <div class="orbit-spoke" style="--angle:-38.57deg"></div>
-        <div class="orbit-spoke" style="--angle:12.86deg"></div>
-        <div class="orbit-spoke" style="--angle:64.29deg"></div>
-        <div class="orbit-spoke" style="--angle:115.71deg"></div>
-        <div class="orbit-spoke" style="--angle:167.14deg"></div>
-        <div class="orbit-spoke" style="--angle:218.57deg"></div>
-
-        <div class="orbit-node" style="--angle:-90deg">
-          <button class="modulo-btn" type="button" data-modulo="ventas"><span class="icono">🧾</span>Ventas</button>
-        </div>
-        <div class="orbit-node" style="--angle:-38.57deg">
-          <button class="modulo-btn" type="button" data-modulo="inventario"><span class="icono">📦</span>Inventario</button>
-        </div>
-        <div class="orbit-node" style="--angle:12.86deg">
-          <button class="modulo-btn" type="button" data-modulo="crm"><span class="icono">🤝</span>CRM</button>
-        </div>
-        <div class="orbit-node" style="--angle:64.29deg">
-          <button class="modulo-btn" type="button" data-modulo="pyg"><span class="icono">📊</span>Estado P y G</button>
-        </div>
-        <div class="orbit-node" style="--angle:115.71deg">
-          <button class="modulo-btn" type="button" data-modulo="panel"><span class="icono">🧠</span>Panel de control</button>
-        </div>
-        <div class="orbit-node" style="--angle:167.14deg">
-          <button class="modulo-btn" type="button" data-modulo="nomina"><span class="icono">👥</span>Nómina</button>
-        </div>
-        <div class="orbit-node" style="--angle:218.57deg">
-          <button class="modulo-btn" type="button" data-modulo="promociones"><span class="icono">🏷️</span>Promociones</button>
-        </div>
+    <div class="bento-top">
+      <div class="bento-logo">
+        <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <path d="M 24 42 A 18 18 0 1 1 36.321 37.122" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+          <path d="M24 10 L29 24 L24 38 L19 24 Z" fill="currentColor" />
+        </svg>
       </div>
+      <h1>Datum</h1>
+      <p>Conoce nuestro ecosistema.</p>
+    </div>
 
-      <div class="orbit-hub">
-        <div class="orbit-hub-bg" aria-hidden="true"></div>
-        <h1>Datum</h1>
-      </div>
+    <div class="bento-grid">
+      <button class="modulo-btn" type="button" data-modulo="ventas">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h12v19l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg></span>
+        <span><span class="nombre">Ventas</span><span class="sub">El punto de partida de cada venta</span></span>
+      </button>
+      <button class="modulo-btn" type="button" data-modulo="crm">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8" r="3"/><path d="M2 20c0-3.3 2.9-6 6.5-6s6.5 2.7 6.5 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.6.4 4.5 2.4 4.5 4.8"/></svg></span>
+        <span><span class="nombre">CRM</span><span class="sub">Tus clientes, siempre al día</span></span>
+      </button>
+      <button class="modulo-btn" type="button" data-modulo="pyg">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="21" x2="5" y2="13"/><line x1="11" y1="21" x2="11" y2="8"/><line x1="17" y1="21" x2="17" y2="3"/></svg></span>
+        <span class="nombre">Estado P y G</span>
+      </button>
+      <button class="modulo-btn" type="button" data-modulo="panel">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>
+        <span class="nombre">Panel de control</span>
+      </button>
+      <button class="modulo-btn" type="button" data-modulo="inventario">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></svg></span>
+        <span class="nombre">Inventario</span>
+      </button>
+      <button class="modulo-btn" type="button" data-modulo="nomina">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="2.5"/><path d="M8 17c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5"/></svg></span>
+        <span class="nombre">Nómina</span>
+      </button>
+      <button class="modulo-btn" type="button" data-modulo="promociones">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 3H4v8.5L14 21.5l8.5-8.5L12.5 3z"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/></svg></span>
+        <span><span class="nombre">Promociones</span><span class="sub">Campañas que se aplican solas</span></span>
+      </button>
     </div>
   </div>
 </section>

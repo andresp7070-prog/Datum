@@ -540,7 +540,7 @@
   .demo-nomina-totales .val { display: block; font-weight: 700; font-size: 13px; }
   .demo-nota-verde { color: var(--good); font-size: 11.5px; }
 
-  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: 13px; color: rgba(243, 242, 238, 0.85); }
+  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: clamp(19px, 2vw, 24px); color: rgba(243, 242, 238, 0.85); }
 
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 

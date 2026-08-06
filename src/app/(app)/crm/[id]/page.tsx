@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { requerirModulo } from "@/lib/empresa";
 import { CambiarEtapa } from "./cambiar-etapa";
 import { NuevaInteraccionForm } from "./nueva-interaccion-form";
+import { CalificarCliente } from "./calificar-cliente";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -29,13 +30,27 @@ export default async function FichaClientePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("empresa_id")
+    .eq("id", user.id)
+    .single();
+
   const { data: contacto } = await supabase
     .from("crm_contactos")
-    .select("id, nombre, telefono, email, etapa_pipeline, empresa_cliente:atributos->>empresa")
+    .select("id, nombre, telefono, email, etapa_id, calificacion, empresa_cliente:atributos->>empresa")
     .eq("id", id)
     .single();
 
   if (!contacto) notFound();
+
+  const { data: etapas } = perfil?.empresa_id
+    ? await supabase
+        .from("crm_etapas")
+        .select("id, nombre, orden")
+        .eq("empresa_id", perfil.empresa_id)
+        .order("orden")
+    : { data: [] };
 
   const { data: perfilCompra } = await supabase
     .from("vista_perfil_cliente")
@@ -84,8 +99,11 @@ export default async function FichaClientePage({
             <p className="mt-1 text-sm text-gray-500">
               {contacto.telefono ?? "Sin teléfono"} · {contacto.email ?? "Sin correo"}
             </p>
+            <div className="mt-2">
+              <CalificarCliente contactoId={contacto.id} calificacionInicial={contacto.calificacion} />
+            </div>
           </div>
-          <CambiarEtapa contactoId={contacto.id} etapaActual={contacto.etapa_pipeline} />
+          <CambiarEtapa contactoId={contacto.id} etapas={etapas ?? []} etapaActualId={contacto.etapa_id} />
         </div>
       </div>
 
@@ -120,6 +138,21 @@ export default async function FichaClientePage({
                 <p className="text-gray-400">Días promedio entre compras</p>
                 <p className="font-medium text-gray-900">
                   {diasPromedio} {diasPromedio === 1 ? "día" : "días"}
+                </p>
+              </div>
+            )}
+            {perfilCompra.producto_mas_comprado && (
+              <div>
+                <p className="text-gray-400">Producto más comprado</p>
+                <p className="font-medium text-gray-900">
+                  {perfilCompra.producto_mas_comprado}
+                  {perfilCompra.unidades_producto_mas_comprado != null && (
+                    <span className="text-gray-400">
+                      {" "}
+                      ({perfilCompra.unidades_producto_mas_comprado} unidad
+                      {Number(perfilCompra.unidades_producto_mas_comprado) === 1 ? "" : "es"})
+                    </span>
+                  )}
                 </p>
               </div>
             )}

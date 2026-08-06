@@ -1,12 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+// Mide el ancho real disponible del contenedor (vía ResizeObserver) para que
+// las gráficas de barras puedan estirar el espacio entre barras y llenar el
+// espacio asignado, sin engordar el grosor de cada barra — ese se mantiene
+// fijo, solo crece el aire entre una y otra.
+function useAnchoContenedor() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ancho, setAncho] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entradas) => setAncho(entradas[0].contentRect.width));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, ancho] as const;
+}
 
 export type Barra = {
   etiqueta: string;
   valor: number;
   textoValor: string;
-  tono?: "default" | "positivo" | "negativo" | "alerta";
+  // 'tenue' = de-énfasis (gris), para cuando la mayoría de las barras son
+  // solo contexto y una o dos son las que de verdad importan — el patrón de
+  // "emphasis" (una en color, el resto en gris) en vez de que todo compita
+  // por la atención igual.
+  tono?: "default" | "positivo" | "negativo" | "alerta" | "tenue";
   // Si viene, la barra se puede hacer clic y navega ahí — así se arma un
   // filtro (por mes, por día de la semana, por producto...) haciendo clic
   // directo en la gráfica, sumándose a cualquier otro filtro ya activo.
@@ -18,6 +41,7 @@ const COLOR: Record<NonNullable<Barra["tono"]>, string> = {
   positivo: "#9c6900",
   negativo: "#7f2525",
   alerta: "#7f2525",
+  tenue: "#c3c2b7",
 };
 
 function tonoAutomatico(valor: number): NonNullable<Barra["tono"]> {
@@ -32,19 +56,42 @@ export function GraficoBarras({
   alto?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [contenedorRef, anchoDisponible] = useAnchoContenedor();
 
   if (datos.length === 0) return null;
 
-  const anchoBarra = 48;
-  const espacio = 16;
-  const ancho = datos.length * (anchoBarra + espacio) + espacio;
+  const anchoBarraMax = 48;
+  const anchoBarraMin = 20;
+  const espacioMinimo = 10;
+  // Aire fijo a los lados — sin esto, la etiqueta de la primera o última
+  // barra (ej. "$678,8 k") puede sobresalir del ancho del SVG y quedar
+  // cortada en vez de solo apretada.
+  const margen = 24;
+  const interiorDisponible = Math.max(0, anchoDisponible - margen * 2);
+
+  // Las barras crecen hasta 48px llenando el espacio disponible entre ellas;
+  // si con ese ancho no caben todas dentro del recuadro (ej. muchas horas
+  // del día), en vez de desbordarse y forzar scroll, se van angostando
+  // hasta un mínimo legible para que el gráfico siempre quede completo y
+  // centrado en su espacio.
+  let anchoBarra = anchoBarraMax;
+  let espacio = (interiorDisponible - datos.length * anchoBarra) / (datos.length + 1);
+  if (espacio < espacioMinimo) {
+    espacio = espacioMinimo;
+    anchoBarra = Math.max(
+      anchoBarraMin,
+      (interiorDisponible - (datos.length + 1) * espacio) / datos.length,
+    );
+  }
+  const interior = datos.length * anchoBarra + (datos.length + 1) * espacio;
+  const ancho = interior + margen * 2;
   const maxAbs = Math.max(1, ...datos.map((d) => Math.abs(d.valor)));
   const hayNegativos = datos.some((d) => d.valor < 0);
   const baseY = hayNegativos ? alto / 2 : alto - 8;
   const escala = (hayNegativos ? alto / 2 - 20 : alto - 8 - 20) / maxAbs;
 
   return (
-    <div className="flex justify-center overflow-x-auto">
+    <div ref={contenedorRef} className="flex w-full justify-center overflow-x-auto">
       <svg
         width={ancho}
         height={alto + 24}
@@ -53,7 +100,7 @@ export function GraficoBarras({
       >
         <line x1={0} y1={baseY} x2={ancho} y2={baseY} stroke="#c3c2b7" strokeWidth={1} />
         {datos.map((d, i) => {
-          const x = espacio + i * (anchoBarra + espacio);
+          const x = margen + espacio + i * (anchoBarra + espacio);
           const h = Math.max(Math.abs(d.valor) * escala, 1);
           const y = d.valor >= 0 ? baseY - h : baseY;
           const color = COLOR[d.tono ?? tonoAutomatico(d.valor)];
@@ -73,15 +120,17 @@ export function GraficoBarras({
                 fill={color}
                 opacity={activo ? 1 : 0.85}
               />
-              <text
-                x={x + anchoBarra / 2}
-                y={d.valor >= 0 ? y - 6 : y + h + 14}
-                textAnchor="middle"
-                fontSize={11}
-                fill="#52514e"
-              >
-                {d.textoValor}
-              </text>
+              {d.tono !== "tenue" && (
+                <text
+                  x={x + anchoBarra / 2}
+                  y={d.valor >= 0 ? y - 6 : y + h + 14}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill="#52514e"
+                >
+                  {d.textoValor}
+                </text>
+              )}
               <text
                 x={x + anchoBarra / 2}
                 y={alto + 18}
@@ -279,6 +328,9 @@ export type BarraAgrupada = {
   // dibujar una barra en cero.
   valorB: number | null;
   textoB: string;
+  // Si viene, el grupo completo se puede hacer clic y navega ahí — mismo
+  // patrón que Barra.enlace en GraficoBarras.
+  enlace?: string;
 };
 
 export function GraficoBarrasAgrupadas({
@@ -297,14 +349,27 @@ export function GraficoBarrasAgrupadas({
   alto?: number;
 }) {
   const [hover, setHover] = useState<string | null>(null);
+  const [contenedorRef, anchoDisponible] = useAnchoContenedor();
 
   if (datos.length === 0) return null;
 
-  const anchoBarra = 18;
-  const espacioBarras = 3;
-  const espacioGrupo = 22;
+  const anchoBarra = 26;
+  const espacioBarras = 4;
+  const espacioGrupoMinimo = 22;
+  // Mismo criterio que GraficoBarras: el espacio entre grupos crece para
+  // llenar el ancho disponible, pero con un tope — así con pocos meses los
+  // grupos quedan juntos en vez de perdidos, y solo se separan de verdad a
+  // medida que hay más datos.
+  const espacioGrupoMaximo = 48;
+  // Aire fijo a los lados para que la etiqueta del primer o último grupo no
+  // se corte contra el borde del SVG.
+  const margen = 28;
   const grupoAncho = anchoBarra * 2 + espacioBarras;
-  const ancho = datos.length * (grupoAncho + espacioGrupo) + espacioGrupo;
+  const anchoNatural = datos.length * (grupoAncho + espacioGrupoMinimo) + espacioGrupoMinimo;
+  const anchoMaximo = datos.length * (grupoAncho + espacioGrupoMaximo) + espacioGrupoMaximo;
+  const interior = Math.min(Math.max(anchoNatural, anchoDisponible - margen * 2), anchoMaximo);
+  const espacioGrupo = (interior - datos.length * grupoAncho) / (datos.length + 1);
+  const ancho = interior + margen * 2;
   const maxAbs = Math.max(1, ...datos.map((d) => Math.max(d.valorA, d.valorB ?? 0)));
   const baseY = alto - 8;
   const escala = (alto - 8 - 28) / maxAbs;
@@ -321,19 +386,23 @@ export function GraficoBarrasAgrupadas({
           {leyendaB}
         </span>
       </div>
-      <div className="flex justify-center overflow-x-auto">
+      <div ref={contenedorRef} className="flex w-full justify-center overflow-x-auto">
         <svg width={ancho} height={alto + 24} role="img" aria-label="Gráfico de barras agrupadas">
           <line x1={0} y1={baseY} x2={ancho} y2={baseY} stroke="#c3c2b7" strokeWidth={1} />
           {datos.map((d, i) => {
-            const xGrupo = espacioGrupo + i * (grupoAncho + espacioGrupo);
+            const xGrupo = margen + espacioGrupo + i * (grupoAncho + espacioGrupo);
             const hA = d.valorA > 0 ? Math.max(d.valorA * escala, 2) : 0;
             const yA = baseY - hA;
             const hB = d.valorB !== null && d.valorB > 0 ? Math.max(d.valorB * escala, 2) : 0;
             const yB = baseY - hB;
             const xB = xGrupo + anchoBarra + espacioBarras;
 
-            return (
-              <g key={i}>
+            const contenido = (
+              <g
+                onMouseEnter={() => setHover(`${i}g`)}
+                onMouseLeave={() => setHover(null)}
+                className={d.enlace ? "cursor-pointer" : "cursor-default"}
+              >
                 <rect
                   x={xGrupo}
                   y={yA}
@@ -341,10 +410,7 @@ export function GraficoBarrasAgrupadas({
                   height={hA}
                   rx={3}
                   fill={colorA}
-                  opacity={hover === `${i}a` ? 1 : 0.85}
-                  onMouseEnter={() => setHover(`${i}a`)}
-                  onMouseLeave={() => setHover(null)}
-                  className="cursor-default"
+                  opacity={hover === `${i}g` ? 1 : 0.85}
                 />
                 {hA > 0 && (
                   <text x={xGrupo + anchoBarra / 2} y={yA - 4} textAnchor="middle" fontSize={9} fill="#52514e">
@@ -360,10 +426,7 @@ export function GraficoBarrasAgrupadas({
                       height={hB}
                       rx={3}
                       fill={colorB}
-                      opacity={hover === `${i}b` ? 1 : 0.85}
-                      onMouseEnter={() => setHover(`${i}b`)}
-                      onMouseLeave={() => setHover(null)}
-                      className="cursor-default"
+                      opacity={hover === `${i}g` ? 1 : 0.85}
                     />
                     {hB > 0 && (
                       <text x={xB + anchoBarra / 2} y={yB - 4} textAnchor="middle" fontSize={9} fill="#52514e">
@@ -377,15 +440,136 @@ export function GraficoBarrasAgrupadas({
                   y={alto + 18}
                   textAnchor="middle"
                   fontSize={11}
-                  fill="#898781"
+                  fill={d.enlace ? "#1a1b33" : "#898781"}
+                  textDecoration={d.enlace ? "underline" : undefined}
                 >
                   {d.etiqueta}
                 </text>
               </g>
             );
+            return d.enlace ? (
+              <a key={i} href={d.enlace} aria-label={`Filtrar por ${d.etiqueta}`}>
+                {contenido}
+              </a>
+            ) : (
+              <g key={i}>{contenido}</g>
+            );
           })}
         </svg>
       </div>
+    </div>
+  );
+}
+
+export type PuntoDispersion = {
+  etiqueta: string;
+  x: number;
+  y: number;
+  textoX: string;
+  textoY: string;
+  // Los puntos destacados llevan el color de énfasis y su etiqueta al lado
+  // siempre visible; el resto queda en gris, de contexto — mismo patrón de
+  // "emphasis" que las barras con tono 'tenue'.
+  destacado?: boolean;
+  enlace?: string;
+};
+
+// Gráfico de dispersión (scatter) — para cruzar dos variables por entidad
+// (ej. margen % vs. ingresos por producto, o inversión total vs. qué tan
+// atrasado está un cliente respecto a su propio ritmo de compra). El patrón
+// completo siempre se muestra (así se ve la forma general de los datos);
+// los puntos que el motor de anomalías marcó como destacados se resaltan en
+// vez de solo describirse en una frase aparte.
+export function GraficoDispersion({
+  datos,
+  ejeXLabel,
+  ejeYLabel,
+  alto = 260,
+}: {
+  datos: PuntoDispersion[];
+  ejeXLabel: string;
+  ejeYLabel: string;
+  alto?: number;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const [contenedorRef, anchoDisponible] = useAnchoContenedor();
+
+  if (datos.length === 0) return null;
+
+  const margenIzq = 20;
+  const margenDer = 20;
+  const margenSup = 20;
+  const margenInf = 34;
+  const anchoMinimo = 320;
+  const ancho = Math.max(anchoMinimo, anchoDisponible);
+  const anchoPlot = ancho - margenIzq - margenDer;
+  const altoPlot = alto - margenSup - margenInf;
+
+  const xs = datos.map((d) => d.x);
+  const ys = datos.map((d) => d.y);
+  const xMin = Math.min(0, ...xs);
+  const xMax = Math.max(...xs, xMin + 1);
+  const yMin = Math.min(0, ...ys);
+  const yMax = Math.max(...ys, yMin + 1);
+
+  const escalaX = (v: number) => margenIzq + ((v - xMin) / (xMax - xMin)) * anchoPlot;
+  const escalaY = (v: number) => margenSup + altoPlot - ((v - yMin) / (yMax - yMin)) * altoPlot;
+
+  return (
+    <div ref={contenedorRef} className="w-full overflow-x-auto">
+      <svg width={ancho} height={alto} role="img" aria-label="Gráfico de dispersión">
+        <line x1={margenIzq} y1={margenSup} x2={margenIzq} y2={margenSup + altoPlot} stroke="#e1e0d9" strokeWidth={1} />
+        <line
+          x1={margenIzq}
+          y1={margenSup + altoPlot}
+          x2={margenIzq + anchoPlot}
+          y2={margenSup + altoPlot}
+          stroke="#e1e0d9"
+          strokeWidth={1}
+        />
+        <text x={margenIzq + anchoPlot / 2} y={alto - 6} textAnchor="middle" fontSize={10} fill="#898781">
+          {ejeXLabel}
+        </text>
+        <text x={margenIzq} y={margenSup - 6} fontSize={10} fill="#898781">
+          {ejeYLabel}
+        </text>
+        {datos
+          .slice()
+          .sort((a, b) => Number(a.destacado) - Number(b.destacado))
+          .map((d, i) => {
+            const cx = escalaX(d.x);
+            const cy = escalaY(d.y);
+            const r = d.destacado ? 6 : 4;
+            const color = d.destacado ? "#9c6900" : "#c3c2b7";
+            const mostrarEtiqueta = d.destacado || hover === i;
+            const contenido = (
+              <g
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+                className={d.enlace ? "cursor-pointer" : "cursor-default"}
+              >
+                <circle cx={cx} cy={cy} r={r} fill={color} stroke="#fdfcf9" strokeWidth={2} />
+                {mostrarEtiqueta && (
+                  <text x={cx} y={cy - r - 5} textAnchor="middle" fontSize={9} fill="#52514e">
+                    {d.etiqueta}
+                  </text>
+                )}
+                {hover === i && (
+                  <text x={cx} y={cy + r + 12} textAnchor="middle" fontSize={9} fill="#898781">
+                    {d.textoX} · {d.textoY}
+                  </text>
+                )}
+              </g>
+            );
+            return d.enlace ? (
+              <a key={i} href={d.enlace} aria-label={`Ver ${d.etiqueta}`}>
+                {contenido}
+              </a>
+            ) : (
+              <g key={i}>{contenido}</g>
+            );
+          })}
+      </svg>
     </div>
   );
 }

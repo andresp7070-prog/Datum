@@ -45,7 +45,7 @@ export default async function VentasPage({
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("empresa_id, punto_venta_id")
+    .select("empresa_id, punto_venta_id, empresas ( permite_apartados )")
     .eq("id", user.id)
     .single();
 
@@ -63,12 +63,23 @@ export default async function VentasPage({
     perfil.punto_venta_id,
   );
 
+  // La relación empresa_id -> empresas.id es uno-a-uno; Supabase la tipa como
+  // arreglo por falta de tipos generados, pero en tiempo de ejecución es un objeto.
+  const empresa = perfil.empresas as unknown as { permite_apartados: boolean } | null;
+  const permiteApartados = Boolean(empresa?.permite_apartados);
+
+  // El historial muestra solo el último mes (30 días corridos) — para ver
+  // más atrás está el CSV, que exporta todo lo que se ve en pantalla.
+  const haceUnMes = new Date();
+  haceUnMes.setDate(haceUnMes.getDate() - 30);
+
   let query = supabase
     .from("ventas")
     .select(
       "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) )",
     )
     .eq("empresa_id", perfil.empresa_id)
+    .gte("fecha", haceUnMes.toISOString())
     .order("fecha", { ascending: false });
 
   if (puntoSeleccionado) query = query.eq("punto_venta_id", puntoSeleccionado);
@@ -117,10 +128,13 @@ export default async function VentasPage({
 
   return (
     <div>
-      <VentasTabs />
+      <VentasTabs permiteApartados={permiteApartados} />
 
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Ventas</h1>
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Ventas</h1>
+          <p className="text-xs text-gray-400">Mostrando el último mes</p>
+        </div>
         <div className="flex gap-2">
           <DescargarCsv
             filas={filasCsv}

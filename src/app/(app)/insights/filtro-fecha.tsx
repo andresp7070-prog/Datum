@@ -19,11 +19,15 @@ export function FiltroFecha({
   periodoActual,
   diaSemanaActual,
   productoActual,
+  categoriaActual,
+  horaActual,
   productos,
 }: {
   periodoActual: string;
   diaSemanaActual: string;
   productoActual: string;
+  categoriaActual?: string;
+  horaActual?: string;
   productos: { id: string; nombre: string }[];
 }) {
   const router = useRouter();
@@ -77,6 +81,18 @@ export function FiltroFecha({
     irA(params);
   }
 
+  function quitarCategoria() {
+    const params = paramsActuales();
+    params.delete("categoria");
+    irA(params);
+  }
+
+  function quitarHora() {
+    const params = paramsActuales();
+    params.delete("hora");
+    irA(params);
+  }
+
   function reiniciar() {
     setMostrarPersonalizado(false);
     setDesde("");
@@ -84,7 +100,12 @@ export function FiltroFecha({
     router.replace(pathname, { scroll: false });
   }
 
-  const hayFiltrosActivos = periodoActual !== "todo" || Boolean(diaSemanaActual) || Boolean(productoActual);
+  const hayFiltrosActivos =
+    periodoActual !== "todo" ||
+    Boolean(diaSemanaActual) ||
+    Boolean(productoActual) ||
+    Boolean(categoriaActual) ||
+    Boolean(horaActual);
 
   return (
     <div className="space-y-3">
@@ -190,6 +211,29 @@ export function FiltroFecha({
           </select>
         </div>
       </div>
+
+      {(categoriaActual || horaActual) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {categoriaActual && (
+            <button
+              type="button"
+              onClick={quitarCategoria}
+              className="rounded-lg border border-accent bg-accent px-3 py-1 text-xs font-medium text-white"
+            >
+              Categoría: {categoriaActual} ✕
+            </button>
+          )}
+          {horaActual && (
+            <button
+              type="button"
+              onClick={quitarHora}
+              className="rounded-lg border border-accent bg-accent px-3 py-1 text-xs font-medium text-white"
+            >
+              Hora: {horaActual}h ✕
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

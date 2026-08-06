@@ -18,6 +18,12 @@ type Velocidad = {
   unidades_por_dia: number;
 };
 
+type Compra = {
+  item_id: string;
+  ultima_compra: string | null;
+  dias_promedio_entre_compras: number | null;
+};
+
 export default async function ProyeccionesInventarioPage() {
   const supabase = await createClient();
   const {
@@ -58,14 +64,26 @@ export default async function ProyeccionesInventarioPage() {
           .in("item_id", itemIds)
       : { data: [] };
 
+  const { data: compraData } =
+    itemIds.length > 0
+      ? await supabase
+          .from("vista_compras_producto")
+          .select("item_id, ultima_compra, dias_promedio_entre_compras")
+          .eq("empresa_id", perfil.empresa_id)
+          .in("item_id", itemIds)
+      : { data: [] };
+
   const velocidadPorItem = new Map(
     ((velocidadData ?? []) as Velocidad[]).map((v) => [v.item_id, v.unidades_por_dia]),
   );
 
+  const compraPorItem = new Map(((compraData ?? []) as Compra[]).map((c) => [c.item_id, c]));
+
   const filas = items.map((item) => {
     const velocidad = velocidadPorItem.get(item.id) ?? 0;
     const diasRestantes = velocidad > 0 ? item.cantidad / velocidad : null;
-    return { item, disponible: item.cantidad, velocidad, diasRestantes };
+    const compra = compraPorItem.get(item.id) ?? null;
+    return { item, disponible: item.cantidad, velocidad, diasRestantes, compra };
   });
 
   const conVentasRecientes = filas
@@ -99,10 +117,12 @@ export default async function ProyeccionesInventarioPage() {
                 <th className="p-3 font-medium">Disponible</th>
                 <th className="p-3 font-medium">Venta reciente</th>
                 <th className="p-3 font-medium">Días de stock</th>
+                <th className="p-3 font-medium">Compras cada</th>
+                <th className="p-3 font-medium">Última compra</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {conVentasRecientes.map(({ item, disponible, velocidad, diasRestantes }) => (
+              {conVentasRecientes.map(({ item, disponible, velocidad, diasRestantes, compra }) => (
                 <tr key={item.id}>
                   <td className="p-3">
                     <Link href={`/inventario/${item.id}`} className="text-gray-900 hover:underline">
@@ -125,6 +145,20 @@ export default async function ProyeccionesInventarioPage() {
                     }`}
                   >
                     {diasRestantes !== null ? `${Math.floor(diasRestantes)} días` : "—"}
+                  </td>
+                  <td className="p-3 text-gray-700">
+                    {compra?.dias_promedio_entre_compras
+                      ? `cada ${Math.round(compra.dias_promedio_entre_compras)} días`
+                      : "—"}
+                  </td>
+                  <td className="p-3 text-gray-700">
+                    {compra?.ultima_compra
+                      ? new Date(compra.ultima_compra).toLocaleDateString("es-CO", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—"}
                   </td>
                 </tr>
               ))}

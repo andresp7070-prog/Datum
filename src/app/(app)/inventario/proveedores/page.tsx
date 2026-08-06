@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { InventarioTabs } from "../inventario-tabs";
-import { etiquetaFrecuenciaPago } from "@/lib/proveedores";
+import { DirectorioProveedores, type ResumenProveedor } from "./directorio-proveedores";
 
 export default async function ProveedoresPage() {
   const supabase = await createClient();
@@ -25,11 +25,27 @@ export default async function ProveedoresPage() {
     );
   }
 
-  const { data: proveedores } = await supabase
-    .from("proveedores")
-    .select("id, nombre, telefono, frecuencia_pago, dia_semana_pago, dias_personalizado")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("nombre");
+  const [{ data: proveedores }, { data: resumenesData }] = await Promise.all([
+    supabase
+      .from("proveedores")
+      .select("id, nombre, telefono, frecuencia_pago, dia_semana_pago, dias_personalizado")
+      .eq("empresa_id", perfil.empresa_id)
+      .order("nombre"),
+    supabase
+      .from("vista_proveedores")
+      .select("proveedor_id, ultima_compra, costo_promedio, categoria_mas_comprada, rentabilidad")
+      .eq("empresa_id", perfil.empresa_id),
+  ]);
+
+  const resumenes: Record<string, ResumenProveedor> = {};
+  for (const fila of resumenesData ?? []) {
+    resumenes[fila.proveedor_id] = {
+      ultima_compra: fila.ultima_compra,
+      costo_promedio: fila.costo_promedio,
+      categoria_mas_comprada: fila.categoria_mas_comprada,
+      rentabilidad: Number(fila.rentabilidad ?? 0),
+    };
+  }
 
   return (
     <div>
@@ -45,23 +61,7 @@ export default async function ProveedoresPage() {
         </Link>
       </div>
 
-      {!proveedores || proveedores.length === 0 ? (
-        <p className="text-gray-400">Todavía no tienes proveedores registrados.</p>
-      ) : (
-        <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200">
-          {proveedores.map((p) => (
-            <li key={p.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{p.nombre}</p>
-                <p className="text-xs text-gray-400">{p.telefono || "Sin teléfono"}</p>
-              </div>
-              <span className="text-sm text-gray-700">
-                {etiquetaFrecuenciaPago(p.frecuencia_pago, p.dia_semana_pago, p.dias_personalizado)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DirectorioProveedores proveedores={proveedores ?? []} resumenes={resumenes} />
     </div>
   );
 }

@@ -30,6 +30,7 @@ const modulos = [
   { nombre: "Estado P y G", href: "/pyg", slug: "pyg" },
   { nombre: "Panel de control", href: "/insights", slug: "insights" },
   { nombre: "Promociones", href: "/promociones", slug: "promociones" },
+  { nombre: "Nómina", href: "/nomina", slug: "nomina" },
 ];
 
 const enlacesAdmin = [
@@ -104,7 +105,7 @@ export function Sidebar({
         <div>
           <div className="mb-6 flex items-center gap-3 px-3 text-accent">
             <LogoCompass className="h-9 w-9" />
-            <span className="text-4xl font-bold tracking-tight text-gray-900">Datum</span>
+            <span className="font-serif text-4xl font-semibold text-gray-900">Datum</span>
           </div>
           <ul className="space-y-1">
             {enlacesAdmin.map((enlace) => {
@@ -138,7 +139,7 @@ export function Sidebar({
       <div>
         <div className="mb-6 flex items-center gap-3 px-3 text-accent">
           <LogoCompass className="h-9 w-9" />
-          <span className="text-4xl font-bold tracking-tight text-gray-900">Datum</span>
+          <span className="font-serif text-4xl font-semibold text-gray-900">Datum</span>
         </div>
 
         {mostrarSelectorPunto && (

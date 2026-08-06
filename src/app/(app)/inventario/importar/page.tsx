@@ -13,7 +13,7 @@ export default async function ImportarInventarioPage() {
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("empresa_id")
+    .select("empresa_id, empresas ( tipo_negocio )")
     .eq("id", user.id)
     .single();
 
@@ -25,6 +25,11 @@ export default async function ImportarInventarioPage() {
     );
   }
 
+  // La relación empresa_id -> empresas.id es uno-a-uno; Supabase la tipa como
+  // arreglo por falta de tipos generados, pero en tiempo de ejecución es un objeto.
+  const empresa = perfil.empresas as unknown as { tipo_negocio: string | null } | null;
+  const tipoNegocio = empresa?.tipo_negocio ?? null;
+
   const { puntosVenta, puntoSeleccionado } = await obtenerContextoPunto(
     supabase,
     perfil.empresa_id,
@@ -34,7 +39,11 @@ export default async function ImportarInventarioPage() {
   return (
     <div>
       <InventarioTabs />
-      <ImportarInventarioForm puntosVenta={puntosVenta} puntoInicial={puntoSeleccionado} />
+      <ImportarInventarioForm
+        puntosVenta={puntosVenta}
+        puntoInicial={puntoSeleccionado}
+        tipoNegocio={tipoNegocio}
+      />
     </div>
   );
 }

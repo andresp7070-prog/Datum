@@ -10,6 +10,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-hanken-grotesk);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-fraunces);
 
   /* Paleta de marca Datum: negro para texto, #1A1B33 para botones/brújula,
      #9C6900 para indicadores y datos destacados, #1A1B33 para gráficas. */
@@ -52,4 +53,23 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* Aguja de la brújula girando, para la pantalla de carga entre módulos
+   (src/app/(app)/loading.tsx). El aro se queda quieto, solo gira la aguja. */
+@keyframes girar-aguja {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.aguja-girando {
+  transform-origin: 24px 24px;
+  animation: girar-aguja 1.1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aguja-girando {
+    animation: none;
+  }
 }

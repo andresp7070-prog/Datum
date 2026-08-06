@@ -743,7 +743,7 @@ export function NuevaVentaForm({
                       className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
                     />
                   </div>
-                  <div className="col-span-3">
+                  <div className={permiteApartados ? "col-span-3" : "col-span-5"}>
                     <label className="mb-1 block text-xs font-medium text-gray-700">
                       Precio unitario
                     </label>
@@ -755,18 +755,20 @@ export function NuevaVentaForm({
                       className="w-full rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
                     />
                   </div>
-                  <div className="col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-gray-700">
-                      Costo (opcional)
-                    </label>
-                    <EntradaMoneda
-                      value={String(linea.costoUnitario)}
-                      onChange={(valor) =>
-                        actualizarLinea(linea.key, { costoUnitario: valor === "" ? "" : Number(valor) || 0 })
-                      }
-                      className="w-full rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
-                    />
-                  </div>
+                  {permiteApartados && (
+                    <div className="col-span-2">
+                      <label className="mb-1 block text-xs font-medium text-gray-700">
+                        Costo (opcional)
+                      </label>
+                      <EntradaMoneda
+                        value={String(linea.costoUnitario)}
+                        onChange={(valor) =>
+                          actualizarLinea(linea.key, { costoUnitario: valor === "" ? "" : Number(valor) || 0 })
+                        }
+                        className="w-full rounded-lg border border-gray-300 py-2 pl-6 pr-2 text-sm focus:border-gray-500 focus:outline-none"
+                      />
+                    </div>
+                  )}
                   <div className="col-span-1 flex justify-end">
                     <button
                       type="button"

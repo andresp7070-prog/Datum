@@ -4,6 +4,8 @@ import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "./sidebar";
+import { NavegacionProvider } from "./navegacion";
+import { NavegandoOverlay } from "./navegando-overlay";
 
 export default async function AppLayout({
   children,
@@ -41,32 +43,37 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar
-        modulosActivos={perfil.empresas?.modulos_activos ?? []}
-        rolEmpresa={perfil.rol_empresa}
-        esAdmin={esDePlataforma}
-        puntosVenta={puntosVenta}
-        puntoSeleccionado={puntoSeleccionado}
-        mostrarSelectorPunto={mostrarSelectorPunto}
-        puntoFijoNombre={
-          !mostrarSelectorPunto && perfil.punto_venta_id
-            ? (puntosVenta.find((p) => p.id === perfil.punto_venta_id)?.nombre ?? null)
-            : null
-        }
-      />
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <span className="text-sm text-gray-500">{perfil.nombre}</span>
-          <Link
-            href="/cuenta"
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Mi cuenta
-          </Link>
-        </header>
-        <main className="flex-1 p-6">{children}</main>
+    <NavegacionProvider>
+      <div className="flex min-h-screen">
+        <Sidebar
+          modulosActivos={perfil.empresas?.modulos_activos ?? []}
+          rolEmpresa={perfil.rol_empresa}
+          esAdmin={esDePlataforma}
+          puntosVenta={puntosVenta}
+          puntoSeleccionado={puntoSeleccionado}
+          mostrarSelectorPunto={mostrarSelectorPunto}
+          puntoFijoNombre={
+            !mostrarSelectorPunto && perfil.punto_venta_id
+              ? (puntosVenta.find((p) => p.id === perfil.punto_venta_id)?.nombre ?? null)
+              : null
+          }
+        />
+        <div className="flex flex-1 flex-col">
+          <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <span className="text-sm text-gray-500">{perfil.nombre}</span>
+            <Link
+              href="/cuenta"
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Mi cuenta
+            </Link>
+          </header>
+          <main className="relative flex-1 p-6">
+            {children}
+            <NavegandoOverlay />
+          </main>
+        </div>
       </div>
-    </div>
+    </NavegacionProvider>
   );
 }

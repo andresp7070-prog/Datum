@@ -3,7 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PuntoSelector } from "./punto-selector";
+import { useNavegacion } from "./navegacion";
 import type { PuntoVenta } from "@/lib/puntos";
+
+// Clic normal (sin modificadores) navega vía startTransition, para que la
+// pantalla anterior se quede visible con NavegandoOverlay encima en vez de
+// desaparecer de golpe. Ctrl/Cmd/Shift/clic-central se dejan pasar tal cual,
+// para no romper "abrir en pestaña nueva".
+function manejarClic(
+  e: React.MouseEvent<HTMLAnchorElement>,
+  href: string,
+  navegar: (href: string) => void,
+) {
+  if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+    return;
+  }
+  e.preventDefault();
+  navegar(href);
+}
 
 const modulos = [
   { nombre: "Resumen", href: "/resumen", slug: null },
@@ -71,6 +88,7 @@ export function Sidebar({
   puntoFijoNombre?: string | null;
 }) {
   const pathname = usePathname();
+  const { navegar } = useNavegacion();
   const esVendedor = rolEmpresa === "vendedor";
 
   const habilitados = modulos.filter((m) => estaHabilitado(m, modulosActivos, esVendedor));
@@ -95,6 +113,7 @@ export function Sidebar({
                 <li key={enlace.href}>
                   <Link
                     href={enlace.href}
+                    onClick={(e) => manejarClic(e, enlace.href, navegar)}
                     className={`block rounded-lg px-3 py-2 text-sm font-medium ${
                       activo ? "bg-accent text-white" : "text-gray-700 hover:bg-gray-100"
                     }`}
@@ -141,6 +160,7 @@ export function Sidebar({
               <li key={modulo.href}>
                 <Link
                   href={modulo.href}
+                  onClick={(e) => manejarClic(e, modulo.href, navegar)}
                   className={`block rounded-lg px-3 py-2 text-sm font-medium ${
                     activo ? "bg-accent text-white" : "text-gray-700 hover:bg-gray-100"
                   }`}

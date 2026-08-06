@@ -36,7 +36,7 @@ const PLANES: Plan[] = [
   },
 ];
 
-const DESCUENTO_ANUAL = 0.2;
+const DESCUENTO_ANUAL = 0.15;
 
 function formatoCOP(valor: number) {
   return "$" + Math.round(valor).toLocaleString("es-CO");
@@ -330,7 +330,7 @@ export function Landing() {
                 className={`billing-btn${esAnual ? " is-active" : ""}`}
                 onClick={() => setBilling("anual")}
               >
-                Anual <span className="off-badge">-20% OFF</span>
+                Anual <span className="off-badge">-15% OFF</span>
               </button>
             </div>
           </div>

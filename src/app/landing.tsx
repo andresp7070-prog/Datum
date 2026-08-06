@@ -338,7 +338,9 @@ export function Landing() {
                   {plan.destacado && (
                     <span className="plan-flag">
                       Recomendado
-                      <span aria-hidden="true">🔥</span>
+                      <svg viewBox="0 0 24 24" fill="#1a1b33" aria-hidden="true">
+                        <path d="M12 2c-3 4-7 8-7 12.5A7 7 0 0 0 12 22a7 7 0 0 0 7-7.5C19 10 15 6 12 2z" />
+                      </svg>
                     </span>
                   )}
                   <span className="plan-name">{plan.nombre}</span>

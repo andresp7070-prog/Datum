@@ -162,16 +162,10 @@
     min-height: 92svh;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; overflow: hidden; padding: 120px 0 80px;
-    /* Primer bloque de la página en el navy de marca — el mismo tono del
-       logo — con los tokens de texto/línea reescalados para que el resto
-       de reglas (h1, .lede, .more, etc.) siga funcionando sin duplicarlas. */
-    background: #1a1b33;
-    --ink: #f3f2ee;
-    --ink-soft: #c3c2d6;
-    --ink-faint: #9698ad;
-    --line: rgba(243, 242, 238, 0.22);
-    --line-strong: rgba(243, 242, 238, 0.45);
-    --motif-color: #d9d6ea;
+    /* Beige, igual que el resto de bloques claros — así el navy de Ecosistema
+       y Precios queda como el color que se resalta entre bloques claros, en
+       vez de dos bloques navy pegados al principio de la página. */
+    background: var(--bg);
     color: var(--ink);
   }
   .hero-motif {

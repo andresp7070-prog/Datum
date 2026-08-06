@@ -68,6 +68,7 @@ h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 600; lett
 a { color: inherit; }
 button { font-family: inherit; cursor: pointer; }
 html, body { height: 100%; overflow: hidden; }
+[hidden] { display: none !important; }
 
 /* ---------- Escenario tipo diapositivas — sin scroll, a pantalla completa ---------- */
 .stage { position: relative; width: 100vw; height: 100dvh; overflow: hidden; background: var(--bg); }
@@ -90,9 +91,12 @@ html, body { height: 100%; overflow: hidden; }
 .orbit-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; }
 .orbit-diagram { position: relative; width: min(82vh, 64vw, 820px); height: min(82vh, 64vw, 820px); flex-shrink: 0; }
 
-.orbit-ring { position: absolute; inset: 0; animation: orbit-spin 60s linear infinite; }
-@keyframes orbit-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes orbit-spin-reverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+.orbit-ring {
+  position: absolute; inset: 0;
+  opacity: 0; transform: scale(0.85);
+  transition: opacity 0.6s cubic-bezier(.2,.8,.3,1.05), transform 0.6s cubic-bezier(.2,.8,.3,1.05);
+}
+.slide-home:not([data-fase="intro"]) .orbit-ring { opacity: 1; transform: scale(1); }
 
 .orbit-spoke {
   position: absolute; top: 50%; left: 50%; height: 1px;
@@ -106,18 +110,17 @@ html, body { height: 100%; overflow: hidden; }
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%) rotate(var(--angle)) translate(min(33vh, 26vw, 330px)) rotate(calc(-1 * var(--angle)));
 }
-.orbit-node-spin { display: inline-block; animation: orbit-spin-reverse 60s linear infinite; }
+.orbit-node-spin { display: inline-block; }
 
-.orbit-diagram:hover .orbit-ring,
-.orbit-diagram:hover .orbit-node-spin { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) {
-  .orbit-ring, .orbit-node-spin { animation: none; }
-}
+.orbit-flujo-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2; }
+.orbit-flujo-svg path { fill: none; stroke: var(--line-strong); stroke-width: 1.5; opacity: 0.65; }
+.orbit-flujo-svg circle.pulso { r: 4px; fill: var(--highlight, #9c6900); opacity: 0; offset-distance: 0%; offset-rotate: 0deg; }
+.orbit-flujo-svg circle.pulso.activo { animation: efecto-pulso 0.85s cubic-bezier(.3,.6,.3,1) forwards; }
 
 .orbit-hub {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; text-align: center;
-  pointer-events: none; z-index: 1;
+  pointer-events: none; z-index: 3;
 }
 .orbit-hub-bg {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -132,15 +135,28 @@ html, body { height: 100%; overflow: hidden; }
 .home-tagline { margin: clamp(8px, 1.6vh, 14px) 0 0; color: var(--ink-soft); font-size: clamp(13px, 1.6vh, 17px); }
 
 .modulo-btn {
+  position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   min-width: 96px; padding: 13px 12px; border-radius: 16px;
   border: 1px solid var(--line); background: var(--card); color: var(--ink);
   font-family: "Public Sans", sans-serif; font-size: 12.5px; font-weight: 600;
-  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 .modulo-btn .icono { font-size: 21px; }
 .modulo-btn:not(:disabled):hover { border-color: var(--accent); transform: translateY(-2px); background: var(--bg-alt); }
 .modulo-btn:disabled { color: var(--ink-faint); cursor: default; opacity: 0.6; }
+
+/* ---------- Selección de módulos por cliente (portada) ---------- */
+.modulo-chk {
+  display: none; position: absolute; top: -7px; right: -7px; z-index: 1;
+  width: 19px; height: 19px; border-radius: 50%; align-items: center; justify-content: center;
+  border: 1.5px solid var(--line-strong); background: var(--card); color: transparent;
+  font-size: 11px; line-height: 1; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.slide-home[data-fase="seleccion"] .modulo-chk { display: flex; }
+.modulo-btn.marcado .modulo-chk { background: var(--accent); border-color: var(--accent); color: #fff; }
+.modulo-btn.no-marcado { opacity: 0.38; }
+.modulo-btn.en-flujo { border-color: var(--accent); background: var(--good-bg); box-shadow: 0 0 0 4px var(--good-bg); }
 
 /* ---------- Diapositiva de un módulo ---------- */
 .slide-modulo-head { display: flex; align-items: center; gap: 16px; flex-shrink: 0; margin-bottom: clamp(8px, 1.4vh, 14px); }
@@ -403,15 +419,122 @@ html, body { height: 100%; overflow: hidden; }
   .modulo-btn .icono { font-size: 16px; }
   .pyg-grid, .panel-bento, .perfil-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ---------- Reiniciar todo el ecosistema (portada) ---------- */
+.btn-reiniciar-todo {
+  position: absolute; top: clamp(16px, 3vh, 28px); left: clamp(20px, 4vw, 56px);
+  font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 999px;
+  background: transparent; color: var(--ink-soft); border: 1px solid var(--line);
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.btn-reiniciar-todo:hover { color: var(--ink); border-color: var(--ink-soft); transform: translateY(-1px); }
+
+/* ---------- Portada por fases: intro (solo logo) → selección → flujo → listo ---------- */
+.home-footer { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 0; padding-top: clamp(6px, 1.2vh, 14px); }
+
+.intro-hint {
+  margin: 0; font-size: clamp(13px, 1.7vh, 16px); font-weight: 600; color: var(--ink-soft);
+  display: flex; align-items: center; gap: 8px;
+}
+.intro-hint .flecha { animation: nudge 1.4s ease-in-out infinite; }
+
+.seleccion-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.seleccion-texto { margin: 0; font-size: 13.5px; color: var(--ink-soft); text-align: center; }
+.btn-continuar-flujo {
+  font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 999px;
+  background: var(--ink); color: var(--bg); border: none;
+  transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+.btn-continuar-flujo:not(:disabled):hover { background: var(--accent-hover); transform: translateY(-1px); }
+.btn-continuar-flujo:disabled { opacity: 0.4; cursor: default; }
+
+#flujo-hint { border-radius: 14px; cursor: pointer; width: min(640px, 92vw); }
+
+.btn-editar-modulos {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.btn-editar-modulos:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+/* ---------- Efecto en el ecosistema (aparece justo después de guardar una venta) ---------- */
+.efecto-ecosistema { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(10px, 1.8vh, 20px); width: 100%; min-height: 0; }
+.efecto-ecosistema:not([hidden]) { display: flex; }
+.efecto-titulo { font-size: clamp(24px, 3.6vh, 40px); text-align: center; }
+.efecto-sub { margin: -6px 0 0; color: var(--ink-soft); font-size: clamp(13px, 1.7vh, 16px); text-align: center; max-width: 54ch; }
+
+.efecto-escenario {
+  position: relative; width: min(940px, 92vw);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: clamp(28px, 7vw, 110px); padding: clamp(18px, 3.4vh, 36px) 0;
+}
+.efecto-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.efecto-svg path { fill: none; stroke: var(--line-strong); stroke-width: 1.5; opacity: 0.6; }
+.efecto-svg circle.pulso {
+  r: 4px; fill: var(--highlight, #9c6900); opacity: 0;
+  offset-distance: 0%; offset-rotate: 0deg;
+}
+.efecto-svg circle.pulso.activo { animation: efecto-pulso 0.85s cubic-bezier(.3,.6,.3,1) forwards; }
+@keyframes efecto-pulso {
+  0% { opacity: 0; offset-distance: 0%; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; offset-distance: 100%; }
+}
+
+.efecto-origen {
+  position: relative; z-index: 1; flex-shrink: 0;
+  display: flex; align-items: center; gap: 13px;
+  background: var(--card); border: 1.5px solid var(--line-strong); border-radius: 18px;
+  padding: 15px 20px; box-shadow: 0 24px 55px -22px rgba(20, 21, 31, 0.32);
+  animation: filaPopIn 0.4s cubic-bezier(.2,.8,.3,1.1);
+}
+.efecto-origen-icono {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff; font-size: 18px;
+}
+.efecto-origen-titulo { font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.efecto-origen-detalle { font-size: 12px; color: var(--ink-soft); margin-top: 2px; white-space: nowrap; }
+
+.efecto-destinos { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 13px; }
+.efecto-card {
+  display: flex; align-items: center; gap: 13px; min-width: 270px;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 16px;
+  padding: 12px 18px; text-align: left; cursor: pointer;
+  opacity: 0.35; transform: translateX(12px);
+  transition: border-color 0.15s ease, transform 0.5s cubic-bezier(.2,.8,.3,1.05), box-shadow 0.2s ease, opacity 0.5s ease;
+}
+.efecto-card.lista { opacity: 1; transform: translateX(0); }
+.efecto-card:hover { border-color: var(--accent); transform: translateX(0) translateY(-2px); box-shadow: 0 16px 32px -18px rgba(20, 21, 31, 0.32); }
+.efecto-card-icono {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; font-size: 17px;
+  display: flex; align-items: center; justify-content: center; background: var(--bg-alt);
+}
+.efecto-card-texto { min-width: 0; }
+.efecto-card-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); }
+.efecto-card-delta { font-size: 15px; font-weight: 700; color: var(--ink); margin-top: 2px; min-height: 19px; }
+.efecto-card-delta .positivo { color: var(--good); }
+.efecto-card-delta .negativo { color: #b3261e; }
+.efecto-card-nota { font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+
+.efecto-hint { margin: 0; font-size: 12.5px; color: var(--ink-faint); text-align: center; }
+
+@media (max-width: 780px), (max-height: 620px) {
+  .efecto-escenario { flex-direction: column; gap: 22px; }
+  .efecto-svg { display: none; }
+  .efecto-card { min-width: 0; width: min(420px, 88vw); }
+}
 </style>
 </head>
 <body>
 
 <div class="stage" id="stage">
 
-<section class="slide slide-home" id="slide-home">
+<section class="slide slide-home" id="slide-home" data-fase="intro">
+  <button class="btn-reiniciar-todo" id="btn-reiniciar-todo" type="button">↺ Reiniciar ecosistema</button>
   <button class="btn-presentar" id="btn-presentar" type="button">⛶ Presentar</button>
-  <div class="orbit-wrap">
+  <div class="orbit-wrap" id="zona-intro">
     <div class="orbit-diagram" id="orbit-diagram">
       <div class="orbit-ring" id="orbit-ring">
         <div class="orbit-spoke" style="--angle:-90deg"></div>
@@ -424,40 +547,42 @@ html, body { height: 100%; overflow: hidden; }
 
         <div class="orbit-node" style="--angle:-90deg">
           <div class="orbit-node-spin">
-            <button class="modulo-btn" type="button" data-modulo="ventas"><span class="icono">🧾</span>Ventas</button>
+            <button class="modulo-btn" type="button" data-modulo="ventas"><span class="modulo-chk" aria-hidden="true">✓</span><span class="icono">🧾</span>Ventas</button>
           </div>
         </div>
         <div class="orbit-node" style="--angle:-38.57deg">
           <div class="orbit-node-spin">
-            <button class="modulo-btn" type="button" data-modulo="inventario"><span class="icono">📦</span>Inventario</button>
+            <button class="modulo-btn" type="button" data-modulo="inventario"><span class="modulo-chk" aria-hidden="true">✓</span><span class="icono">📦</span>Inventario</button>
           </div>
         </div>
         <div class="orbit-node" style="--angle:12.86deg">
           <div class="orbit-node-spin">
-            <button class="modulo-btn" type="button" data-modulo="crm"><span class="icono">🤝</span>CRM</button>
+            <button class="modulo-btn" type="button" data-modulo="crm"><span class="modulo-chk" aria-hidden="true">✓</span><span class="icono">🤝</span>CRM</button>
           </div>
         </div>
         <div class="orbit-node" style="--angle:64.29deg">
           <div class="orbit-node-spin">
-            <button class="modulo-btn" type="button" data-modulo="pyg"><span class="icono">📊</span>Estado P y G</button>
+            <button class="modulo-btn" type="button" data-modulo="pyg"><span class="modulo-chk" aria-hidden="true">✓</span><span class="icono">📊</span>Estado P y G</button>
           </div>
         </div>
         <div class="orbit-node" style="--angle:115.71deg">
           <div class="orbit-node-spin">
-            <button class="modulo-btn" type="button" data-modulo="panel"><span class="icono">🧠</span>Panel de control</button>
+            <button class="modulo-btn" type="button" data-modulo="panel"><span class="modulo-chk" aria-hidden="true">✓</span><span class="icono">🧠</span>Panel de control</button>
           </div>
         </div>
         <div class="orbit-node" style="--angle:167.14deg">
           <div class="orbit-node-spin">
-            <button class="modulo-btn" type="button" data-modulo="nomina"><span class="icono">👥</span>Nómina</button>
+            <button class="modulo-btn" type="button" data-modulo="nomina"><span class="modulo-chk" aria-hidden="true">✓</span><span class="icono">👥</span>Nómina</button>
           </div>
         </div>
         <div class="orbit-node" style="--angle:218.57deg">
           <div class="orbit-node-spin">
-            <button class="modulo-btn" type="button" data-modulo="promociones"><span class="icono">🏷️</span>Promociones</button>
+            <button class="modulo-btn" type="button" data-modulo="promociones"><span class="modulo-chk" aria-hidden="true">✓</span><span class="icono">🏷️</span>Promociones</button>
           </div>
         </div>
       </div>
+
+      <svg class="orbit-flujo-svg" id="orbit-flujo-svg"></svg>
 
       <div class="orbit-hub">
         <div class="orbit-hub-bg" aria-hidden="true"></div>
@@ -473,6 +598,22 @@ html, body { height: 100%; overflow: hidden; }
         <p class="home-tagline">Conoce nuestro ecosistema.</p>
       </div>
     </div>
+  </div>
+
+  <div class="home-footer">
+    <p class="intro-hint" id="intro-hint">Haz clic en cualquier parte para comenzar <span class="flecha">→</span></p>
+
+    <div class="seleccion-footer" id="seleccion-footer" hidden>
+      <p class="seleccion-texto">Marca los módulos que este cliente necesita — el resto queda afuera de la demo.</p>
+      <button class="btn-continuar-flujo" id="btn-continuar-flujo" type="button">Ver cómo se conecta →</button>
+    </div>
+
+    <div class="avance-hint" id="flujo-hint" hidden>
+      <span id="flujo-texto"></span>
+      <span class="flecha">→</span>
+    </div>
+
+    <button class="btn-editar-modulos" id="btn-editar-modulos" type="button" hidden>✎ Editar módulos para este cliente</button>
   </div>
 </section>
 
@@ -585,6 +726,48 @@ html, body { height: 100%; overflow: hidden; }
         <span id="avance-texto-ventas">Haz clic para agregar una venta</span>
         <span class="flecha">→</span>
       </div>
+    </div>
+
+    <div class="efecto-ecosistema" id="efecto-ecosistema" hidden>
+      <h3 class="efecto-titulo">Así se mueve tu ecosistema</h3>
+      <p class="efecto-sub">Una sola venta, un solo clic — esto es lo que pasa detrás, en el mismo instante.</p>
+      <div class="efecto-escenario" id="efecto-escenario">
+        <svg class="efecto-svg" id="efecto-svg"></svg>
+        <div class="efecto-origen" id="efecto-origen">
+          <div class="efecto-origen-icono">🧾</div>
+          <div>
+            <div class="efecto-origen-titulo">Venta registrada</div>
+            <div class="efecto-origen-detalle" id="efecto-origen-detalle"></div>
+          </div>
+        </div>
+        <div class="efecto-destinos">
+          <button type="button" class="efecto-card" id="efecto-card-inventario">
+            <div class="efecto-card-icono">📦</div>
+            <div class="efecto-card-texto">
+              <div class="efecto-card-titulo">Inventario</div>
+              <div class="efecto-card-delta" id="efecto-delta-inventario"></div>
+              <div class="efecto-card-nota">Descontado por receta, en automático</div>
+            </div>
+          </button>
+          <button type="button" class="efecto-card" id="efecto-card-crm">
+            <div class="efecto-card-icono">🤝</div>
+            <div class="efecto-card-texto">
+              <div class="efecto-card-titulo">CRM</div>
+              <div class="efecto-card-delta" id="efecto-delta-crm"></div>
+              <div class="efecto-card-nota" id="efecto-nota-crm"></div>
+            </div>
+          </button>
+          <button type="button" class="efecto-card" id="efecto-card-pyg">
+            <div class="efecto-card-icono">📊</div>
+            <div class="efecto-card-texto">
+              <div class="efecto-card-titulo">Estado P y G</div>
+              <div class="efecto-card-delta" id="efecto-delta-pyg"></div>
+              <div class="efecto-card-nota">Utilidad neta recalculada al instante</div>
+            </div>
+          </button>
+        </div>
+      </div>
+      <p class="efecto-hint">Haz clic en cualquier tarjeta para comprobarlo tú mismo ahí mismo.</p>
     </div>
 
     <p class="slide-highlights">✓ Una sola pantalla · ✓ El cliente se busca solo · ✓ Un clic, todo queda registrado</p>
@@ -1077,22 +1260,127 @@ html, body { height: 100%; overflow: hidden; }
 </div>
 
 <script>
-(function () {
-  "use strict";
-
-  var PRODUCTOS = [
+// ======================================================================
+// Estado compartido de todo el ecosistema — una sola fuente de verdad.
+// Cada módulo lee de aquí en vez de tener su propia copia de los datos,
+// así que registrar una venta en Ventas de verdad mueve Inventario, CRM
+// y Estado P y G — no solo lo parece.
+// ======================================================================
+var ESTADO_INICIAL = {
+  productos: [
     { id: "pan",     nombre: "Pan de hamburguesa", categoria: "Panadería", emoji: "🍞", cantidad: 40, unidad: "unidad", costo: 800,  precio: 1500 },
     { id: "carne",   nombre: "Carne de res",        categoria: "Cárnicos",  emoji: "🥩", cantidad: 30, unidad: "unidad", costo: 2500, precio: 4500 },
     { id: "queso",   nombre: "Queso cheddar",        categoria: "Lácteos",   emoji: "🧀", cantidad: 50, unidad: "unidad", costo: 600,  precio: 1200 },
     { id: "lechuga", nombre: "Lechuga",               categoria: "Verduras",  emoji: "🥬", cantidad: 15, unidad: "unidad", costo: 200,  precio: 400 },
     { id: "tomate",  nombre: "Tomate",                categoria: "Verduras",  emoji: "🍅", cantidad: 20, unidad: "unidad", costo: 250,  precio: 450 }
-  ];
+  ],
+  receta: {
+    nombre: "Hamburguesa Clásica", emoji: "🍔",
+    necesita: { pan: 1, carne: 1, queso: 1, lechuga: 2, tomate: 1 },
+    precioVenta: 12000
+  },
+  clientes: [],
+  ventas: [],
+  pyg: {
+    ingresosBase: 8400000, costoBase: 3200000, otros: 0,
+    gastos: [
+      { cat: "Arriendo", monto: 1200000, tipo: "Recurrente · mensual" },
+      { cat: "Servicios públicos", monto: 400000, tipo: "Recurrente · mensual" },
+      { cat: "Publicidad", monto: 500000, tipo: "Costo puntual" }
+    ],
+    deuda: { desc: "Préstamo equipo de cocina", total: 2000000, pagadoInicial: 500000 },
+    abono: 500000
+  }
+};
+
+function clonarProfundo(v) { return JSON.parse(JSON.stringify(v)); }
+function formatoCOP(v) { return "$" + Math.round(v).toLocaleString("es-CO"); }
+
+var ESTADO = clonarProfundo(ESTADO_INICIAL);
+var SUSCRIPTORES = [];
+function suscribirse(fn) { SUSCRIPTORES.push(fn); }
+function notificarCambio() { SUSCRIPTORES.forEach(function (fn) { fn(); }); }
+
+function porIdEstado(id) { return ESTADO.productos.filter(function (p) { return p.id === id; })[0]; }
+
+function calcularProducibles() {
+  var min = Infinity;
+  Object.keys(ESTADO.receta.necesita).forEach(function (id) {
+    var p = porIdEstado(id);
+    min = Math.min(min, Math.floor(p.cantidad / ESTADO.receta.necesita[id]));
+  });
+  return min;
+}
+
+function calcularPerfilCliente(nombre) {
+  var compras = ESTADO.ventas.filter(function (v) { return v.cliente === nombre; });
+  var inversion = compras.reduce(function (s, v) { return s + v.monto; }, 0);
+  var unidades = compras.reduce(function (s, v) { return s + v.cantidad; }, 0);
+  return {
+    compras: compras,
+    inversionTotal: inversion,
+    ticketMedio: compras.length ? inversion / compras.length : 0,
+    totalCompras: compras.length,
+    productoMasComprado: compras.length ? (ESTADO.receta.nombre + " (" + unidades + " unidad" + (unidades === 1 ? "" : "es") + ")") : "—"
+  };
+}
+
+// El corazón de la demo: una sola función que de verdad registra la venta
+// en todo el ecosistema — descuenta inventario según la receta, crea o
+// actualiza el cliente en CRM, y queda contabilizada en Estado P y G.
+// Cliente/producto fijos a propósito (Camila Ruiz, 2 hamburguesas): es el
+// mismo ejemplo que ya usaba el resto de la presentación, ahora conectado
+// de verdad en vez de repetido a mano en cada módulo.
+function registrarVenta() {
+  var CLIENTE = { nombre: "Camila Ruiz", telefono: "3001234567", correo: "camila.ruiz@gmail.com" };
+  var cantidad = 2;
+  var precio = ESTADO.receta.precioVenta;
+  var monto = cantidad * precio;
+
+  var deltaInventario = [];
+  var costoTotal = 0;
+  Object.keys(ESTADO.receta.necesita).forEach(function (id) {
+    var n = ESTADO.receta.necesita[id] * cantidad;
+    var p = porIdEstado(id);
+    p.cantidad -= n;
+    costoTotal += p.costo * n;
+    deltaInventario.push({ id: id, nombre: p.nombre, emoji: p.emoji, unidad: p.unidad, delta: -n, restante: p.cantidad });
+  });
+
+  var esNuevo = ESTADO.clientes.filter(function (c) { return c.nombre === CLIENTE.nombre; }).length === 0;
+  if (esNuevo) {
+    ESTADO.clientes.push({ nombre: CLIENTE.nombre, telefono: CLIENTE.telefono, correo: CLIENTE.correo, etapa: "Cerrado", calificacion: 0, interacciones: [] });
+  }
+
+  ESTADO.ventas.push({
+    fecha: new Date(), cliente: CLIENTE.nombre, producto: ESTADO.receta.nombre,
+    cantidad: cantidad, precio: precio, monto: monto, costo: costoTotal, metodo: "Efectivo"
+  });
+
+  var perfil = calcularPerfilCliente(CLIENTE.nombre);
+  var efecto = {
+    cliente: CLIENTE, cantidad: cantidad, monto: monto,
+    inventario: deltaInventario,
+    crm: { esNuevo: esNuevo, nombre: CLIENTE.nombre, perfil: perfil },
+    pyg: { ingresoDelta: monto, costoDelta: costoTotal, utilidadDelta: monto - costoTotal }
+  };
+
+  notificarCambio();
+  return efecto;
+}
+
+function reiniciarEcosistema() {
+  ESTADO = clonarProfundo(ESTADO_INICIAL);
+  Object.keys(window.reiniciarModulo || {}).forEach(function (k) { window.reiniciarModulo[k](); });
+  notificarCambio();
+}
+window.reiniciarEcosistema = reiniciarEcosistema;
+
+(function () {
+  "use strict";
+
   var ORDEN_MANUAL = ["pan", "carne"];
   var ORDEN_MASIVO = ["queso", "lechuga", "tomate"];
-  var RECETA = {
-    nombre: "Hamburguesa Clásica", emoji: "🍔",
-    necesita: { pan: 1, carne: 1, queso: 1, lechuga: 2, tomate: 1 }
-  };
 
   var TOTAL_FRAMES = 4; // 0..3
   var frame = 0;
@@ -1110,18 +1398,6 @@ html, body { height: 100%; overflow: hidden; }
     listaProductos: document.getElementById("lista-productos"),
     listaRecetas: document.getElementById("lista-recetas")
   };
-
-  function formatoCOP(v) { return "$" + Math.round(v).toLocaleString("es-CO"); }
-  function porId(id) { return PRODUCTOS.filter(function (p) { return p.id === id; })[0]; }
-
-  function calcularProducibles() {
-    var min = Infinity;
-    Object.keys(RECETA.necesita).forEach(function (id) {
-      var p = porId(id);
-      min = Math.min(min, Math.floor(p.cantidad / RECETA.necesita[id]));
-    });
-    return min;
-  }
 
   function filaProductoHTML(p, animar) {
     return (
@@ -1145,9 +1421,9 @@ html, body { height: 100%; overflow: hidden; }
 
   function recetaHTML(abierta, animar) {
     var producibles = calcularProducibles();
-    var insumosHTML = Object.keys(RECETA.necesita).map(function (id) {
-      var p = porId(id);
-      var n = RECETA.necesita[id];
+    var insumosHTML = Object.keys(ESTADO.receta.necesita).map(function (id) {
+      var p = porIdEstado(id);
+      var n = ESTADO.receta.necesita[id];
       return (
         '<div class="insumo-fila-app">' +
           '<span class="izq">' + p.emoji + " " + p.nombre + "</span>" +
@@ -1159,8 +1435,8 @@ html, body { height: 100%; overflow: hidden; }
     return (
       '<div class="fila-receta' + (abierta ? " abierta" : "") + (animar ? " entra" : "") + '">' +
         '<div class="fila-receta-head">' +
-          '<div class="fila-thumb">' + RECETA.emoji + "</div>" +
-          '<div class="info"><div class="nombre">' + RECETA.nombre + "</div></div>" +
+          '<div class="fila-thumb">' + ESTADO.receta.emoji + "</div>" +
+          '<div class="info"><div class="nombre">' + ESTADO.receta.nombre + "</div></div>" +
           '<div class="fila-receta-derecha"><div class="num">' + producibles + " unidad" + (producibles === 1 ? "" : "es") + " posible" + (producibles === 1 ? "" : "s") + '</div><div class="sub">con el stock actual</div></div>' +
           '<span class="chevron-app">▾</span>' +
         "</div>" +
@@ -1206,7 +1482,6 @@ html, body { height: 100%; overflow: hidden; }
   }
 
   function pintarProductos(animarDesde) {
-    // animarDesde: null = sin animación (salto directo); número = a partir de qué índice animar
     var orden = ORDEN_MANUAL.concat(ORDEN_MASIVO);
     el.listaProductos.innerHTML = "";
     if (frame < 1) {
@@ -1215,7 +1490,7 @@ html, body { height: 100%; overflow: hidden; }
     }
     var html = orden.map(function (id, i) {
       var animar = animarDesde !== null && i >= animarDesde;
-      return filaProductoHTML(porId(id), animar);
+      return filaProductoHTML(porIdEstado(id), animar);
     }).join("");
     el.listaProductos.innerHTML = html;
   }
@@ -1244,7 +1519,7 @@ html, body { height: 100%; overflow: hidden; }
       render({ animarProductosDesde: 0 });
     } else if (frame === 2) {
       render({ animarReceta: true });
-    } else if (frame === 3) {
+    } else {
       render({});
     }
   }
@@ -1262,6 +1537,7 @@ html, body { height: 100%; overflow: hidden; }
   });
   window.reiniciarModulo = window.reiniciarModulo || {};
   window.reiniciarModulo.inventario = function () { frame = 0; render({}); };
+  suscribirse(function () { render({}); });
 
   render({});
 })();
@@ -1269,17 +1545,17 @@ html, body { height: 100%; overflow: hidden; }
 (function () {
   "use strict";
 
-  var CLIENTE = { nombre: "Camila Ruiz", telefono: "3001234567", correo: "camila.ruiz@gmail.com" };
-  var VENTA = { producto: "Hamburguesa Clásica 🍔", cantidad: 2, precio: 12000, metodo: "Efectivo" };
-  var TOTAL = VENTA.cantidad * VENTA.precio;
+  var CLIENTE_DEMO = { nombre: "Camila Ruiz", telefono: "3001234567", correo: "camila.ruiz@gmail.com" };
+  var PRODUCTO_DEMO_TXT = "Hamburguesa Clásica 🍔";
+  var CANTIDAD_DEMO = 2;
 
   var ahora = new Date();
   var FECHA_TXT = ahora.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
   var HORA_TXT = ahora.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
-  var FECHA_HISTORIAL = FECHA_TXT + ", " + HORA_TXT;
 
-  var TOTAL_FRAMES = 5; // 0..4
+  var TOTAL_FRAMES = 6; // 0..5
   var frame = 0;
+  var ultimoEfecto = null;
 
   var el = {
     zona: document.getElementById("avance-zona-ventas"),
@@ -1303,10 +1579,19 @@ html, body { height: 100%; overflow: hidden; }
     campoPrecio: document.getElementById("campo-precio"),
     campoTotal: document.getElementById("campo-total"),
     btnGuardar: document.getElementById("btn-guardar-venta"),
-    banner: document.getElementById("banner-exito")
+    banner: document.getElementById("banner-exito"),
+    appFrame: document.querySelector("#slide-ventas .app-frame"),
+    highlights: document.querySelector("#slide-ventas .slide-highlights"),
+    efecto: document.getElementById("efecto-ecosistema"),
+    efectoOrigenDetalle: document.getElementById("efecto-origen-detalle"),
+    efectoDeltaInventario: document.getElementById("efecto-delta-inventario"),
+    efectoDeltaCrm: document.getElementById("efecto-delta-crm"),
+    efectoNotaCrm: document.getElementById("efecto-nota-crm"),
+    efectoDeltaPyg: document.getElementById("efecto-delta-pyg"),
+    cardInventario: document.getElementById("efecto-card-inventario"),
+    cardCrm: document.getElementById("efecto-card-crm"),
+    cardPyg: document.getElementById("efecto-card-pyg")
   };
-
-  function formatoCOP(v) { return "$" + Math.round(v).toLocaleString("es-CO"); }
 
   function pintarDots() {
     el.dots.innerHTML = "";
@@ -1327,6 +1612,7 @@ html, body { height: 100%; overflow: hidden; }
       "Haz clic para completar cliente y producto",
       "Haz clic para guardar la venta",
       "Haz clic para ver el historial actualizado",
+      "Haz clic para ver el efecto en tu ecosistema",
       "Haz clic para volver y elegir otro módulo"
     ];
     el.texto.textContent = textos[frame];
@@ -1334,14 +1620,8 @@ html, body { height: 100%; overflow: hidden; }
     el.zona.style.cursor = "pointer";
   }
 
-  function campoVacio(elDiv, texto) {
-    elDiv.textContent = texto;
-    elDiv.classList.add("vacio");
-  }
-  function campoLleno(elDiv, texto) {
-    elDiv.textContent = texto;
-    elDiv.classList.remove("vacio");
-  }
+  function campoVacio(elDiv, texto) { elDiv.textContent = texto; elDiv.classList.add("vacio"); }
+  function campoLleno(elDiv, texto) { elDiv.textContent = texto; elDiv.classList.remove("vacio"); }
 
   function limpiarFormulario() {
     campoVacio(el.campoNombre, "—");
@@ -1357,38 +1637,124 @@ html, body { height: 100%; overflow: hidden; }
   }
 
   function llenarFormulario() {
-    campoLleno(el.campoNombre, CLIENTE.nombre);
-    campoLleno(el.campoTelefono, CLIENTE.telefono);
-    campoLleno(el.campoCorreo, CLIENTE.correo);
+    campoLleno(el.campoNombre, CLIENTE_DEMO.nombre);
+    campoLleno(el.campoTelefono, CLIENTE_DEMO.telefono);
+    campoLleno(el.campoCorreo, CLIENTE_DEMO.correo);
     el.hintCliente.style.visibility = "visible";
-    campoLleno(el.campoProducto, VENTA.producto);
-    campoLleno(el.campoCantidad, VENTA.cantidad + " unidad(es)");
-    campoLleno(el.campoPrecio, formatoCOP(VENTA.precio));
-    el.campoTotal.textContent = "Total: " + formatoCOP(TOTAL);
+    campoLleno(el.campoProducto, PRODUCTO_DEMO_TXT);
+    campoLleno(el.campoCantidad, CANTIDAD_DEMO + " unidad(es)");
+    campoLleno(el.campoPrecio, formatoCOP(ESTADO.receta.precioVenta));
+    el.campoTotal.textContent = "Total: " + formatoCOP(CANTIDAD_DEMO * ESTADO.receta.precioVenta);
     el.btnGuardar.style.visibility = "visible";
   }
 
-  function pintarHistorial(conVenta) {
-    if (!conVenta) {
+  function pintarHistorial() {
+    var ventas = ESTADO.ventas.slice().reverse();
+    if (ventas.length === 0) {
       el.listaVentas.innerHTML = '<div class="empty-app">Todavía no hay ventas registradas.</div>';
       el.statVentasHoy.textContent = "0";
       el.statVendidoHoy.textContent = "$0";
       return;
     }
-    el.statVentasHoy.textContent = "1";
-    el.statVendidoHoy.textContent = formatoCOP(TOTAL);
-    el.listaVentas.innerHTML =
-      '<div class="fila-venta entra">' +
-        "<div>" +
-          '<div class="nombre">' + CLIENTE.nombre + "</div>" +
-          '<div class="fecha">' + FECHA_HISTORIAL + "</div>" +
-          '<div class="productos">' + VENTA.producto + " ×" + VENTA.cantidad + "</div>" +
-        "</div>" +
-        '<div class="derecha">' +
-          '<div class="monto">' + formatoCOP(TOTAL) + "</div>" +
-          '<div class="metodo">' + VENTA.metodo + "</div>" +
-        "</div>" +
-      "</div>";
+    el.statVentasHoy.textContent = String(ventas.length);
+    el.statVendidoHoy.textContent = formatoCOP(ventas.reduce(function (s, v) { return s + v.monto; }, 0));
+    el.listaVentas.innerHTML = ventas.map(function (v, i) {
+      return (
+        '<div class="fila-venta' + (i === 0 && frame === 4 ? " entra" : "") + '">' +
+          "<div>" +
+            '<div class="nombre">' + v.cliente + "</div>" +
+            '<div class="fecha">' + FECHA_TXT + ", " + HORA_TXT + "</div>" +
+            '<div class="productos">' + v.producto + " ×" + v.cantidad + "</div>" +
+          "</div>" +
+          '<div class="derecha">' +
+            '<div class="monto">' + formatoCOP(v.monto) + "</div>" +
+            '<div class="metodo">' + v.metodo + "</div>" +
+          "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function contarHasta(elDiv, desde, hasta, formatoFn, ms) {
+    var inicio = null;
+    function paso(ts) {
+      if (inicio === null) inicio = ts;
+      var t = Math.min(1, (ts - inicio) / ms);
+      var v = desde + (hasta - desde) * (1 - Math.pow(1 - t, 3));
+      elDiv.textContent = formatoFn(v);
+      if (t < 1) requestAnimationFrame(paso);
+    }
+    requestAnimationFrame(paso);
+  }
+
+  function dibujarConexiones() {
+    var svg = document.getElementById("efecto-svg");
+    var escenario = document.getElementById("efecto-escenario");
+    var origen = document.getElementById("efecto-origen");
+    var cards = [el.cardInventario, el.cardCrm, el.cardPyg];
+    if (!escenario || !origen) return;
+
+    var rectEsc = escenario.getBoundingClientRect();
+    var rectOrigen = origen.getBoundingClientRect();
+    var x1 = rectOrigen.right - rectEsc.left;
+    var y1 = rectOrigen.top + rectOrigen.height / 2 - rectEsc.top;
+
+    svg.setAttribute("viewBox", "0 0 " + rectEsc.width + " " + rectEsc.height);
+    svg.innerHTML = "";
+
+    cards.forEach(function (card, i) {
+      card.classList.remove("lista");
+      var rectCard = card.getBoundingClientRect();
+      var x2 = rectCard.left - rectEsc.left;
+      var y2 = rectCard.top + rectCard.height / 2 - rectEsc.top;
+      var midX = (x1 + x2) / 2;
+      var d = "M " + x1 + "," + y1 + " C " + midX + "," + y1 + " " + midX + "," + y2 + " " + x2 + "," + y2;
+
+      var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+      var len = path.getTotalLength();
+      path.style.strokeDasharray = String(len);
+      path.style.strokeDashoffset = String(len);
+      path.style.transition = "stroke-dashoffset 0.75s cubic-bezier(.3,.7,.2,1) " + (i * 0.16) + "s";
+
+      var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("class", "pulso");
+      circle.style.offsetPath = "path('" + d + "')";
+      circle.style.animationDelay = (i * 0.16) + "s";
+      svg.appendChild(circle);
+
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          path.style.strokeDashoffset = "0";
+          circle.classList.add("activo");
+          setTimeout(function () { card.classList.add("lista"); }, i * 160 + 480);
+        });
+      });
+    });
+  }
+
+  function pintarEfecto() {
+    if (!ultimoEfecto) {
+      el.efectoOrigenDetalle.textContent = "Guarda una venta (punto 3) para verlo en vivo.";
+      el.efectoDeltaInventario.textContent = "—";
+      el.efectoDeltaCrm.textContent = "—";
+      el.efectoNotaCrm.textContent = "";
+      el.efectoDeltaPyg.textContent = "—";
+      return;
+    }
+    var ef = ultimoEfecto;
+    el.efectoOrigenDetalle.textContent = ef.cliente.nombre + " · " + ef.cantidad + " × " + ESTADO.receta.nombre + " · " + formatoCOP(ef.monto);
+
+    var textoInv = ef.inventario.map(function (d) { return d.emoji + " " + d.delta; }).join("  ·  ");
+    el.efectoDeltaInventario.innerHTML = '<span class="negativo">' + textoInv + "</span>";
+
+    el.efectoDeltaCrm.textContent = ef.crm.esNuevo ? "Cliente nuevo creado" : "Cliente actualizado";
+    el.efectoNotaCrm.textContent = ef.crm.nombre + " — " + ef.crm.perfil.totalCompras + " compra" + (ef.crm.perfil.totalCompras === 1 ? "" : "s") + " · ticket medio " + formatoCOP(ef.crm.perfil.ticketMedio);
+
+    contarHasta(el.efectoDeltaPyg, 0, ef.pyg.utilidadDelta, function (v) { return "+" + formatoCOP(v) + " en utilidad"; }, 700);
+
+    dibujarConexiones();
   }
 
   function render() {
@@ -1398,10 +1764,19 @@ html, body { height: 100%; overflow: hidden; }
     el.campoFecha.textContent = FECHA_TXT;
     el.campoHora.textContent = HORA_TXT;
 
+    el.appFrame.hidden = frame === 5;
+    el.highlights.hidden = frame === 5;
+    el.efecto.hidden = frame !== 5;
+
+    if (frame === 5) {
+      pintarEfecto();
+      return;
+    }
+
     if (frame === 0) {
       el.vistaHistorial.hidden = false;
       el.vistaNueva.hidden = true;
-      pintarHistorial(false);
+      pintarHistorial();
     } else if (frame === 1) {
       el.vistaHistorial.hidden = true;
       el.vistaNueva.hidden = false;
@@ -1418,7 +1793,7 @@ html, body { height: 100%; overflow: hidden; }
     } else if (frame === 4) {
       el.vistaHistorial.hidden = false;
       el.vistaNueva.hidden = true;
-      pintarHistorial(true);
+      pintarHistorial();
     }
   }
 
@@ -1427,7 +1802,11 @@ html, body { height: 100%; overflow: hidden; }
       if (window.irA) window.irA("slide-home");
       return;
     }
+    var frameAnterior = frame;
     frame++;
+    if (frameAnterior === 2 && frame === 3) {
+      ultimoEfecto = registrarVenta();
+    }
     render();
   }
 
@@ -1442,8 +1821,17 @@ html, body { height: 100%; overflow: hidden; }
     frame = 0;
     render();
   });
+  [el.cardInventario, el.cardCrm, el.cardPyg].forEach(function (card, i) {
+    card.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var destino = ["inventario", "crm", "pyg"][i];
+      if (window.reiniciarModulo && window.reiniciarModulo[destino]) window.reiniciarModulo[destino]();
+      if (window.irA) window.irA("slide-" + destino);
+    });
+  });
   window.reiniciarModulo = window.reiniciarModulo || {};
-  window.reiniciarModulo.ventas = function () { frame = 0; render(); };
+  window.reiniciarModulo.ventas = function () { frame = 0; ultimoEfecto = null; render(); };
+  suscribirse(function () { if (frame !== 5) render(); });
 
   render();
 })();
@@ -1454,20 +1842,21 @@ html, body { height: 100%; overflow: hidden; }
   var stage = document.getElementById("stage");
   var slides = document.querySelectorAll(".slide");
   var btnPresentar = document.getElementById("btn-presentar");
+  var btnReiniciarTodo = document.getElementById("btn-reiniciar-todo");
 
   function irA(id) {
     slides.forEach(function (s) { s.hidden = s.id !== id; });
   }
   window.irA = irA;
 
-  document.querySelectorAll(".modulo-btn[data-modulo]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var modulo = btn.getAttribute("data-modulo");
-      if (window.reiniciarModulo && window.reiniciarModulo[modulo]) {
-        window.reiniciarModulo[modulo]();
-      }
-      irA("slide-" + modulo);
-    });
+  // La navegación de los nodos del orbit (data-modulo) ahora depende de en
+  // qué fase está la portada (intro/selección/flujo/listo) — se maneja en
+  // el IIFE de la portada, no acá, para no navegar mientras se está
+  // seleccionando o viendo la historia de flujo.
+
+  btnReiniciarTodo.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (window.reiniciarEcosistema) window.reiniciarEcosistema();
   });
 
   document.querySelectorAll("[data-volver]").forEach(function (btn) {
@@ -1491,6 +1880,209 @@ html, body { height: 100%; overflow: hidden; }
 
   document.addEventListener("fullscreenchange", actualizarBotonPresentar);
   actualizarBotonPresentar();
+})();
+
+// ======================================================================
+// Portada por fases — el guion de venta en vivo: 1) solo el logo a
+// pantalla completa, 2) los módulos se despliegan quietos con un check
+// para marcar los que le sirven a ESTE cliente, 3) una historia de flujo
+// muestra cómo se conectan entre sí (nada de pantallas reales acá, solo
+// el concepto), 4) de ahí en adelante los nodos marcados navegan a su
+// demo real de siempre — los que quedaron sin marcar ni aparecen.
+// ======================================================================
+(function () {
+  "use strict";
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var ORDEN_MODULOS = ["ventas", "crm", "inventario", "pyg", "panel", "promociones", "nomina"];
+  var INFO_MODULOS = {
+    ventas:      { nota: "Todo arranca aquí: se registra la venta." },
+    crm:         { nota: "El cliente queda guardado en tu CRM, así sea la primera compra." },
+    inventario:  { nota: "El inventario se descuenta solo, sin digitarlo dos veces." },
+    pyg:         { nota: "Tu Estado de pérdidas y ganancias recalcula la utilidad al instante." },
+    panel:       { nota: "Tu Panel de control refleja el cambio en sus gráficas al momento." },
+    promociones: { nota: "Si esa venta usó un descuento, aquí se ve su efecto real." },
+    nomina:      { nota: "Ese ingreso ya hace parte de lo que sostiene la nómina del negocio." }
+  };
+
+  var slideHome = document.getElementById("slide-home");
+  var zonaIntro = document.getElementById("zona-intro");
+  var introHint = document.getElementById("intro-hint");
+  var orbitDiagram = document.getElementById("orbit-diagram");
+  var svgFlujo = document.getElementById("orbit-flujo-svg");
+  var seleccionFooter = document.getElementById("seleccion-footer");
+  var btnContinuarFlujo = document.getElementById("btn-continuar-flujo");
+  var flujoHint = document.getElementById("flujo-hint");
+  var flujoTexto = document.getElementById("flujo-texto");
+  var btnEditarModulos = document.getElementById("btn-editar-modulos");
+  var btnReiniciarTodo = document.getElementById("btn-reiniciar-todo");
+
+  var botones = {};
+  ORDEN_MODULOS.forEach(function (m) {
+    botones[m] = document.querySelector('.modulo-btn[data-modulo="' + m + '"]');
+  });
+
+  var seleccionados = {};
+  ORDEN_MODULOS.forEach(function (m) { seleccionados[m] = true; });
+
+  var fase = "intro"; // intro | seleccion | flujo | listo
+  var frameFlujo = 0;
+
+  function cadenaActiva() {
+    return ORDEN_MODULOS.filter(function (m) { return seleccionados[m]; });
+  }
+
+  function pintarSeleccion() {
+    ORDEN_MODULOS.forEach(function (m) {
+      var on = !!seleccionados[m];
+      botones[m].classList.toggle("marcado", on);
+      botones[m].classList.toggle("no-marcado", !on);
+    });
+    btnContinuarFlujo.disabled = cadenaActiva().length === 0;
+  }
+
+  function dibujarConectorFlujo(elA, elB) {
+    var rectD = orbitDiagram.getBoundingClientRect();
+    var rectA = elA.getBoundingClientRect();
+    var rectB = elB.getBoundingClientRect();
+    var x1 = rectA.left + rectA.width / 2 - rectD.left;
+    var y1 = rectA.top + rectA.height / 2 - rectD.top;
+    var x2 = rectB.left + rectB.width / 2 - rectD.left;
+    var y2 = rectB.top + rectB.height / 2 - rectD.top;
+    var cx = rectD.width / 2;
+    var cy = rectD.height / 2;
+    var midX = (x1 + x2) / 2;
+    var midY = (y1 + y2) / 2;
+    var pull = 0.45;
+    var ctrlX = midX + (cx - midX) * pull;
+    var ctrlY = midY + (cy - midY) * pull;
+    var d = "M " + x1 + "," + y1 + " Q " + ctrlX + "," + ctrlY + " " + x2 + "," + y2;
+
+    svgFlujo.setAttribute("viewBox", "0 0 " + rectD.width + " " + rectD.height);
+
+    var path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    svgFlujo.appendChild(path);
+    var len = path.getTotalLength();
+    path.style.strokeDasharray = String(len);
+    path.style.strokeDashoffset = String(len);
+    path.style.transition = "stroke-dashoffset 0.7s cubic-bezier(.3,.7,.2,1)";
+
+    var circle = document.createElementNS(SVG_NS, "circle");
+    circle.setAttribute("class", "pulso");
+    circle.style.offsetPath = "path('" + d + "')";
+    svgFlujo.appendChild(circle);
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        path.style.strokeDashoffset = "0";
+        circle.classList.add("activo");
+      });
+    });
+  }
+
+  function pintarFlujo() {
+    var cadena = cadenaActiva();
+    var actual = cadena[frameFlujo];
+    ORDEN_MODULOS.forEach(function (m) {
+      var idx = cadena.indexOf(m);
+      botones[m].classList.toggle("en-flujo", idx !== -1 && idx <= frameFlujo);
+    });
+    if (frameFlujo > 0) {
+      dibujarConectorFlujo(botones[cadena[frameFlujo - 1]], botones[cadena[frameFlujo]]);
+    }
+    flujoTexto.textContent = actual ? INFO_MODULOS[actual].nota : "";
+    flujoHint.style.opacity = "1";
+  }
+
+  function pintarFase() {
+    slideHome.setAttribute("data-fase", fase);
+    btnReiniciarTodo.hidden = fase === "intro";
+    introHint.hidden = fase !== "intro";
+    seleccionFooter.hidden = fase !== "seleccion";
+    flujoHint.hidden = fase !== "flujo";
+    btnEditarModulos.hidden = fase === "intro" || fase === "seleccion";
+    if (fase === "seleccion") pintarSeleccion();
+    if (fase === "flujo") pintarFlujo();
+  }
+
+  function irAFase(f) {
+    fase = f;
+    if (f === "flujo") {
+      frameFlujo = 0;
+      svgFlujo.innerHTML = "";
+      ORDEN_MODULOS.forEach(function (m) { botones[m].classList.remove("en-flujo"); });
+    }
+    pintarFase();
+  }
+
+  function avanzarFlujo() {
+    var cadena = cadenaActiva();
+    if (frameFlujo >= cadena.length - 1) {
+      irAFase("listo");
+      return;
+    }
+    frameFlujo++;
+    pintarFlujo();
+  }
+
+  zonaIntro.addEventListener("click", function () {
+    if (fase !== "intro") return;
+    irAFase("seleccion");
+  });
+
+  ORDEN_MODULOS.forEach(function (m) {
+    botones[m].addEventListener("click", function (e) {
+      if (fase === "seleccion") {
+        e.stopPropagation();
+        seleccionados[m] = !seleccionados[m];
+        pintarSeleccion();
+        return;
+      }
+      if (fase === "listo") {
+        e.stopPropagation();
+        if (!seleccionados[m]) return;
+        if (window.reiniciarModulo && window.reiniciarModulo[m]) window.reiniciarModulo[m]();
+        if (window.irA) window.irA("slide-" + m);
+        return;
+      }
+      // fase "intro" (los nodos están ocultos) o "flujo": deja que el clic
+      // se propague — así hacer clic directo en un nodo también avanza la
+      // historia de flujo, no solo el botón de abajo.
+    });
+  });
+
+  btnContinuarFlujo.addEventListener("click", function () {
+    if (cadenaActiva().length === 0) return;
+    irAFase("flujo");
+  });
+
+  orbitDiagram.addEventListener("click", function () {
+    if (fase !== "flujo") return;
+    avanzarFlujo();
+  });
+  flujoHint.addEventListener("click", function () {
+    if (fase !== "flujo") return;
+    avanzarFlujo();
+  });
+
+  btnEditarModulos.addEventListener("click", function () {
+    irAFase("seleccion");
+  });
+
+  window.reiniciarModulo = window.reiniciarModulo || {};
+  window.reiniciarModulo.home = function () {
+    ORDEN_MODULOS.forEach(function (m) {
+      seleccionados[m] = true;
+      botones[m].classList.remove("no-marcado", "marcado", "en-flujo");
+    });
+    frameFlujo = 0;
+    svgFlujo.innerHTML = "";
+    fase = "intro";
+    pintarFase();
+  };
+
+  pintarFase();
 })();
 
 (function () {
@@ -1538,16 +2130,10 @@ html, body { height: 100%; overflow: hidden; }
 (function () {
   "use strict";
 
-  var CLIENTE = { nombre: "Camila Ruiz", telefono: "3001234567", correo: "camila.ruiz@gmail.com" };
+  var CALIFICACION_DEMO = 5;
+  var INTERACCION_DEMO = { tipo: "Llamada", nota: "Le encantó la hamburguesa — dijo que vuelve la próxima semana." };
   var ahora = new Date();
   var FECHA_TXT = ahora.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
-  var HORA_TXT = ahora.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
-  var COMPRA = { fecha: FECHA_TXT + ", " + HORA_TXT, itemsDistintos: 1, unidadesTotales: 2, monto: 24000 };
-  var PERFIL = { inversion: 24000, ticket: 24000, totalCompras: 1, productoMasComprado: "Hamburguesa Clásica (2 unidades)" };
-  var CALIFICACION = 5;
-  var INTERACCION = { tipo: "Llamada", fecha: FECHA_TXT, nota: "Le encantó la hamburguesa — dijo que vuelve la próxima semana." };
-
-  function formatoCOP(v) { return "$" + Math.round(v).toLocaleString("es-CO"); }
 
   var TOTAL_FRAMES = 5; // 0..4
   var frame = 0;
@@ -1577,6 +2163,10 @@ html, body { height: 100%; overflow: hidden; }
     return html;
   }
 
+  function clientePrincipal() {
+    return ESTADO.clientes.length ? ESTADO.clientes[0] : null;
+  }
+
   function pintarDots() {
     el.dots.innerHTML = "";
     for (var i = 0; i < TOTAL_FRAMES; i++) {
@@ -1591,55 +2181,74 @@ html, body { height: 100%; overflow: hidden; }
   }
 
   function actualizarHint() {
-    var textos = [
-      "Haz clic para ver la ficha del cliente",
-      "Haz clic para ver el perfil de compra",
-      "Haz clic para calificar al cliente",
-      "Haz clic para registrar una interacción",
-      "Haz clic para volver y elegir otro módulo"
-    ];
-    el.texto.textContent = textos[frame];
+    var cliente = clientePrincipal();
+    var textos = !cliente
+      ? ["Registra una venta en Ventas para ver aparecer un cliente aquí"]
+      : [
+          "Haz clic para ver la ficha del cliente",
+          "Haz clic para ver el perfil de compra",
+          "Haz clic para calificar al cliente",
+          "Haz clic para registrar una interacción",
+          "Haz clic para volver y elegir otro módulo"
+        ];
+    el.texto.textContent = textos[Math.min(frame, textos.length - 1)];
     el.hint.style.opacity = "1";
     el.zona.style.cursor = "pointer";
   }
 
   function pintarDirectorio() {
+    var cliente = clientePrincipal();
+    if (!cliente) {
+      el.listaClientes.innerHTML = '<div class="empty-app">Todavía no tienes clientes. Se crean solos cuando registras una venta.</div>';
+      return;
+    }
     el.listaClientes.innerHTML =
       '<div class="fila-cliente">' +
         "<div>" +
-          '<div class="nombre">' + CLIENTE.nombre + "</div>" +
-          '<div class="sub">' + CLIENTE.telefono + "</div>" +
+          '<div class="nombre">' + cliente.nombre + "</div>" +
+          '<div class="sub">' + cliente.telefono + "</div>" +
         "</div>" +
-        '<span class="badge-etapa">Cerrado</span>' +
+        '<span class="badge-etapa">' + cliente.etapa + "</span>" +
       "</div>";
   }
 
   function pintarFicha() {
-    el.fichaNombre.textContent = CLIENTE.nombre;
-    el.fichaContacto.textContent = CLIENTE.telefono + " · " + CLIENTE.correo;
-    el.fichaEstrellas.innerHTML = estrellasHTML(frame >= 3 ? CALIFICACION : 0);
+    var cliente = clientePrincipal();
+    if (!cliente) return;
+    var perfil = calcularPerfilCliente(cliente.nombre);
+
+    el.fichaNombre.textContent = cliente.nombre;
+    el.fichaContacto.textContent = cliente.telefono + " · " + cliente.correo;
+    el.fichaEstrellas.innerHTML = estrellasHTML(frame >= 3 ? CALIFICACION_DEMO : cliente.calificacion);
 
     el.seccionPerfil.hidden = frame < 2;
     if (frame >= 2) {
       el.perfilGrid.innerHTML =
-        '<div class="fila-dato"><div class="etq">Inversión total</div><div class="val">' + formatoCOP(PERFIL.inversion) + "</div></div>" +
-        '<div class="fila-dato"><div class="etq">Ticket medio</div><div class="val">' + formatoCOP(PERFIL.ticket) + "</div></div>" +
-        '<div class="fila-dato"><div class="etq">Total de compras</div><div class="val">' + PERFIL.totalCompras + "</div></div>" +
-        '<div class="fila-dato"><div class="etq">Producto más comprado</div><div class="val">' + PERFIL.productoMasComprado + "</div></div>";
+        '<div class="fila-dato"><div class="etq">Inversión total</div><div class="val">' + formatoCOP(perfil.inversionTotal) + "</div></div>" +
+        '<div class="fila-dato"><div class="etq">Ticket medio</div><div class="val">' + formatoCOP(perfil.ticketMedio) + "</div></div>" +
+        '<div class="fila-dato"><div class="etq">Total de compras</div><div class="val">' + perfil.totalCompras + "</div></div>" +
+        '<div class="fila-dato"><div class="etq">Producto más comprado</div><div class="val">' + perfil.productoMasComprado + "</div></div>";
     }
 
-    el.historial.innerHTML =
-      '<div class="fila-compra">' +
-        '<span class="fecha">' + COMPRA.fecha + "</span>" +
-        '<span class="resumen">' + COMPRA.itemsDistintos + " ítem(s), " + COMPRA.unidadesTotales + " unidad(es)</span>" +
-        '<span class="monto">' + formatoCOP(COMPRA.monto) + "</span>" +
-      "</div>";
+    if (perfil.compras.length === 0) {
+      el.historial.innerHTML = '<p style="color:var(--app-faint); font-size:12px; margin:0;">Sin compras registradas todavía.</p>';
+    } else {
+      el.historial.innerHTML = perfil.compras.slice().reverse().map(function (v) {
+        return (
+          '<div class="fila-compra">' +
+            '<span class="fecha">' + FECHA_TXT + "</span>" +
+            '<span class="resumen">' + v.producto + " ×" + v.cantidad + "</span>" +
+            '<span class="monto">' + formatoCOP(v.monto) + "</span>" +
+          "</div>"
+        );
+      }).join("");
+    }
 
     if (frame >= 4) {
       el.interacciones.innerHTML =
         '<div class="fila-interaccion entra">' +
-          '<div class="meta">' + INTERACCION.fecha + " · " + INTERACCION.tipo + "</div>" +
-          '<div class="nota">' + INTERACCION.nota + "</div>" +
+          '<div class="meta">' + FECHA_TXT + " · " + INTERACCION_DEMO.tipo + "</div>" +
+          '<div class="nota">' + INTERACCION_DEMO.nota + "</div>" +
         "</div>";
     } else {
       el.interacciones.innerHTML = '<p style="color:var(--app-faint); font-size:12px; margin:0;">Sin interacciones registradas todavía.</p>';
@@ -1651,12 +2260,16 @@ html, body { height: 100%; overflow: hidden; }
     actualizarHint();
     pintarDirectorio();
 
-    el.vistaDirectorio.hidden = frame >= 1;
-    el.vistaFicha.hidden = frame < 1;
-    if (frame >= 1) pintarFicha();
+    var cliente = clientePrincipal();
+    var enFicha = frame >= 1 && !!cliente;
+    el.vistaDirectorio.hidden = enFicha;
+    el.vistaFicha.hidden = !enFicha;
+    if (enFicha) pintarFicha();
   }
 
   function avanzar() {
+    var cliente = clientePrincipal();
+    if (!cliente) return;
     if (frame >= TOTAL_FRAMES - 1) {
       if (window.irA) window.irA("slide-home");
       return;
@@ -1666,6 +2279,7 @@ html, body { height: 100%; overflow: hidden; }
   }
 
   function irAFrame(n) {
+    if (!clientePrincipal()) return;
     frame = n;
     render();
   }
@@ -1683,23 +2297,13 @@ html, body { height: 100%; overflow: hidden; }
     frame = 0;
     render();
   });
+  suscribirse(function () { render(); });
 
   render();
 })();
 
 (function () {
   "use strict";
-
-  function formatoCOP(v) { return "$" + Math.round(v).toLocaleString("es-CO"); }
-
-  var INGRESOS = 8400000, COSTO = 3200000, OTROS = 0;
-  var GASTOS = [
-    { cat: "Arriendo", monto: 1200000, tipo: "Recurrente · mensual" },
-    { cat: "Servicios públicos", monto: 400000, tipo: "Recurrente · mensual" },
-    { cat: "Publicidad", monto: 500000, tipo: "Costo puntual" }
-  ];
-  var DEUDA = { desc: "Préstamo equipo de cocina", total: 2000000, pagadoInicial: 500000 };
-  var ABONO = 500000;
 
   var TOTAL_FRAMES = 5; // 0..4
   var frame = 0;
@@ -1751,18 +2355,24 @@ html, body { height: 100%; overflow: hidden; }
     pintarDots();
     actualizarHint();
 
+    var ventasIngresos = ESTADO.ventas.reduce(function (s, v) { return s + v.monto; }, 0);
+    var ventasCosto = ESTADO.ventas.reduce(function (s, v) { return s + v.costo; }, 0);
+    var ingresos = ESTADO.pyg.ingresosBase + ventasIngresos;
+    var costo = ESTADO.pyg.costoBase + ventasCosto;
+    var otros = ESTADO.pyg.otros;
+
     var abonado = frame >= 4;
-    var bruta = INGRESOS - COSTO;
-    var gastosBase = GASTOS.reduce(function (s, g) { return s + g.monto; }, 0);
-    var gastosTotal = gastosBase + (abonado ? ABONO : 0);
+    var bruta = ingresos - costo;
+    var gastosBase = ESTADO.pyg.gastos.reduce(function (s, g) { return s + g.monto; }, 0);
+    var gastosTotal = gastosBase + (abonado ? ESTADO.pyg.abono : 0);
 
     if (frame >= 1) {
-      el.ingresos.textContent = formatoCOP(INGRESOS);
-      el.costo.textContent = "− " + formatoCOP(COSTO);
+      el.ingresos.textContent = formatoCOP(ingresos);
+      el.costo.textContent = "− " + formatoCOP(costo);
       el.bruta.textContent = formatoCOP(bruta);
-      el.otros.textContent = "+ " + formatoCOP(OTROS);
+      el.otros.textContent = "+ " + formatoCOP(otros);
       el.gastosTotal.textContent = "− " + formatoCOP(gastosTotal);
-      var neta = bruta + OTROS - gastosTotal;
+      var neta = bruta + otros - gastosTotal;
       el.neta.textContent = formatoCOP(neta);
       el.neta.className = neta >= 0 ? "positivo" : "negativo";
     } else {
@@ -1775,19 +2385,19 @@ html, body { height: 100%; overflow: hidden; }
       el.neta.className = "";
     }
 
-    var pagado = DEUDA.pagadoInicial + (abonado ? ABONO : 0);
-    var pendiente = DEUDA.total - pagado;
+    var pagado = ESTADO.pyg.deuda.pagadoInicial + (abonado ? ESTADO.pyg.abono : 0);
+    var pendiente = ESTADO.pyg.deuda.total - pagado;
     if (frame >= 2) {
       el.deudaTotal.textContent = formatoCOP(pendiente);
-      el.listaDeudas.innerHTML = '<div class="fila-deuda"><span>' + DEUDA.desc + '</span><span class="monto">' + formatoCOP(pendiente) + "</span></div>";
+      el.listaDeudas.innerHTML = '<div class="fila-deuda"><span>' + ESTADO.pyg.deuda.desc + '</span><span class="monto">' + formatoCOP(pendiente) + "</span></div>";
     } else {
       el.deudaTotal.textContent = "$0";
       el.listaDeudas.innerHTML = '<p style="color:var(--app-faint); font-size:12px; margin:6px 0 0;">No tienes deudas pendientes registradas.</p>';
     }
 
     if (frame >= 3) {
-      var filas = GASTOS.slice();
-      if (abonado) filas = filas.concat([{ cat: "Pago de deuda", monto: ABONO, tipo: "Costo puntual", meta: "Abono — " + DEUDA.desc }]);
+      var filas = ESTADO.pyg.gastos.slice();
+      if (abonado) filas = filas.concat([{ cat: "Pago de deuda", monto: ESTADO.pyg.abono, tipo: "Costo puntual", meta: "Abono — " + ESTADO.pyg.deuda.desc }]);
       el.listaGastos.innerHTML = filas.map(function (g) {
         return (
           '<div class="fila-gasto' + (g.meta ? " entra" : "") + '">' +
@@ -1829,6 +2439,7 @@ html, body { height: 100%; overflow: hidden; }
   });
   window.reiniciarModulo = window.reiniciarModulo || {};
   window.reiniciarModulo.pyg = function () { frame = 0; render(); };
+  suscribirse(function () { render(); });
 
   render();
 })();

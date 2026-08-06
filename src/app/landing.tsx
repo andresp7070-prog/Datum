@@ -189,6 +189,14 @@ export function Landing() {
               <a href="#contacto" onClick={() => setMenuAbierto(false)}>
                 Contacto
               </a>
+              <a
+                href="/presentacion-comercial/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMenuAbierto(false)}
+              >
+                Presentación
+              </a>
             </div>
             <a href="/login" className="nav-login">
               Iniciar sesión

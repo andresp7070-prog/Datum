@@ -428,12 +428,6 @@ html, body { height: 100%; overflow: hidden; }
 .efecto-origen--clicable:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 30px 65px -24px rgba(20, 21, 31, 0.4); }
 
 .efecto-destinos { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 13px; }
-.efecto-destinos-grid {
-  position: relative; z-index: 1; display: grid;
-  grid-template-columns: repeat(2, minmax(230px, 1fr)); gap: 13px;
-}
-.efecto-destinos-grid .efecto-card { min-width: 0; opacity: 0.5; transform: translateY(8px); }
-.efecto-destinos-grid .efecto-card.lista { opacity: 1; transform: translateY(0); }
 .efecto-card {
   display: flex; align-items: center; gap: 13px; min-width: 270px;
   background: var(--card); border: 1.5px solid var(--line); border-radius: 16px;
@@ -460,7 +454,6 @@ html, body { height: 100%; overflow: hidden; }
   .efecto-escenario { flex-direction: column; gap: 22px; }
   .efecto-svg { display: none; }
   .efecto-card { min-width: 0; width: min(420px, 88vw); }
-  .efecto-destinos-grid { grid-template-columns: 1fr; width: min(420px, 88vw); }
 }
 </style>
 </head>
@@ -501,7 +494,7 @@ html, body { height: 100%; overflow: hidden; }
         </div>
       </button>
 
-      <div class="efecto-destinos-grid">
+      <div class="efecto-destinos">
         <button type="button" class="efecto-card" id="flujo-card-crm" data-modulo="crm">
           <div class="efecto-card-icono">🤝</div>
           <div class="efecto-card-texto">

@@ -225,11 +225,11 @@ export function Landing() {
             <path className="head-left" d="M100 42 L100 100 L79 100 Z" fill="currentColor" stroke="none" />
             <path className="head-right" d="M100 42 L121 100 L100 100 Z" fill="currentColor" stroke="none" />
             <line className="head-ridge" x1="100" y1="42" x2="100" y2="100" stroke="currentColor" strokeWidth="0.6" />
-            <path className="tail" d="M79 100 L100 158 L121 100" stroke="currentColor" strokeWidth="0.7" />
+            <path className="tail" d="M79 100 L100 158 L121 100" stroke="currentColor" strokeWidth="0.5" />
             <line className="tail-ridge" x1="100" y1="100" x2="100" y2="158" stroke="currentColor" strokeWidth="0.5" />
           </g>
         </svg>
-        <h1>Todo lo que necesita tu empresa en un solo lugar.</h1>
+        <h1>Todo lo que necesita tu empresa en un solo lugar</h1>
         <p className="lede">
           Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
           crecimiento de tu empresa.
@@ -247,35 +247,21 @@ export function Landing() {
         </a>
       </header>
 
-      <section className="chapter chapter-problema reveal">
-        <div className="wrap problema-grid">
-          <h2>El problema no es que te falte información. Es que está repartida en lugares distintos, y no se comunican entre sí.</h2>
-          <ul className="problema-list">
-            <li>Se te acaba un producto sin que nadie se entere — hasta que un cliente lo pide y toca decirle que no hay.</li>
-            <li>Necesitas muchas plataformas para ver toda la información de tu empresa.</li>
-            <li>Cierras el mes creyendo que te fue bien, y tres semanas después el contador te dice que en realidad perdiste plata.</li>
-            <li>Sigues comprando lo mismo de siempre, sin saber cuánto capital tienes quieto en productos que casi no se venden.</li>
-          </ul>
-        </div>
-      </section>
-
       <section className="chapter chapter-oscuro reveal" id="ecosistema">
         <div className="wrap">
           <div className="chapter-head">
-            <h2>Nuestro ecosistema.</h2>
+            <h2>Nuestro ecosistema</h2>
             <p className="subtitle">
-              Cada módulo está conectado e interactúa con los demás,
-              <br />
-              toda la gestión a un solo clic.
+              Cada módulo está conectado e interactúa con los demás, toda la gestión a un solo clic.
             </p>
           </div>
           <EcosistemaDemo />
           <div className="chapter-cta">
             <a
               className="btn"
-              href="mailto:andresp7070@gmail.com?subject=Quiero%20agendar%20una%20demo%20gratis%20con%20Datum"
+              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2030%20d%C3%ADas%20con%20Datum"
             >
-              Agenda tu demo gratis
+              Solicita tu prueba gratis de 30 días
             </a>
           </div>
         </div>
@@ -285,31 +271,31 @@ export function Landing() {
         <div className="wrap">
           <div className="chapter-head">
             <p className="tag-label">Cómo funciona</p>
-            <h2>Puesto en marcha en días, no en meses.</h2>
+            <h2>Empieza en días, no en meses</h2>
           </div>
           <div className="pasos-grid">
             <div className="paso">
               <span className="paso-num">01</span>
-              <h3>Conectas tu negocio</h3>
-              <p>Subes tu catálogo, das de alta a tu equipo, y activamos los módulos que tu negocio necesita.</p>
+              <h3>Conecta tu negocio</h3>
+              <p>Sube tus productos, registra a tu equipo y activa los módulos que tu negocio necesita.</p>
             </div>
             <div className="paso">
               <span className="paso-num">02</span>
-              <h3>Operas el día a día</h3>
-              <p>Cada venta, cada cliente, cada movimiento de inventario queda registrado solo, sin doble digitación.</p>
+              <h3>Registra el día a día</h3>
+              <p>Cada venta, cada cliente, cada movimiento de inventario registrado en un solo lugar.</p>
             </div>
             <div className="paso">
               <span className="paso-num">03</span>
-              <h3>Decides con datos</h3>
-              <p>Cada mañana ves qué pasó, qué viene y qué te conviene hacer, sin pedirle reportes a nadie.</p>
+              <h3>Decide con datos</h3>
+              <p>Conoce qué pasó, qué viene y qué te conviene hacer con datos en tiempo real.</p>
             </div>
           </div>
           <div className="chapter-cta">
             <a
               className="btn"
-              href="mailto:andresp7070@gmail.com?subject=Quiero%20agendar%20una%20demo%20gratis%20con%20Datum"
+              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2030%20d%C3%ADas%20con%20Datum"
             >
-              Agenda tu demo gratis
+              Solicita tu prueba gratis de 30 días
             </a>
           </div>
         </div>
@@ -318,7 +304,7 @@ export function Landing() {
       <section className="chapter chapter-oscuro reveal" id="precios">
         <div className="wrap">
           <div className="chapter-head">
-            <h2>Nos adaptamos a lo que necesitas.</h2>
+            <h2>Nos adaptamos a lo que necesitas</h2>
             <p className="subtitle">Elige tu plan.</p>
           </div>
 
@@ -352,9 +338,7 @@ export function Landing() {
                   {plan.destacado && (
                     <span className="plan-flag">
                       Recomendado
-                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                      </svg>
+                      <span aria-hidden="true">🔥</span>
                     </span>
                   )}
                   <span className="plan-name">{plan.nombre}</span>
@@ -429,7 +413,7 @@ export function Landing() {
           </div>
           <div className="nosotros-text">
             <p className="tag-label">Nosotros</p>
-            <h2>Un ecosistema hecho por alguien que cree en las empresas pequeñas.</h2>
+            <h2>Un ecosistema hecho por alguien que cree en las empresas pequeñas</h2>
             <p>
               Fundador de Datum. Después de ver de cerca cuánto tiempo y dinero pierden los
               negocios por no tener sus datos en un solo lugar, decidí construir la herramienta
@@ -443,7 +427,7 @@ export function Landing() {
 
       <section className="chapter alt cta-final statement reveal" id="contacto">
         <div className="wrap">
-          <h2>Hablemos de tu negocio.</h2>
+          <h2>Hablemos de tu negocio</h2>
           <p className="sub">
             Agendemos una conversación de 20 minutos sin costo, y descubre todo lo que Datum
             puede hacer por tu negocio.

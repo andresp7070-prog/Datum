@@ -44,110 +44,16 @@ type Modulo = {
   nombre: string;
   url: string;
   totalCuadros: number;
-  highlights: string[];
 };
 
-// `highlights` combina dos cosas: lo que el video sí muestra, y lo que no
-// (para no dejarlo gigantesco mostrando cada función paso a paso) — así el
-// texto de abajo del demo cuenta la historia completa del módulo, no solo
-// la parte animada.
 const MODULOS: Modulo[] = [
-  {
-    id: "Ventas",
-    nombre: "Ventas",
-    url: "app.datum.co/ventas",
-    totalCuadros: 5,
-    highlights: [
-      "Una sola pantalla",
-      "El cliente se busca solo",
-      "Un clic, todo queda registrado",
-      "Proyecciones a mes, trimestre y año",
-      "Devoluciones y garantías, sin salir de Ventas",
-      "Descarga el historial en CSV",
-    ],
-  },
-  {
-    id: "Inventario",
-    nombre: "Inventario",
-    url: "app.datum.co/inventario",
-    totalCuadros: 4,
-    highlights: [
-      "Alta manual o masiva",
-      "Recetas con cálculo automático",
-      "Nunca se calcula a mano",
-      "Trasvase automático (a granel a detal)",
-      "Rentabilidad y últimas compras por proveedor",
-      "Fotos de tus productos",
-    ],
-  },
-  {
-    id: "CRM",
-    nombre: "CRM",
-    url: "app.datum.co/crm",
-    totalCuadros: 5,
-    highlights: [
-      "Un cliente que compra ya queda aquí, sin crearlo a mano",
-      "Perfil de compra calculado solo",
-      "El historial nunca se duplica",
-      "Buscas un cliente por nombre, teléfono o placa",
-      "Etapas de embudo a tu medida",
-      "Cupones y calificación en la misma ficha",
-    ],
-  },
-  {
-    id: "P y G",
-    nombre: "Estado P y G",
-    url: "app.datum.co/pyg",
-    totalCuadros: 5,
-    highlights: [
-      "Utilidad real, no solo ingresos menos gastos a ojo",
-      "Las deudas no cuentan hasta que se abonan",
-      "Un abono mueve los dos números a la vez",
-      "Gastos recurrentes o puntuales, diferenciados",
-      "Cualquier rango de fechas, un clic para volver al mes actual",
-    ],
-  },
-  {
-    id: "Panel de control",
-    nombre: "Panel de control",
-    url: "app.datum.co/insights",
-    totalCuadros: 4,
-    highlights: [
-      "Se compara contra tu propio historial, no un número inventado",
-      "Resalta solo lo que se sale de lo normal",
-      "Resumen en lenguaje natural, automático",
-      "Cruza margen, rotación e inversión por cliente",
-      "Filtra con un clic, y los filtros se combinan",
-      "Respeta el horario real de tu negocio",
-    ],
-  },
-  {
-    id: "Nómina",
-    nombre: "Nómina",
-    url: "app.datum.co/nomina",
-    totalCuadros: 4,
-    highlights: [
-      "El salario queda congelado en cada período",
-      "Aportes patronales y prestaciones se calculan solos",
-      "El gasto real solo aparece al marcar pagada",
-      "Desprendible de pago listo para imprimir",
-      "Vacaciones y liquidación con indemnización",
-      "Prestaciones sociales acumuladas, siempre a la vista",
-    ],
-  },
-  {
-    id: "Promociones",
-    nombre: "Promociones",
-    url: "app.datum.co/promociones",
-    totalCuadros: 4,
-    highlights: [
-      "El 2x1 se descuenta solo, sin cálculos manuales",
-      "Compara la campaña contra el resto del período",
-      "Un clic y ves todo su desempeño",
-      "También descuento %, monto fijo y lleve-y-gratis",
-      "Se marca sola en las gráficas de ventas",
-    ],
-  },
+  { id: "Ventas", nombre: "Ventas", url: "app.datum.co/ventas", totalCuadros: 5 },
+  { id: "Inventario", nombre: "Inventario", url: "app.datum.co/inventario", totalCuadros: 4 },
+  { id: "CRM", nombre: "CRM", url: "app.datum.co/crm", totalCuadros: 5 },
+  { id: "P y G", nombre: "Estado P y G", url: "app.datum.co/pyg", totalCuadros: 5 },
+  { id: "Panel de control", nombre: "Panel de control", url: "app.datum.co/insights", totalCuadros: 4 },
+  { id: "Nómina", nombre: "Nómina", url: "app.datum.co/nomina", totalCuadros: 4 },
+  { id: "Promociones", nombre: "Promociones", url: "app.datum.co/promociones", totalCuadros: 4 },
 ];
 
 // A qué elemento se mueve y le "hace clic" el cursor en cada cuadro de
@@ -390,10 +296,6 @@ function contenidoVentas(cuadro: number, revelado: boolean) {
       {guardando && (
         <div className="demo-success-banner demo-entra"><span>Venta agregada correctamente.</span><span>Deshacer (60s)</span></div>
       )}
-      <div className="demo-form-row">
-        <div className="demo-field"><label>Fecha</label><div className="valor">Hoy</div></div>
-        <div className="demo-field"><label>Hora</label><div className="valor">Ahora</div></div>
-      </div>
       <div className="demo-section">
         <h5>Cliente</h5>
         <div className="demo-field-grid">
@@ -438,7 +340,7 @@ function contenidoInventario(cuadro: number, revelado: boolean) {
             <div className="demo-empty">Aún no tienes productos. Agrega el primero arriba.</div>
           ) : (
             <div className="demo-lista">
-              {PRODUCTOS.map((p, i) => (
+              {PRODUCTOS.slice(0, 3).map((p, i) => (
                 <div key={p.id} className="demo-fila-app demo-entra" style={{ animationDelay: `${i * 70}ms` }}>
                   <div className="izq"><span className="thumb">{p.emoji}</span><div><div className="nombre">{p.nombre}</div><div className="categoria">{p.categoria}</div></div></div>
                   <div className="datos">
@@ -576,7 +478,6 @@ function contenidoPyg(cuadro: number, revelado: boolean) {
   return (
     <div>
       <div className="demo-content-head"><h4>Estado de pérdidas y ganancias</h4></div>
-      <p className="demo-rango">Mostrando del 1 jul 2026 al 31 jul 2026</p>
       <div className="demo-pyg-grid">
         <div className="demo-section">
           <h5>Utilidad</h5>
@@ -589,7 +490,6 @@ function contenidoPyg(cuadro: number, revelado: boolean) {
         <div className="demo-section">
           <h5>Deudas pendientes</h5>
           <div className="demo-deuda-total">{cuadro >= 2 ? ((cuadro === 2 || cambiaPorAbono) ? <Contador valor={pendiente} formato={formatoCOP} /> : formatoCOP(pendiente)) : "$0"}</div>
-          <p className="demo-faint">No hace parte de la utilidad — es dinero que debes, se muestra aparte.</p>
           {cuadro >= 2 && (
             <>
               <div className="demo-fila-deuda"><span>{DEUDA.desc}</span><span className="monto">{formatoCOP(pendiente)}</span></div>
@@ -601,13 +501,16 @@ function contenidoPyg(cuadro: number, revelado: boolean) {
       <div className="demo-section">
         <h5>Gastos operacionales</h5>
         {cuadro >= 3 ? (
-          [...GASTOS, ...(abonado ? [{ cat: "Pago de deuda", monto: ABONO, tipo: "Costo puntual", meta: "Abono — " + DEUDA.desc }] : [])].map((g, i) => (
+          (abonado
+            ? [...GASTOS.slice(0, 2), { cat: "Pago de deuda", monto: ABONO, tipo: "Costo puntual" }]
+            : GASTOS
+          ).map((g, i) => (
             <div
               key={i}
-              className={`demo-fila-gasto${(cuadro === 3 || "meta" in g) ? " demo-entra" : ""}`}
+              className={`demo-fila-gasto${(cuadro === 3 || (abonado && i === 2)) ? " demo-entra" : ""}`}
               style={cuadro === 3 ? { animationDelay: `${i * 70}ms` } : undefined}
             >
-              <div><div className="cat">{g.cat}</div>{"meta" in g && <div className="meta">{(g as { meta: string }).meta}</div>}</div>
+              <div className="cat">{g.cat}</div>
               <div className="der"><div className="monto">{formatoCOP(g.monto)}</div><div className="tipo">{g.tipo}</div></div>
             </div>
           ))
@@ -887,9 +790,7 @@ export function EcosistemaDemo() {
       </div>
 
       <p className="demo-highlights">
-        {modulo.highlights.map((h, i) => (
-          <span key={i}>{i > 0 && " · "}✓ {h}</span>
-        ))}
+        Esto es solo el comienzo, descubre todo lo que puedes hacer en Datum
       </p>
     </div>
   );

@@ -251,6 +251,10 @@
   .legal-section a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 
   .legal-dialog {
+    /* El reset de Tailwind pone margin:0 en todo, incluido <dialog> — eso
+       pisa el margin:auto que el navegador usa por defecto para centrarlo,
+       y lo deja pegado en la esquina superior izquierda. Se restaura acá. */
+    margin: auto;
     width: min(680px, 90vw); max-height: 84vh; padding: 48px clamp(24px, 4vw, 48px);
     border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--ink);
     box-shadow: 0 24px 64px -16px rgba(20, 21, 31, 0.3);

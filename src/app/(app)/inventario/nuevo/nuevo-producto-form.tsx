@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { sinTildes, primeraMayuscula } from "@/lib/texto";
+import { ejemplosInventario } from "@/lib/ejemplos-negocio";
 import { UNIDADES } from "@/lib/unidades";
 import { CampoMoneda } from "@/components/campo-moneda";
 import { comprimirImagen, TAMANO_MAXIMO_ORIGINAL_BYTES } from "@/lib/imagenes";
@@ -48,6 +49,7 @@ export function NuevoProductoForm({
   volverAReceta = false,
   puntosVenta = [],
   puntoInicial = null,
+  tipoNegocio = null,
 }: {
   items: ItemExistente[];
   proveedores: Proveedor[];
@@ -55,8 +57,10 @@ export function NuevoProductoForm({
   volverAReceta?: boolean;
   puntosVenta?: PuntoVenta[];
   puntoInicial?: string | null;
+  tipoNegocio?: string | null;
 }) {
   const router = useRouter();
+  const ejemplos = ejemplosInventario(tipoNegocio);
 
   const usaPuntos = puntosVenta.length > 0;
   const [puntoVentaId, setPuntoVentaId] = useState(puntoInicial ?? puntosVenta[0]?.id ?? "");
@@ -76,6 +80,8 @@ export function NuevoProductoForm({
 
   const [categoria, setCategoria] = useState("");
   const [mostrarSugerenciasCategoria, setMostrarSugerenciasCategoria] = useState(false);
+
+  const [marca, setMarca] = useState("");
 
   const [unidad, setUnidad] = useState("unidad");
   const [cantidad, setCantidad] = useState("");
@@ -171,6 +177,7 @@ export function NuevoProductoForm({
     setNombre("");
     setItemExistente(null);
     setCategoria("");
+    setMarca("");
     setUnidad("unidad");
     setCantidad("");
     setCosto("");
@@ -287,6 +294,14 @@ export function NuevoProductoForm({
         reiniciarFormulario();
         router.refresh();
       } else {
+        const atributos: Record<string, unknown> = {};
+        if (volverAReceta && unidad !== "unidad" && contenidoPorUnidad.trim()) {
+          atributos.contenido_por_unidad = Number(contenidoPorUnidad);
+        }
+        if (marca.trim()) {
+          atributos.marca = primeraMayuscula(marca.trim());
+        }
+
         const resultado = await crearProducto({
           nombre: nombreFinal,
           categoria: categoriaFinal,
@@ -298,10 +313,7 @@ export function NuevoProductoForm({
           sku: sku.trim() || null,
           esInsumo,
           puntoVentaId: usaPuntos ? puntoVentaId || null : null,
-          atributos:
-            volverAReceta && unidad !== "unidad" && contenidoPorUnidad.trim()
-              ? { contenido_por_unidad: Number(contenidoPorUnidad) }
-              : undefined,
+          atributos: Object.keys(atributos).length > 0 ? atributos : undefined,
         });
         if (resultado.error || !resultado.id) {
           setError(resultado.error ?? "No se pudo guardar el producto.");
@@ -408,7 +420,7 @@ export function NuevoProductoForm({
           setMostrarSugerenciasCategoria(filtrar(categoriasExistentes, categoria).length > 0)
         }
         onBlur={() => setTimeout(() => setMostrarSugerenciasCategoria(false), 150)}
-        placeholder="Ej. Jabones, Detergentes"
+        placeholder={`Ej. ${ejemplos.categoria}`}
         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
       />
       {mostrarSugerenciasCategoria && filtrar(categoriasExistentes, categoria).length > 0 && (
@@ -429,6 +441,18 @@ export function NuevoProductoForm({
           ))}
         </ul>
       )}
+    </div>
+  );
+
+  const campoMarca = itemExistente ? null : (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">Marca (opcional)</label>
+      <input
+        value={marca}
+        onChange={(e) => setMarca(e.target.value)}
+        placeholder={`Ej. ${ejemplos.marca}`}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+      />
     </div>
   );
 
@@ -705,6 +729,7 @@ export function NuevoProductoForm({
             {campoPrecioVenta}
             {campoNombre}
             {campoCategoria}
+            {campoMarca}
             {campoProveedor}
             {campoUnidad}
             {campoContenido}
@@ -719,6 +744,7 @@ export function NuevoProductoForm({
           {campoNombre}
           {campoSku}
           {campoCategoria}
+          {campoMarca}
           {campoProveedor}
           {campoUnidad}
           {campoCantidad}

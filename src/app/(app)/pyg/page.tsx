@@ -4,7 +4,6 @@ import Link from "next/link";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { PygTabs } from "./pyg-tabs";
 import { SelectorRangoPyg } from "./selector-rango";
-import { DescargarCsv } from "@/components/descargar-csv";
 import { PagoRapidoDeuda } from "./pago-rapido-deuda";
 
 type FilaResultados = {
@@ -26,19 +25,14 @@ type Pasivo = {
   estado: string;
 };
 
-type FilaCategoria = {
+type MovimientoGasto = {
+  id: string;
   categoria: string | null;
-  unidades_vendidas: number;
-  ingresos: number;
-  costos: number;
-  utilidad: number;
-  margen_porcentaje: number;
-};
-
-type FilaProducto = FilaCategoria & {
-  item_id: string;
-  nombre: string;
-  tipo: string;
+  monto: number;
+  fecha: string;
+  nota: string | null;
+  recurrente: boolean;
+  frecuencia: string | null;
 };
 
 function formatoMoneda(valor: number | null | undefined) {
@@ -121,7 +115,7 @@ export default async function PygPage({
 
   let finanzasQuery = supabase
     .from("finanzas_movimientos")
-    .select("tipo, monto")
+    .select("id, tipo, categoria, monto, fecha, nota, recurrente, frecuencia")
     .eq("empresa_id", perfil.empresa_id)
     .gte("fecha", desde)
     .lte("fecha", hasta);
@@ -139,10 +133,24 @@ export default async function PygPage({
 
   let otros_ingresos = 0;
   let gastos_operacionales = 0;
+  const gastos: MovimientoGasto[] = [];
   for (const mov of finanzasData ?? []) {
-    if (mov.tipo === "ingreso") otros_ingresos += Number(mov.monto);
-    else gastos_operacionales += Number(mov.monto);
+    if (mov.tipo === "ingreso") {
+      otros_ingresos += Number(mov.monto);
+    } else {
+      gastos_operacionales += Number(mov.monto);
+      gastos.push({
+        id: mov.id,
+        categoria: mov.categoria,
+        monto: Number(mov.monto),
+        fecha: mov.fecha,
+        nota: mov.nota,
+        recurrente: mov.recurrente,
+        frecuencia: mov.frecuencia,
+      });
+    }
   }
+  gastos.sort((a, b) => b.fecha.localeCompare(a.fecha));
 
   const utilidad_bruta = ingresos_por_ventas - costo_de_ventas;
   const fila: FilaResultados = {
@@ -165,42 +173,6 @@ export default async function PygPage({
     .filter((p) => p.estado !== "pagado")
     .reduce((suma, p) => suma + (p.monto_total - p.monto_pagado), 0);
 
-  const { data: porCategoriaData } = await supabase
-    .from("vista_utilidad_por_categoria")
-    .select("categoria, unidades_vendidas, ingresos, costos, utilidad, margen_porcentaje")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("utilidad", { ascending: false });
-
-  const porCategoria = (porCategoriaData ?? []) as FilaCategoria[];
-
-  const { data: porProductoData } = await supabase
-    .from("vista_utilidad_por_producto")
-    .select(
-      "item_id, nombre, tipo, categoria, unidades_vendidas, ingresos, costos, utilidad, margen_porcentaje",
-    )
-    .eq("empresa_id", perfil.empresa_id)
-    .order("utilidad", { ascending: false });
-
-  const porProducto = (porProductoData ?? []) as FilaProducto[];
-
-  const filasCsvCategoria = porCategoria.map((c) => ({
-    categoria: c.categoria || "Sin categoría",
-    unidades: c.unidades_vendidas,
-    ingresos: c.ingresos,
-    costos: c.costos,
-    utilidad: c.utilidad,
-    margen: c.margen_porcentaje,
-  }));
-
-  const filasCsvProducto = porProducto.map((p) => ({
-    producto: p.nombre,
-    unidades: p.unidades_vendidas,
-    ingresos: p.ingresos,
-    costos: p.costos,
-    utilidad: p.utilidad,
-    margen: p.margen_porcentaje,
-  }));
-
   return (
     <div className="space-y-6">
       <PygTabs />
@@ -209,10 +181,10 @@ export default async function PygPage({
         <h1 className="text-lg font-semibold text-gray-900">Estado de pérdidas y ganancias</h1>
         <div className="flex gap-2">
           <Link
-            href="/pyg/movimientos/nuevo"
+            href="/pyg/movimientos"
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
           >
-            Agregar gasto o ingreso
+            Gastos e ingresos
           </Link>
           <Link
             href="/pyg/pasivos"
@@ -299,104 +271,45 @@ export default async function PygPage({
 
       {empresaUsaPuntos && (
         <p className="text-xs text-gray-400">
-          Las tablas de utilidad por categoría y por producto, abajo, siempre muestran el total de
-          todos los puntos combinados — todavía no se pueden filtrar por punto.
+          El desglose de utilidad por categoría y por producto se ve en Panel de control — ahí sí
+          se puede combinar con otros filtros.
         </p>
       )}
 
       <div className="rounded-xl border border-gray-200 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Utilidad por categoría</h2>
-          <DescargarCsv
-            filas={filasCsvCategoria}
-            columnas={[
-              { clave: "categoria", titulo: "Categoría" },
-              { clave: "unidades", titulo: "Unidades" },
-              { clave: "ingresos", titulo: "Ingresos" },
-              { clave: "costos", titulo: "Costos" },
-              { clave: "utilidad", titulo: "Utilidad" },
-              { clave: "margen", titulo: "Margen %" },
-            ]}
-            nombreArchivo="utilidad-por-categoria.csv"
-          />
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Gastos operacionales</h2>
+          <Link href="/pyg/movimientos" className="text-xs text-gray-500 hover:text-gray-700">
+            Ver todos
+          </Link>
         </div>
-        {porCategoria.length === 0 ? (
-          <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
+        <p className="mb-4 text-xs text-gray-400">
+          Del {formatoFechaCorta(desde)} al {formatoFechaCorta(hasta)} — total {formatoMoneda(fila.gastos_operacionales)}.
+        </p>
+        {gastos.length === 0 ? (
+          <p className="text-sm text-gray-400">No hay gastos registrados en este período.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-gray-400">
-                  <th className="pb-2 font-medium">Categoría</th>
-                  <th className="pb-2 font-medium">Unidades</th>
-                  <th className="pb-2 font-medium">Ingresos</th>
-                  <th className="pb-2 font-medium">Costos</th>
-                  <th className="pb-2 font-medium">Utilidad</th>
-                  <th className="pb-2 font-medium">Margen</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {porCategoria.map((c, i) => (
-                  <tr key={i}>
-                    <td className="py-2 text-gray-900">{c.categoria || "Sin categoría"}</td>
-                    <td className="py-2 text-gray-700">{c.unidades_vendidas}</td>
-                    <td className="py-2 text-gray-700">{formatoMoneda(c.ingresos)}</td>
-                    <td className="py-2 text-gray-700">{formatoMoneda(c.costos)}</td>
-                    <td className="py-2 text-gray-900">{formatoMoneda(c.utilidad)}</td>
-                    <td className="py-2 text-gray-700">{c.margen_porcentaje}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-gray-200 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Utilidad por producto</h2>
-          <DescargarCsv
-            filas={filasCsvProducto}
-            columnas={[
-              { clave: "producto", titulo: "Producto" },
-              { clave: "unidades", titulo: "Unidades" },
-              { clave: "ingresos", titulo: "Ingresos" },
-              { clave: "costos", titulo: "Costos" },
-              { clave: "utilidad", titulo: "Utilidad" },
-              { clave: "margen", titulo: "Margen %" },
-            ]}
-            nombreArchivo="utilidad-por-producto.csv"
-          />
-        </div>
-        {porProducto.length === 0 ? (
-          <p className="text-sm text-gray-400">Aún no hay ventas registradas.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-gray-400">
-                  <th className="pb-2 font-medium">Producto</th>
-                  <th className="pb-2 font-medium">Unidades</th>
-                  <th className="pb-2 font-medium">Ingresos</th>
-                  <th className="pb-2 font-medium">Costos</th>
-                  <th className="pb-2 font-medium">Utilidad</th>
-                  <th className="pb-2 font-medium">Margen</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {porProducto.map((p) => (
-                  <tr key={p.item_id}>
-                    <td className="py-2 text-gray-900">{p.nombre}</td>
-                    <td className="py-2 text-gray-700">{p.unidades_vendidas}</td>
-                    <td className="py-2 text-gray-700">{formatoMoneda(p.ingresos)}</td>
-                    <td className="py-2 text-gray-700">{formatoMoneda(p.costos)}</td>
-                    <td className="py-2 text-gray-900">{formatoMoneda(p.utilidad)}</td>
-                    <td className="py-2 text-gray-700">{p.margen_porcentaje}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-gray-100 text-sm">
+            {gastos.map((g) => (
+              <li key={g.id} className="flex items-center justify-between gap-3 py-2">
+                <div>
+                  <p className="text-gray-900">{g.categoria || "Sin categoría"}</p>
+                  <p className="text-xs text-gray-400">
+                    {formatoFechaCorta(g.fecha)}
+                    {g.nota ? ` · ${g.nota}` : ""}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-gray-900">{formatoMoneda(g.monto)}</p>
+                  <p className="text-xs text-gray-400">
+                    {g.recurrente
+                      ? `Recurrente${g.frecuencia ? ` · ${g.frecuencia}` : ""}`
+                      : "Costo puntual"}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

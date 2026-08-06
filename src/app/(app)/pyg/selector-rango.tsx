@@ -29,6 +29,14 @@ export function SelectorRangoPyg({ desde, hasta }: { desde: string; hasta: strin
     ir(desdeInput, hastaInput);
   }
 
+  function limpiar() {
+    const dIso = aIso(primerDiaMes(new Date()));
+    const hIso = aIso(ultimoDiaMes(new Date()));
+    setDesdeInput(dIso);
+    setHastaInput(hIso);
+    router.push("/pyg");
+  }
+
   function preset(tipo: "este_mes" | "mes_anterior" | "este_anio") {
     const hoy = new Date();
     let d: Date;
@@ -101,6 +109,13 @@ export function SelectorRangoPyg({ desde, hasta }: { desde: string; hasta: strin
         className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
       >
         Aplicar
+      </button>
+      <button
+        type="button"
+        onClick={limpiar}
+        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-100"
+      >
+        Limpiar filtro
       </button>
     </div>
   );

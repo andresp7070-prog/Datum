@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { login } from "./actions";
 import { CampoPassword } from "./campo-password";
 
@@ -33,7 +34,17 @@ export default async function LoginPage({
             />
           </div>
 
-          <CampoPassword />
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Contraseña
+              </label>
+              <Link href="/recuperar-password" className="text-xs text-gray-500 hover:text-gray-700">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+            <CampoPassword />
+          </div>
 
           <button
             type="submit"

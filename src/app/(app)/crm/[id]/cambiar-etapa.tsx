@@ -4,22 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cambiarEtapa } from "./actions";
 
-const etapas = [
-  { value: "nuevo", label: "Nuevo" },
-  { value: "contactado", label: "Contactado" },
-  { value: "propuesta", label: "Propuesta" },
-  { value: "cerrado", label: "Cerrado" },
-];
+type Etapa = { id: string; nombre: string; orden: number };
 
 export function CambiarEtapa({
   contactoId,
-  etapaActual,
+  etapas,
+  etapaActualId,
 }: {
   contactoId: string;
-  etapaActual: string;
+  etapas: Etapa[];
+  etapaActualId: string | null;
 }) {
   const router = useRouter();
-  const [etapa, setEtapa] = useState(etapaActual);
+  const [etapa, setEtapa] = useState(etapaActualId ?? "");
   const [guardando, setGuardando] = useState(false);
 
   async function onChange(valor: string) {
@@ -38,8 +35,8 @@ export function CambiarEtapa({
       className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
     >
       {etapas.map((item) => (
-        <option key={item.value} value={item.value}>
-          {item.label}
+        <option key={item.id} value={item.id}>
+          {item.nombre}
         </option>
       ))}
     </select>

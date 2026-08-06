@@ -55,6 +55,19 @@ body {
   font-family: var(--font-sans), -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
+/* Efecto de clic: cualquier botón o enlace se encoge un poco al presionarlo,
+   para que quede claro que el clic se registró. */
+button:not(:disabled),
+a {
+  transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+}
+
+button:not(:disabled):active,
+a:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
 /* Aguja de la brújula girando, para la pantalla de carga entre módulos
    (src/app/(app)/loading.tsx). El aro se queda quieto, solo gira la aguja. */
 @keyframes girar-aguja {

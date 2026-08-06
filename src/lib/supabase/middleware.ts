@@ -28,9 +28,16 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
-  // La raíz es la landing pública (src/app/page.tsx) — sin sesión, cualquiera
-  // la ve; con sesión, ese mismo archivo redirige adentro de la plataforma.
-  const esRutaPublica = isLoginPage || request.nextUrl.pathname === "/";
+  // Accesibles sin sesión: la raíz (landing pública — src/app/page.tsx
+  // decide ahí mismo si muestra la landing o redirige adentro de la
+  // plataforma), recuperar contraseña (pide el correo) y el enlace del
+  // correo que la confirma (todavía no hay sesión hasta que se valide el
+  // token ahí adentro).
+  const esRutaPublica =
+    isLoginPage ||
+    request.nextUrl.pathname === "/" ||
+    request.nextUrl.pathname.startsWith("/recuperar-password") ||
+    request.nextUrl.pathname.startsWith("/auth/confirm");
 
   if (!user && !esRutaPublica) {
     const url = request.nextUrl.clone();

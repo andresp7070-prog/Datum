@@ -12,6 +12,16 @@ type Item = {
   insumos: number;
 };
 
+export type RecetaDetalle = {
+  unidadesProducibles: number;
+  insumos: {
+    nombre: string;
+    unidad: string;
+    stockDisponible: number;
+    cantidadNecesaria: number;
+  }[];
+};
+
 function filtrarPorTexto(items: Item[], busqueda: string) {
   const q = sinTildes(busqueda.trim());
   if (!q) return [];
@@ -20,7 +30,76 @@ function filtrarPorTexto(items: Item[], busqueda: string) {
     .slice(0, 8);
 }
 
-export function DirectorioRecetas({ items }: { items: Item[] }) {
+function TarjetaReceta({ item, detalle }: { item: Item; detalle: RecetaDetalle | undefined }) {
+  const [abierta, setAbierta] = useState(false);
+
+  const producibles = detalle && Number.isFinite(detalle.unidadesProducibles)
+    ? detalle.unidadesProducibles
+    : 0;
+
+  return (
+    <li className="px-4 py-3">
+      <button
+        type="button"
+        onClick={() => setAbierta((v) => !v)}
+        className="flex w-full items-center justify-between gap-4 text-left"
+      >
+        <div>
+          <p className="text-sm font-medium text-gray-900">{item.nombre}</p>
+          <p className="text-xs text-gray-400">{item.categoria || "Sin categoría"}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className={`text-sm font-medium ${producibles > 0 ? "text-gray-900" : "text-red-600"}`}>
+              {producibles} unidad{producibles === 1 ? "" : "es"} posible{producibles === 1 ? "" : "s"}
+            </p>
+            <p className="text-xs text-gray-400">con el stock actual</p>
+          </div>
+          <span className={`text-gray-400 transition-transform ${abierta ? "rotate-180" : ""}`}>▾</span>
+        </div>
+      </button>
+
+      {abierta && (
+        <div className="mt-3 rounded-lg bg-gray-50 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-medium text-gray-700">Insumos de esta receta</p>
+            <Link
+              href={`/inventario/${item.id}/receta`}
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              Editar receta
+            </Link>
+          </div>
+          {!detalle || detalle.insumos.length === 0 ? (
+            <p className="text-sm text-gray-400">Sin insumos configurados.</p>
+          ) : (
+            <ul className="divide-y divide-gray-200 text-sm">
+              {detalle.insumos.map((insumo) => (
+                <li key={insumo.nombre} className="flex items-center justify-between py-1.5">
+                  <span className="text-gray-700">{insumo.nombre}</span>
+                  <span className="text-right text-gray-500">
+                    <span className="text-gray-900">
+                      {insumo.stockDisponible} {insumo.unidad}
+                    </span>{" "}
+                    en stock · usa {insumo.cantidadNecesaria} {insumo.unidad} por unidad
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+export function DirectorioRecetas({
+  items,
+  detalles,
+}: {
+  items: Item[];
+  detalles: Record<string, RecetaDetalle>;
+}) {
   const [busqueda, setBusqueda] = useState("");
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
@@ -90,21 +169,7 @@ export function DirectorioRecetas({ items }: { items: Item[] }) {
       ) : (
         <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200">
           {configuradas.map((item) => (
-            <li key={item.id}>
-              <Link
-                href={`/inventario/${item.id}/receta`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{item.nombre}</p>
-                  <p className="text-xs text-gray-400">{item.categoria || "Sin categoría"}</p>
-                </div>
-                <p className="text-sm text-gray-500">
-                  {item.insumos} insumo{item.insumos === 1 ? "" : "s"} configurado
-                  {item.insumos === 1 ? "" : "s"}
-                </p>
-              </Link>
-            </li>
+            <TarjetaReceta key={item.id} item={item} detalle={detalles[item.id]} />
           ))}
         </ul>
       )}

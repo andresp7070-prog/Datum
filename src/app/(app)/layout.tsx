@@ -4,6 +4,7 @@ import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "./sidebar";
+import { PopupActualizacion } from "./popup-actualizacion";
 import { NavegacionProvider } from "./navegacion";
 import { NavegandoOverlay } from "./navegando-overlay";
 
@@ -33,18 +34,34 @@ export default async function AppLayout({
   let puntosVenta: { id: string; nombre: string }[] = [];
   let puntoSeleccionado: string | null = null;
   let mostrarSelectorPunto = false;
+  let actualizacionPendiente: { id: string; titulo: string; contenido: string } | null = null;
 
-  if (!esDePlataforma && perfil.empresa_id) {
+  if (!esDePlataforma) {
     const supabase = await createClient();
-    const contexto = await obtenerContextoPunto(supabase, perfil.empresa_id, perfil.punto_venta_id);
-    puntosVenta = contexto.puntosVenta;
-    puntoSeleccionado = contexto.puntoSeleccionado;
-    mostrarSelectorPunto = contexto.mostrarSelector;
+
+    if (perfil.empresa_id) {
+      const contexto = await obtenerContextoPunto(supabase, perfil.empresa_id, perfil.punto_venta_id);
+      puntosVenta = contexto.puntosVenta;
+      puntoSeleccionado = contexto.puntoSeleccionado;
+      mostrarSelectorPunto = contexto.mostrarSelector;
+    }
+
+    const { data: ultimaActualizacion } = await supabase
+      .from("actualizaciones")
+      .select("id, titulo, contenido")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (ultimaActualizacion && ultimaActualizacion.id !== perfil.ultima_actualizacion_vista_id) {
+      actualizacionPendiente = ultimaActualizacion;
+    }
   }
 
   return (
     <NavegacionProvider>
       <div className="flex min-h-screen">
+        {actualizacionPendiente && <PopupActualizacion actualizacion={actualizacionPendiente} />}
         <Sidebar
           modulosActivos={perfil.empresas?.modulos_activos ?? []}
           rolEmpresa={perfil.rol_empresa}

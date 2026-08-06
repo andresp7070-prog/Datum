@@ -50,6 +50,17 @@ export default async function ResumenPage() {
   const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
   const mesActual = hoy.slice(0, 7);
 
+  const { data: empresaModulos } = await supabase
+    .from("empresas")
+    .select("modulos_activos")
+    .eq("id", perfil.empresa_id)
+    .single();
+  const modulosActivos = (empresaModulos?.modulos_activos ?? []) as string[];
+  const tieneVentas = modulosActivos.includes("ventas");
+  const tienePyg = modulosActivos.includes("pyg");
+  const tieneInventario = modulosActivos.includes("inventario");
+  const tienePromociones = modulosActivos.includes("promociones");
+
   let ventasQuery = supabase.from("ventas").select("fecha, monto").eq("empresa_id", perfil.empresa_id);
   let resultadosQuery = supabase
     .from("vista_estado_resultados")
@@ -62,24 +73,39 @@ export default async function ResumenPage() {
     .eq("tipo", "producto")
     .lte("cantidad", 0)
     .order("nombre");
+  let promocionesQuery = supabase
+    .from("promociones")
+    .select("id, nombre, tipo_promocion, fecha_fin")
+    .eq("empresa_id", perfil.empresa_id)
+    .eq("activo", true)
+    .lte("fecha_inicio", hoy)
+    .gte("fecha_fin", hoy)
+    .order("fecha_fin");
 
   if (puntoSeleccionado) {
     ventasQuery = ventasQuery.eq("punto_venta_id", puntoSeleccionado);
     resultadosQuery = resultadosQuery.eq("punto_venta_id", puntoSeleccionado);
     itemsQuery = itemsQuery.eq("punto_venta_id", puntoSeleccionado);
+    promocionesQuery = promocionesQuery.eq("punto_venta_id", puntoSeleccionado);
   }
 
-  const [{ data: empresa }, { data: ventasData }, { data: resultadosData }, { data: pasivosData }, { data: itemsData }] =
-    await Promise.all([
-      supabase.from("empresas").select("nombre, logo_path").eq("id", perfil.empresa_id).single(),
-      ventasQuery,
-      resultadosQuery,
-      supabase
-        .from("pasivos")
-        .select("monto_total, monto_pagado, estado")
-        .eq("empresa_id", perfil.empresa_id),
-      itemsQuery,
-    ]);
+  const [
+    { data: empresa },
+    { data: ventasData },
+    { data: resultadosData },
+    { data: pasivosData },
+    { data: itemsData },
+    { data: promocionesData },
+  ] = await Promise.all([
+    supabase.from("empresas").select("nombre, logo_path").eq("id", perfil.empresa_id).single(),
+    tieneVentas ? ventasQuery : Promise.resolve({ data: [] }),
+    tienePyg ? resultadosQuery : Promise.resolve({ data: [] }),
+    tienePyg
+      ? supabase.from("pasivos").select("monto_total, monto_pagado, estado").eq("empresa_id", perfil.empresa_id)
+      : Promise.resolve({ data: [] }),
+    tieneInventario ? itemsQuery : Promise.resolve({ data: [] }),
+    tienePromociones ? promocionesQuery : Promise.resolve({ data: [] }),
+  ]);
 
   // ---- Ventas de hoy ----
   const ventas = (ventasData ?? []) as { fecha: string; monto: number }[];
@@ -119,6 +145,14 @@ export default async function ResumenPage() {
   // ---- Inventario agotado ----
   const itemsAgotados = (itemsData ?? []) as { id: string; nombre: string; cantidad: number; unidad: string }[];
 
+  // ---- Promociones activas ----
+  const promocionesActivas = (promocionesData ?? []) as {
+    id: string;
+    nombre: string;
+    tipo_promocion: string;
+    fecha_fin: string;
+  }[];
+
   const logoUrl = await firmarFotoUrl(supabase, empresa?.logo_path ?? null, "empresas-logos");
 
   const fechaLegible = primeraMayuscula(
@@ -142,68 +176,104 @@ export default async function ResumenPage() {
         <LogoEmpresa logoUrl={logoUrl} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">Ventas de hoy</h2>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-semibold text-gray-900">{formatoMoneda(totalVendidoHoy)}</p>
-          </div>
-          <p className="text-xs text-gray-400">{totalVentasHoy} venta(s) hoy</p>
-          {diferenciaPromedio !== null ? (
-            <p
-              className={`mt-2 text-xs font-medium ${
-                diferenciaPromedio > 0
-                  ? "text-green-600"
-                  : diferenciaPromedio < 0
-                    ? "text-red-600"
-                    : "text-gray-400"
-              }`}
-            >
-              {diferenciaPromedio > 0 && `▲ ${diferenciaPromedio}% sobre el promedio`}
-              {diferenciaPromedio < 0 && `▼ ${Math.abs(diferenciaPromedio)}% bajo el promedio`}
-              {diferenciaPromedio === 0 && "Igual al promedio"}
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-gray-400">Aún no hay suficientes días para comparar</p>
+      {(tieneVentas || tienePyg) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {tieneVentas && (
+            <div className="rounded-xl border border-gray-200 p-4">
+              <h2 className="mb-3 text-sm font-semibold text-gray-900">Ventas de hoy</h2>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-semibold text-gray-900">{formatoMoneda(totalVendidoHoy)}</p>
+              </div>
+              <p className="text-xs text-gray-400">{totalVentasHoy} venta(s) hoy</p>
+              {diferenciaPromedio !== null ? (
+                <p
+                  className={`mt-2 text-xs font-medium ${
+                    diferenciaPromedio > 0
+                      ? "text-green-600"
+                      : diferenciaPromedio < 0
+                        ? "text-red-600"
+                        : "text-gray-400"
+                  }`}
+                >
+                  {diferenciaPromedio > 0 && `▲ ${diferenciaPromedio}% sobre el promedio`}
+                  {diferenciaPromedio < 0 && `▼ ${Math.abs(diferenciaPromedio)}% bajo el promedio`}
+                  {diferenciaPromedio === 0 && "Igual al promedio"}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-gray-400">Aún no hay suficientes días para comparar</p>
+              )}
+            </div>
+          )}
+
+          {tienePyg && (
+            <div className="rounded-xl border border-gray-200 p-4">
+              <h2 className="mb-3 text-sm font-semibold text-gray-900">Utilidad neta del mes</h2>
+              <p
+                className={`text-2xl font-semibold ${
+                  utilidadNetaMes >= 0 ? "text-gray-900" : "text-red-600"
+                }`}
+              >
+                {formatoMoneda(utilidadNetaMes)}
+              </p>
+              <p className="text-xs text-gray-400">Deudas pendientes: {formatoMoneda(totalPendiente)}</p>
+            </div>
           )}
         </div>
+      )}
 
+      {tieneInventario && (
         <div className="rounded-xl border border-gray-200 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">Utilidad neta del mes</h2>
-          <p
-            className={`text-2xl font-semibold ${
-              utilidadNetaMes >= 0 ? "text-gray-900" : "text-red-600"
-            }`}
-          >
-            {formatoMoneda(utilidadNetaMes)}
-          </p>
-          <p className="text-xs text-gray-400">Deudas pendientes: {formatoMoneda(totalPendiente)}</p>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Inventario agotado</h2>
+            <Link href="/inventario" className="text-xs text-gray-500 hover:text-gray-700">
+              Ver inventario
+            </Link>
+          </div>
+          {itemsAgotados.length === 0 ? (
+            <p className="text-sm text-gray-400">Ningún producto está en cero — todo en orden.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100 text-sm">
+              {itemsAgotados.slice(0, 5).map((item) => (
+                <li key={item.id} className="flex justify-between py-1.5">
+                  <span className="text-gray-700">{item.nombre}</span>
+                  <span className="text-red-600">Agotado</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {itemsAgotados.length > 5 && (
+            <p className="mt-2 text-xs text-gray-400">y {itemsAgotados.length - 5} más...</p>
+          )}
         </div>
-      </div>
+      )}
 
-      <div className="rounded-xl border border-gray-200 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Inventario agotado</h2>
-          <Link href="/inventario" className="text-xs text-gray-500 hover:text-gray-700">
-            Ver inventario
-          </Link>
+      {tienePromociones && (
+        <div className="rounded-xl border border-gray-200 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Promociones activas</h2>
+            <Link href="/promociones" className="text-xs text-gray-500 hover:text-gray-700">
+              Ver promociones
+            </Link>
+          </div>
+          {promocionesActivas.length === 0 ? (
+            <p className="text-sm text-gray-400">Ninguna promoción activa en este momento.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100 text-sm">
+              {promocionesActivas.map((promo) => (
+                <li key={promo.id} className="flex justify-between py-1.5">
+                  <span className="text-gray-700">{promo.nombre}</span>
+                  <span className="text-gray-400">
+                    Hasta {new Date(`${promo.fecha_fin}T00:00:00`).toLocaleDateString("es-CO", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        {itemsAgotados.length === 0 ? (
-          <p className="text-sm text-gray-400">Ningún producto está en cero — todo en orden.</p>
-        ) : (
-          <ul className="divide-y divide-gray-100 text-sm">
-            {itemsAgotados.slice(0, 5).map((item) => (
-              <li key={item.id} className="flex justify-between py-1.5">
-                <span className="text-gray-700">{item.nombre}</span>
-                <span className="text-red-600">Agotado</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {itemsAgotados.length > 5 && (
-          <p className="mt-2 text-xs text-gray-400">y {itemsAgotados.length - 5} más...</p>
-        )}
-      </div>
+      )}
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Accesos directos</h2>

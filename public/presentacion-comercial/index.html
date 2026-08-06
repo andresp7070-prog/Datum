@@ -99,24 +99,56 @@ html, body { height: 100%; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .home-logo-needle { transition: none; } }
 .home-intro h1 { font-size: clamp(38px, 7.5vh, 76px); line-height: 1; }
 .home-tagline { margin: 0; color: var(--ink-soft); font-size: clamp(14px, 1.8vh, 18px); }
-.intro-hint {
-  margin-top: clamp(16px, 3vh, 32px); font-size: clamp(13px, 1.7vh, 16px); font-weight: 600; color: var(--ink-soft);
-  display: flex; align-items: center; gap: 8px;
-}
-.intro-hint .flecha { animation: nudge 1.4s ease-in-out infinite; }
 
-/* Fase 2: el flujo de trabajo — registrar una venta y ver el efecto real */
+/* Fase 2: los 7 módulos en círculo, quietos, alrededor del logo */
+.orbit-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; width: 100%; }
+.orbit-diagram { position: relative; width: min(82vh, 64vw, 820px); height: min(82vh, 64vw, 820px); flex-shrink: 0; }
+
+.orbit-ring {
+  position: absolute; inset: 0;
+  opacity: 0; transform: scale(0.85);
+  transition: opacity 0.6s cubic-bezier(.2,.8,.3,1.05), transform 0.6s cubic-bezier(.2,.8,.3,1.05);
+}
+.slide-home:not([data-fase="intro"]) .orbit-ring { opacity: 1; transform: scale(1); }
+
+.orbit-spoke {
+  position: absolute; top: 50%; left: 50%; height: 1px;
+  width: min(33vh, 26vw, 330px);
+  background: linear-gradient(to right, transparent, var(--line) 45%, var(--line));
+  transform-origin: 0 50%;
+  transform: rotate(var(--angle));
+}
+.orbit-node {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(var(--angle)) translate(min(33vh, 26vw, 330px)) rotate(calc(-1 * var(--angle)));
+}
+
+.orbit-hub {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  pointer-events: none; z-index: 1;
+}
+.orbit-hub-bg {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(30vh, 24vw, 280px); height: min(30vh, 24vw, 280px);
+  border-radius: 50%; background: var(--bg); z-index: -1;
+}
+.orbit-hub h1 { font-size: clamp(32px, 6.5vh, 68px); line-height: 1; }
+
+.modulo-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  min-width: 96px; padding: 13px 12px; border-radius: 16px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-family: "Public Sans", sans-serif; font-size: 12.5px; font-weight: 600;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.modulo-btn .icono { font-size: 21px; }
+.modulo-btn:hover { border-color: var(--accent); transform: translateY(-2px); background: var(--bg-alt); }
+
+/* ---------- Pantalla de conexión de un módulo (accesible desde cualquier nodo del círculo) ---------- */
 .home-flujo { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(8px, 1.6vh, 16px); min-height: 0; width: 100%; }
-.home-flujo:not([hidden]) { display: flex; }
 .flujo-titulo { font-size: clamp(26px, 4vh, 42px); text-align: center; }
 .flujo-sub { margin: -4px 0 0; color: var(--ink-soft); font-size: clamp(13px, 1.7vh, 16px); text-align: center; max-width: 56ch; }
-
-.flujo-tambien { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-faint); }
-.nav-modulo-link {
-  background: none; border: none; padding: 0; color: var(--ink-soft); font-weight: 600;
-  text-decoration: underline; text-underline-offset: 2px; font-size: 12.5px;
-}
-.nav-modulo-link:hover { color: var(--ink); }
 
 /* ---------- Diapositiva de un módulo ---------- */
 .slide-modulo-head { display: flex; align-items: center; gap: 16px; flex-shrink: 0; margin-bottom: clamp(8px, 1.4vh, 14px); }
@@ -372,6 +404,12 @@ html, body { height: 100%; overflow: hidden; }
   .app-sidebar-foot { display: none; }
   .fila-datos { display: none; }
   .home-intro h1 { font-size: clamp(30px, 6vh, 52px); }
+  .orbit-hub h1 { font-size: clamp(26px, 5.5vh, 48px); }
+  .orbit-diagram { width: min(68vh, 80vw, 540px); height: min(68vh, 80vw, 540px); }
+  .orbit-spoke { width: min(25vh, 32vw, 200px); }
+  .orbit-node { transform: translate(-50%, -50%) rotate(var(--angle)) translate(min(25vh, 32vw, 200px)) rotate(calc(-1 * var(--angle))); }
+  .modulo-btn { min-width: 72px; padding: 9px 8px; font-size: 10.5px; }
+  .modulo-btn .icono { font-size: 16px; }
   .pyg-grid, .panel-bento, .perfil-grid { grid-template-columns: 1fr 1fr; }
 }
 
@@ -384,12 +422,7 @@ html, body { height: 100%; overflow: hidden; }
 }
 .btn-reiniciar-todo:hover { color: var(--ink); border-color: var(--ink-soft); transform: translateY(-1px); }
 
-/* ---------- Efecto en el ecosistema (Ventas, y también la portada) ---------- */
-.efecto-ecosistema { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(10px, 1.8vh, 20px); width: 100%; min-height: 0; }
-.efecto-ecosistema:not([hidden]) { display: flex; }
-.efecto-titulo { font-size: clamp(24px, 3.6vh, 40px); text-align: center; }
-.efecto-sub { margin: -6px 0 0; color: var(--ink-soft); font-size: clamp(13px, 1.7vh, 16px); text-align: center; max-width: 54ch; }
-
+/* ---------- Efecto en el ecosistema (la pantalla de conexión de cada módulo) ---------- */
 .efecto-escenario {
   position: relative; width: min(940px, 92vw);
   display: flex; align-items: center; justify-content: space-between;
@@ -476,67 +509,75 @@ html, body { height: 100%; overflow: hidden; }
     </div>
     <h1>Datum</h1>
     <p class="home-tagline">Conoce nuestro ecosistema.</p>
-    <p class="intro-hint" id="intro-hint">Haz clic en cualquier parte para comenzar <span class="flecha">→</span></p>
   </div>
 
-  <div class="home-flujo" id="home-flujo" hidden>
-    <h2 class="flujo-titulo">¿Qué pasa cuando registras una venta?</h2>
-    <p class="flujo-sub">Un clic, y mira cómo se mueve todo tu ecosistema al instante.</p>
+  <div class="orbit-wrap" id="orbit-wrap" hidden>
+    <div class="orbit-diagram" id="orbit-diagram">
+      <div class="orbit-ring" id="orbit-ring">
+        <div class="orbit-spoke" style="--angle:-90deg"></div>
+        <div class="orbit-spoke" style="--angle:-38.57deg"></div>
+        <div class="orbit-spoke" style="--angle:12.86deg"></div>
+        <div class="orbit-spoke" style="--angle:64.29deg"></div>
+        <div class="orbit-spoke" style="--angle:115.71deg"></div>
+        <div class="orbit-spoke" style="--angle:167.14deg"></div>
+        <div class="orbit-spoke" style="--angle:218.57deg"></div>
 
-    <div class="efecto-escenario" id="flujo-escenario">
-      <svg class="efecto-svg" id="flujo-svg"></svg>
+        <div class="orbit-node" style="--angle:-90deg">
+          <button class="modulo-btn" type="button" data-modulo="ventas"><span class="icono">🧾</span>Ventas</button>
+        </div>
+        <div class="orbit-node" style="--angle:-38.57deg">
+          <button class="modulo-btn" type="button" data-modulo="inventario"><span class="icono">📦</span>Inventario</button>
+        </div>
+        <div class="orbit-node" style="--angle:12.86deg">
+          <button class="modulo-btn" type="button" data-modulo="crm"><span class="icono">🤝</span>CRM</button>
+        </div>
+        <div class="orbit-node" style="--angle:64.29deg">
+          <button class="modulo-btn" type="button" data-modulo="pyg"><span class="icono">📊</span>Estado P y G</button>
+        </div>
+        <div class="orbit-node" style="--angle:115.71deg">
+          <button class="modulo-btn" type="button" data-modulo="panel"><span class="icono">🧠</span>Panel de control</button>
+        </div>
+        <div class="orbit-node" style="--angle:167.14deg">
+          <button class="modulo-btn" type="button" data-modulo="nomina"><span class="icono">👥</span>Nómina</button>
+        </div>
+        <div class="orbit-node" style="--angle:218.57deg">
+          <button class="modulo-btn" type="button" data-modulo="promociones"><span class="icono">🏷️</span>Promociones</button>
+        </div>
+      </div>
 
-      <button type="button" class="efecto-origen efecto-origen--clicable" id="flujo-origen">
-        <div class="efecto-origen-icono">🧾</div>
+      <div class="orbit-hub">
+        <div class="orbit-hub-bg" aria-hidden="true"></div>
+        <h1>Datum</h1>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide slide-modulo" id="slide-conexion" hidden>
+  <div class="slide-modulo-head">
+    <button class="btn-volver" type="button" data-volver>← Volver</button>
+    <p class="slide-caption" id="conexion-caption">Cómo se conecta este módulo</p>
+  </div>
+
+  <div class="home-flujo" id="conexion-flujo">
+    <h2 class="flujo-titulo" id="conexion-titulo"></h2>
+    <p class="flujo-sub" id="conexion-sub"></p>
+
+    <div class="efecto-escenario" id="conexion-escenario">
+      <svg class="efecto-svg" id="conexion-svg"></svg>
+
+      <button type="button" class="efecto-origen efecto-origen--clicable" id="conexion-origen">
+        <div class="efecto-origen-icono" id="conexion-origen-icono"></div>
         <div>
-          <div class="efecto-origen-titulo" id="flujo-origen-titulo">Registrar una venta</div>
-          <div class="efecto-origen-detalle" id="flujo-origen-detalle">Camila Ruiz · 2 × Hamburguesa Clásica · $24.000</div>
+          <div class="efecto-origen-titulo" id="conexion-origen-titulo"></div>
+          <div class="efecto-origen-detalle" id="conexion-origen-detalle"></div>
         </div>
       </button>
 
-      <div class="efecto-destinos">
-        <button type="button" class="efecto-card" id="flujo-card-crm" data-modulo="crm">
-          <div class="efecto-card-icono">🤝</div>
-          <div class="efecto-card-texto">
-            <div class="efecto-card-titulo">CRM</div>
-            <div class="efecto-card-delta" id="flujo-delta-crm">Se registran los datos del comprador</div>
-            <div class="efecto-card-nota" id="flujo-nota-crm"></div>
-          </div>
-        </button>
-        <button type="button" class="efecto-card" id="flujo-card-inventario" data-modulo="inventario">
-          <div class="efecto-card-icono">📦</div>
-          <div class="efecto-card-texto">
-            <div class="efecto-card-titulo">Inventario</div>
-            <div class="efecto-card-delta" id="flujo-delta-inventario">Se descuentan los productos vendidos</div>
-            <div class="efecto-card-nota">Según la receta, en automático</div>
-          </div>
-        </button>
-        <button type="button" class="efecto-card" id="flujo-card-pyg" data-modulo="pyg">
-          <div class="efecto-card-icono">📊</div>
-          <div class="efecto-card-texto">
-            <div class="efecto-card-titulo">Estado P y G</div>
-            <div class="efecto-card-delta" id="flujo-delta-pyg">Se suma el ingreso y su costo</div>
-            <div class="efecto-card-nota">Utilidad neta recalculada al instante</div>
-          </div>
-        </button>
-        <button type="button" class="efecto-card" id="flujo-card-panel" data-modulo="panel">
-          <div class="efecto-card-icono">🧠</div>
-          <div class="efecto-card-texto">
-            <div class="efecto-card-titulo">Panel de control</div>
-            <div class="efecto-card-delta" id="flujo-delta-panel">Sus cifras se actualizan solas</div>
-            <div class="efecto-card-nota">Se ve reflejado en cada gráfica</div>
-          </div>
-        </button>
-      </div>
+      <div class="efecto-destinos" id="conexion-destinos"></div>
     </div>
 
-    <p class="efecto-hint" id="flujo-hint-texto">Haz clic en "Registrar una venta" para verlo en vivo — después, haz clic en cualquier tarjeta para comprobarlo tú mismo.</p>
-    <p class="flujo-tambien">
-      También puedes ver:
-      <button class="nav-modulo-link" type="button" data-modulo="promociones">Promociones</button>
-      ·
-      <button class="nav-modulo-link" type="button" data-modulo="nomina">Nómina</button>
-    </p>
+    <p class="efecto-hint" id="conexion-hint-texto"></p>
   </div>
 </section>
 
@@ -649,48 +690,6 @@ html, body { height: 100%; overflow: hidden; }
         <span id="avance-texto-ventas">Haz clic para agregar una venta</span>
         <span class="flecha">→</span>
       </div>
-    </div>
-
-    <div class="efecto-ecosistema" id="efecto-ecosistema" hidden>
-      <h3 class="efecto-titulo">Así se mueve tu ecosistema</h3>
-      <p class="efecto-sub">Una sola venta, un solo clic — esto es lo que pasa detrás, en el mismo instante.</p>
-      <div class="efecto-escenario" id="efecto-escenario">
-        <svg class="efecto-svg" id="efecto-svg"></svg>
-        <div class="efecto-origen" id="efecto-origen">
-          <div class="efecto-origen-icono">🧾</div>
-          <div>
-            <div class="efecto-origen-titulo">Venta registrada</div>
-            <div class="efecto-origen-detalle" id="efecto-origen-detalle"></div>
-          </div>
-        </div>
-        <div class="efecto-destinos">
-          <button type="button" class="efecto-card" id="efecto-card-inventario">
-            <div class="efecto-card-icono">📦</div>
-            <div class="efecto-card-texto">
-              <div class="efecto-card-titulo">Inventario</div>
-              <div class="efecto-card-delta" id="efecto-delta-inventario"></div>
-              <div class="efecto-card-nota">Descontado por receta, en automático</div>
-            </div>
-          </button>
-          <button type="button" class="efecto-card" id="efecto-card-crm">
-            <div class="efecto-card-icono">🤝</div>
-            <div class="efecto-card-texto">
-              <div class="efecto-card-titulo">CRM</div>
-              <div class="efecto-card-delta" id="efecto-delta-crm"></div>
-              <div class="efecto-card-nota" id="efecto-nota-crm"></div>
-            </div>
-          </button>
-          <button type="button" class="efecto-card" id="efecto-card-pyg">
-            <div class="efecto-card-icono">📊</div>
-            <div class="efecto-card-texto">
-              <div class="efecto-card-titulo">Estado P y G</div>
-              <div class="efecto-card-delta" id="efecto-delta-pyg"></div>
-              <div class="efecto-card-nota">Utilidad neta recalculada al instante</div>
-            </div>
-          </button>
-        </div>
-      </div>
-      <p class="efecto-hint">Haz clic en cualquier tarjeta para comprobarlo tú mismo ahí mismo.</p>
     </div>
 
     <p class="slide-highlights">✓ Una sola pantalla · ✓ El cliente se busca solo · ✓ Un clic, todo queda registrado</p>
@@ -1212,8 +1211,13 @@ var ESTADO_INICIAL = {
       { cat: "Publicidad", monto: 500000, tipo: "Costo puntual" }
     ],
     deuda: { desc: "Préstamo equipo de cocina", total: 2000000, pagadoInicial: 500000 },
-    abono: 500000
-  }
+    abono: 500000,
+    // Gastos que solo existen si se disparan desde el ecosistema (portada) —
+    // aparte del "abono" de arriba, que es el que ya revelaba el propio
+    // recorrido de Estado P y G. Suman, no reemplazan.
+    extra: { abonoDeuda: 0, nominaNeto: 0, nominaAportes: 0, nominaPrestaciones: 0 }
+  },
+  nomina: { pagado: false }
 };
 
 function clonarProfundo(v) { return JSON.parse(JSON.stringify(v)); }
@@ -1288,6 +1292,61 @@ function registrarVenta() {
     pyg: { ingresoDelta: monto, costoDelta: costoTotal, utilidadDelta: monto - costoTotal }
   };
 
+  notificarCambio();
+  return efecto;
+}
+
+// Las siguientes cuatro funciones son el mismo principio que registrarVenta():
+// una acción real de un módulo, que de verdad cambia el ESTADO compartido —
+// para que cada módulo, no solo Ventas, se pueda mostrar "en vivo" conectado
+// con los demás.
+
+var LEAD_DEMO = { nombre: "Daniel Torres", telefono: "3009876543", correo: "daniel.torres@gmail.com" };
+
+function agregarClienteLead() {
+  var esNuevo = ESTADO.clientes.filter(function (c) { return c.nombre === LEAD_DEMO.nombre; }).length === 0;
+  if (esNuevo) {
+    ESTADO.clientes.push({ nombre: LEAD_DEMO.nombre, telefono: LEAD_DEMO.telefono, correo: LEAD_DEMO.correo, etapa: "Nuevo", calificacion: 0, interacciones: [] });
+  }
+  var efecto = { cliente: LEAD_DEMO, esNuevo: esNuevo, totalClientes: ESTADO.clientes.length };
+  notificarCambio();
+  return efecto;
+}
+
+function reabastecerProducto() {
+  // Lechuga es el ingrediente que de verdad limita cuántas hamburguesas se
+  // pueden preparar hoy (15 unidades / 2 por receta = 7) — reabastecer
+  // cualquier otro ingrediente no movería el número de producibles.
+  var ID_PRODUCTO = "lechuga";
+  var CANTIDAD_REABASTECIDA = 20;
+  var producibleAntes = calcularProducibles();
+  var p = porIdEstado(ID_PRODUCTO);
+  p.cantidad += CANTIDAD_REABASTECIDA;
+  var efecto = { producto: p, cantidad: CANTIDAD_REABASTECIDA, producibleAntes: producibleAntes, producibleDespues: calcularProducibles() };
+  notificarCambio();
+  return efecto;
+}
+
+function abonarDeuda() {
+  var MONTO_ABONO = 300000;
+  ESTADO.pyg.extra.abonoDeuda += MONTO_ABONO;
+  var pagado = ESTADO.pyg.deuda.pagadoInicial + ESTADO.pyg.extra.abonoDeuda;
+  var pendiente = Math.max(0, ESTADO.pyg.deuda.total - pagado);
+  var efecto = { monto: MONTO_ABONO, pendiente: pendiente };
+  notificarCambio();
+  return efecto;
+}
+
+function marcarNominaPagada() {
+  var NETO = 1580000, APORTES = 248000, PRESTACIONES = 284600;
+  var yaPagado = ESTADO.nomina.pagado;
+  if (!yaPagado) {
+    ESTADO.nomina.pagado = true;
+    ESTADO.pyg.extra.nominaNeto += NETO;
+    ESTADO.pyg.extra.nominaAportes += APORTES;
+    ESTADO.pyg.extra.nominaPrestaciones += PRESTACIONES;
+  }
+  var efecto = { yaPagado: yaPagado, neto: NETO, aportes: APORTES, prestaciones: PRESTACIONES };
   notificarCambio();
   return efecto;
 }
@@ -1476,9 +1535,8 @@ window.reiniciarEcosistema = reiniciarEcosistema;
   var FECHA_TXT = ahora.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
   var HORA_TXT = ahora.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
 
-  var TOTAL_FRAMES = 6; // 0..5
+  var TOTAL_FRAMES = 5; // 0..4
   var frame = 0;
-  var ultimoEfecto = null;
 
   var el = {
     zona: document.getElementById("avance-zona-ventas"),
@@ -1504,16 +1562,7 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     btnGuardar: document.getElementById("btn-guardar-venta"),
     banner: document.getElementById("banner-exito"),
     appFrame: document.querySelector("#slide-ventas .app-frame"),
-    highlights: document.querySelector("#slide-ventas .slide-highlights"),
-    efecto: document.getElementById("efecto-ecosistema"),
-    efectoOrigenDetalle: document.getElementById("efecto-origen-detalle"),
-    efectoDeltaInventario: document.getElementById("efecto-delta-inventario"),
-    efectoDeltaCrm: document.getElementById("efecto-delta-crm"),
-    efectoNotaCrm: document.getElementById("efecto-nota-crm"),
-    efectoDeltaPyg: document.getElementById("efecto-delta-pyg"),
-    cardInventario: document.getElementById("efecto-card-inventario"),
-    cardCrm: document.getElementById("efecto-card-crm"),
-    cardPyg: document.getElementById("efecto-card-pyg")
+    highlights: document.querySelector("#slide-ventas .slide-highlights")
   };
 
   function pintarDots() {
@@ -1535,7 +1584,6 @@ window.reiniciarEcosistema = reiniciarEcosistema;
       "Haz clic para completar cliente y producto",
       "Haz clic para guardar la venta",
       "Haz clic para ver el historial actualizado",
-      "Haz clic para ver el efecto en tu ecosistema",
       "Haz clic para volver y elegir otro módulo"
     ];
     el.texto.textContent = textos[frame];
@@ -1598,103 +1646,12 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     }).join("");
   }
 
-  function contarHasta(elDiv, desde, hasta, formatoFn, ms) {
-    var inicio = null;
-    function paso(ts) {
-      if (inicio === null) inicio = ts;
-      var t = Math.min(1, (ts - inicio) / ms);
-      var v = desde + (hasta - desde) * (1 - Math.pow(1 - t, 3));
-      elDiv.textContent = formatoFn(v);
-      if (t < 1) requestAnimationFrame(paso);
-    }
-    requestAnimationFrame(paso);
-  }
-
-  function dibujarConexiones() {
-    var svg = document.getElementById("efecto-svg");
-    var escenario = document.getElementById("efecto-escenario");
-    var origen = document.getElementById("efecto-origen");
-    var cards = [el.cardInventario, el.cardCrm, el.cardPyg];
-    if (!escenario || !origen) return;
-
-    var rectEsc = escenario.getBoundingClientRect();
-    var rectOrigen = origen.getBoundingClientRect();
-    var x1 = rectOrigen.right - rectEsc.left;
-    var y1 = rectOrigen.top + rectOrigen.height / 2 - rectEsc.top;
-
-    svg.setAttribute("viewBox", "0 0 " + rectEsc.width + " " + rectEsc.height);
-    svg.innerHTML = "";
-
-    cards.forEach(function (card, i) {
-      card.classList.remove("lista");
-      var rectCard = card.getBoundingClientRect();
-      var x2 = rectCard.left - rectEsc.left;
-      var y2 = rectCard.top + rectCard.height / 2 - rectEsc.top;
-      var midX = (x1 + x2) / 2;
-      var d = "M " + x1 + "," + y1 + " C " + midX + "," + y1 + " " + midX + "," + y2 + " " + x2 + "," + y2;
-
-      var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", d);
-      svg.appendChild(path);
-      var len = path.getTotalLength();
-      path.style.strokeDasharray = String(len);
-      path.style.strokeDashoffset = String(len);
-      path.style.transition = "stroke-dashoffset 0.75s cubic-bezier(.3,.7,.2,1) " + (i * 0.16) + "s";
-
-      var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("class", "pulso");
-      circle.style.offsetPath = "path('" + d + "')";
-      circle.style.animationDelay = (i * 0.16) + "s";
-      svg.appendChild(circle);
-
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          path.style.strokeDashoffset = "0";
-          circle.classList.add("activo");
-          setTimeout(function () { card.classList.add("lista"); }, i * 160 + 480);
-        });
-      });
-    });
-  }
-
-  function pintarEfecto() {
-    if (!ultimoEfecto) {
-      el.efectoOrigenDetalle.textContent = "Guarda una venta (punto 3) para verlo en vivo.";
-      el.efectoDeltaInventario.textContent = "—";
-      el.efectoDeltaCrm.textContent = "—";
-      el.efectoNotaCrm.textContent = "";
-      el.efectoDeltaPyg.textContent = "—";
-      return;
-    }
-    var ef = ultimoEfecto;
-    el.efectoOrigenDetalle.textContent = ef.cliente.nombre + " · " + ef.cantidad + " × " + ESTADO.receta.nombre + " · " + formatoCOP(ef.monto);
-
-    var textoInv = ef.inventario.map(function (d) { return d.emoji + " " + d.delta; }).join("  ·  ");
-    el.efectoDeltaInventario.innerHTML = '<span class="negativo">' + textoInv + "</span>";
-
-    el.efectoDeltaCrm.textContent = ef.crm.esNuevo ? "Cliente nuevo creado" : "Cliente actualizado";
-    el.efectoNotaCrm.textContent = ef.crm.nombre + " — " + ef.crm.perfil.totalCompras + " compra" + (ef.crm.perfil.totalCompras === 1 ? "" : "s") + " · ticket medio " + formatoCOP(ef.crm.perfil.ticketMedio);
-
-    contarHasta(el.efectoDeltaPyg, 0, ef.pyg.utilidadDelta, function (v) { return "+" + formatoCOP(v) + " en utilidad"; }, 700);
-
-    dibujarConexiones();
-  }
-
   function render() {
     pintarDots();
     actualizarHint();
 
     el.campoFecha.textContent = FECHA_TXT;
     el.campoHora.textContent = HORA_TXT;
-
-    el.appFrame.hidden = frame === 5;
-    el.highlights.hidden = frame === 5;
-    el.efecto.hidden = frame !== 5;
-
-    if (frame === 5) {
-      pintarEfecto();
-      return;
-    }
 
     if (frame === 0) {
       el.vistaHistorial.hidden = false;
@@ -1728,7 +1685,7 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     var frameAnterior = frame;
     frame++;
     if (frameAnterior === 2 && frame === 3) {
-      ultimoEfecto = registrarVenta();
+      registrarVenta();
     }
     render();
   }
@@ -1744,17 +1701,9 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     frame = 0;
     render();
   });
-  [el.cardInventario, el.cardCrm, el.cardPyg].forEach(function (card, i) {
-    card.addEventListener("click", function (e) {
-      e.stopPropagation();
-      var destino = ["inventario", "crm", "pyg"][i];
-      if (window.reiniciarModulo && window.reiniciarModulo[destino]) window.reiniciarModulo[destino]();
-      if (window.irA) window.irA("slide-" + destino);
-    });
-  });
   window.reiniciarModulo = window.reiniciarModulo || {};
-  window.reiniciarModulo.ventas = function () { frame = 0; ultimoEfecto = null; render(); };
-  suscribirse(function () { if (frame !== 5) render(); });
+  window.reiniciarModulo.ventas = function () { frame = 0; render(); };
+  suscribirse(function () { render(); });
 
   render();
 })();
@@ -1806,50 +1755,245 @@ window.reiniciarEcosistema = reiniciarEcosistema;
 })();
 
 // ======================================================================
-// Portada — el guion de venta en vivo: 1) solo el logo a pantalla
-// completa, 2) un solo clic en "Registrar una venta" dispara el mismo
-// registrarVenta() de siempre y cascada en tiempo real hacia CRM,
-// Inventario, Estado P y G y Panel de control — cada tarjeta muestra su
-// dato real, no una frase abstracta. De ahí en adelante cada tarjeta (y
-// la venta misma) navega a su demo real de siempre.
+// Portada — 1) solo el logo a pantalla completa, 2) clic en cualquier
+// parte y se despliegan los 7 módulos quietos en círculo alrededor del
+// logo. Clic en cualquiera de ellos abre su pantalla de conexión (ver
+// el IIFE "conexión" más abajo) — la navegación real vive ahí, no acá.
+// ======================================================================
+(function () {
+  "use strict";
+
+  var slideHome = document.getElementById("slide-home");
+  var homeIntro = document.getElementById("home-intro");
+  var orbitWrap = document.getElementById("orbit-wrap");
+  var btnReiniciarTodo = document.getElementById("btn-reiniciar-todo");
+
+  var fase = "intro"; // intro | circulo
+
+  function irAFase(f) {
+    fase = f;
+    slideHome.setAttribute("data-fase", fase);
+    homeIntro.hidden = fase !== "intro";
+    orbitWrap.hidden = fase !== "circulo";
+    btnReiniciarTodo.hidden = fase === "intro";
+  }
+
+  homeIntro.addEventListener("click", function () {
+    irAFase("circulo");
+  });
+
+  document.querySelectorAll(".modulo-btn[data-modulo]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var modulo = btn.getAttribute("data-modulo");
+      if (window.irAConexion) window.irAConexion(modulo);
+    });
+  });
+
+  window.reiniciarModulo = window.reiniciarModulo || {};
+  window.reiniciarModulo.home = function () {
+    irAFase("intro");
+  };
+})();
+
+// ======================================================================
+// Pantalla de conexión — el corazón de la portada ahora: al hacer clic
+// en cualquier módulo del círculo, se abre SU historia de "cómo se
+// conecta con los demás". Las tarjetas de destino encadenan a la
+// conexión de ESE otro módulo (Ventas → CRM → Panel de control → ...),
+// así se demuestra que es un ecosistema real, no solo Ventas hablando
+// con los demás. Cinco módulos tienen una acción propia real (igual
+// que registrarVenta ya existía); Panel de control y Promociones no
+// tienen una acción propia en el producto real, así que muestran sus
+// cifras reales en vivo, sin botón de disparo. Un clic en el origen
+// (o el único clic, si el módulo no dispara nada) lleva a la pantalla
+// real de ese módulo.
 // ======================================================================
 (function () {
   "use strict";
 
   var SVG_NS = "http://www.w3.org/2000/svg";
-  var CANTIDAD_DEMO = 2;
-  var CLIENTE_DEMO_NOMBRE = "Camila Ruiz";
 
-  var slideHome = document.getElementById("slide-home");
-  var homeIntro = document.getElementById("home-intro");
-  var homeFlujo = document.getElementById("home-flujo");
-  var btnReiniciarTodo = document.getElementById("btn-reiniciar-todo");
+  var ICONOS = { ventas: "🧾", crm: "🤝", inventario: "📦", pyg: "📊", panel: "🧠", promociones: "🏷️", nomina: "👥" };
+  var NOMBRES = { ventas: "Ventas", crm: "CRM", inventario: "Inventario", pyg: "Estado P y G", panel: "Panel de control", promociones: "Promociones", nomina: "Nómina" };
+  var CAPTIONES = {
+    ventas: "Ventas — hamburguesería, ejemplo en vivo",
+    crm: "CRM — cómo se conecta con el resto",
+    inventario: "Inventario — cómo se conecta con el resto",
+    pyg: "Estado P y G — cómo se conecta con el resto",
+    panel: "Panel de control — de dónde saca su información",
+    promociones: "Promociones — cómo se conecta con el resto",
+    nomina: "Nómina — cómo se conecta con el resto"
+  };
 
-  var flujoOrigen = document.getElementById("flujo-origen");
-  var flujoOrigenTitulo = document.getElementById("flujo-origen-titulo");
-  var flujoOrigenDetalle = document.getElementById("flujo-origen-detalle");
-  var flujoEscenario = document.getElementById("flujo-escenario");
-  var flujoSvg = document.getElementById("flujo-svg");
-  var flujoHintTexto = document.getElementById("flujo-hint-texto");
-
-  var cards = [
-    document.getElementById("flujo-card-crm"),
-    document.getElementById("flujo-card-inventario"),
-    document.getElementById("flujo-card-pyg"),
-    document.getElementById("flujo-card-panel")
-  ];
-  var deltaCrm = document.getElementById("flujo-delta-crm");
-  var notaCrm = document.getElementById("flujo-nota-crm");
-  var deltaInventario = document.getElementById("flujo-delta-inventario");
-  var deltaPyg = document.getElementById("flujo-delta-pyg");
-  var deltaPanel = document.getElementById("flujo-delta-panel");
-
-  var fase = "intro"; // intro | flujo
-  var disparado = false;
-
-  function detalleOrigenPreview() {
-    return CLIENTE_DEMO_NOMBRE + " · " + CANTIDAD_DEMO + " × " + ESTADO.receta.nombre + " · " + formatoCOP(CANTIDAD_DEMO * ESTADO.receta.precioVenta);
+  function totalUtilidadNeta() {
+    var ventasIngresos = ESTADO.ventas.reduce(function (s, v) { return s + v.monto; }, 0);
+    var ventasCosto = ESTADO.ventas.reduce(function (s, v) { return s + v.costo; }, 0);
+    var ingresos = ESTADO.pyg.ingresosBase + ventasIngresos;
+    var costo = ESTADO.pyg.costoBase + ventasCosto;
+    var bruta = ingresos - costo;
+    var gastosBase = ESTADO.pyg.gastos.reduce(function (s, g) { return s + g.monto; }, 0);
+    var extra = ESTADO.pyg.extra;
+    var gastosTotal = gastosBase + extra.abonoDeuda + extra.nominaNeto + extra.nominaAportes + extra.nominaPrestaciones;
+    return bruta + ESTADO.pyg.otros - gastosTotal;
   }
+
+  var MODULOS = {
+    ventas: {
+      disparo: {
+        tituloInicial: "Registrar una venta",
+        detalleInicial: function () { return "Camila Ruiz · 2 × " + ESTADO.receta.nombre + " · " + formatoCOP(2 * ESTADO.receta.precioVenta); },
+        accion: registrarVenta,
+        tituloDisparado: function () { return "✓ Venta registrada"; },
+        detalleDisparado: function (ef) { return ef.cliente.nombre + " · " + ef.cantidad + " × " + ESTADO.receta.nombre + " · " + formatoCOP(ef.monto); }
+      },
+      destinos: [
+        {
+          modulo: "crm", deltaInicial: "Se registran los datos del comprador",
+          pintar: function (ef) {
+            return {
+              delta: ef.crm.esNuevo ? "Cliente nuevo creado" : "Cliente actualizado",
+              nota: ef.cliente.nombre + " · 📞 " + ef.cliente.telefono + " · 📧 " + ef.cliente.correo
+            };
+          }
+        },
+        {
+          modulo: "inventario", deltaInicial: "Se descuentan los productos vendidos", notaFija: "Según la receta, en automático",
+          pintar: function (ef) {
+            var texto = ef.inventario.map(function (d) { return d.emoji + " " + d.delta; }).join("  ·  ");
+            return { deltaHTML: '<span class="negativo">' + texto + "</span>" };
+          }
+        },
+        {
+          modulo: "pyg", deltaInicial: "Se suma el ingreso y su costo", notaFija: "Utilidad neta recalculada al instante",
+          pintar: function (ef) { return { animarA: ef.pyg.utilidadDelta, animarFormato: function (v) { return "+" + formatoCOP(v) + " en utilidad"; } }; }
+        },
+        {
+          modulo: "panel", deltaInicial: "Sus cifras se actualizan solas", notaFija: "Se ve reflejado en cada gráfica",
+          pintar: function () {
+            var n = ESTADO.ventas.length;
+            var total = ESTADO.ventas.reduce(function (s, v) { return s + v.monto; }, 0);
+            return { delta: n + " venta" + (n === 1 ? "" : "s") + " hoy · " + formatoCOP(total) + " vendido" };
+          }
+        }
+      ]
+    },
+    crm: {
+      disparo: {
+        tituloInicial: "Agregar un cliente nuevo",
+        detalleInicial: function () { return "Un lead nuevo, antes de que compre — " + LEAD_DEMO.nombre; },
+        accion: agregarClienteLead,
+        tituloDisparado: function (ef) { return ef.esNuevo ? "✓ Cliente agregado" : "Ya estaba en tu CRM"; },
+        detalleDisparado: function (ef) { return ef.cliente.nombre + " · 📞 " + ef.cliente.telefono + " · 📧 " + ef.cliente.correo; }
+      },
+      destinos: [
+        {
+          modulo: "ventas", deltaInicial: "Ya queda disponible para buscarlo", notaFija: "Sin escribirlo de nuevo en tu próxima venta",
+          pintar: function () { return { delta: "Se puede buscar por nombre o teléfono" }; }
+        },
+        {
+          modulo: "panel", deltaInicial: "Tu directorio crece",
+          pintar: function (ef) { return { delta: ef.totalClientes + " cliente" + (ef.totalClientes === 1 ? "" : "s") + " en tu directorio" }; }
+        }
+      ]
+    },
+    inventario: {
+      disparo: {
+        tituloInicial: "Reabastecer un producto",
+        detalleInicial: function () { return "+20 unidades de Lechuga"; },
+        accion: reabastecerProducto,
+        tituloDisparado: function () { return "✓ Stock actualizado"; },
+        detalleDisparado: function (ef) { return "+" + ef.cantidad + " " + ef.producto.nombre + " · ahora tienes " + ef.producto.cantidad + " " + ef.producto.unidad + "(es)"; }
+      },
+      destinos: [
+        {
+          modulo: "ventas", deltaInicial: "Listo para seguir vendiendo",
+          pintar: function (ef) {
+            var delta = ef.producibleDespues - ef.producibleAntes;
+            return { delta: "+" + delta + " " + ESTADO.receta.nombre + " disponibles hoy", nota: "Ahora puedes preparar " + ef.producibleDespues + " en total" };
+          }
+        }
+      ]
+    },
+    pyg: {
+      disparo: {
+        tituloInicial: "Abonar a una deuda",
+        detalleInicial: function () { return formatoCOP(300000) + " al " + ESTADO.pyg.deuda.desc; },
+        accion: abonarDeuda,
+        tituloDisparado: function () { return "✓ Abono registrado"; },
+        detalleDisparado: function (ef) { return formatoCOP(300000) + " — deuda pendiente: " + formatoCOP(ef.pendiente); }
+      },
+      destinos: [
+        {
+          modulo: "panel", deltaInicial: "Se refleja en tu utilidad del mes",
+          pintar: function () { return { delta: "-" + formatoCOP(300000) + " en utilidad neta de este mes" }; }
+        }
+      ]
+    },
+    nomina: {
+      disparo: {
+        tituloInicial: "Marcar el período como pagado",
+        detalleInicial: function () { return "Julio 2026 — Carlos Gómez"; },
+        accion: marcarNominaPagada,
+        tituloDisparado: function (ef) { return ef.yaPagado ? "Ya estaba marcado como pagado" : "✓ Período pagado"; },
+        detalleDisparado: function (ef) { return "Neto " + formatoCOP(ef.neto) + " + aportes " + formatoCOP(ef.aportes) + " + prestaciones " + formatoCOP(ef.prestaciones); }
+      },
+      destinos: [
+        {
+          modulo: "pyg", deltaInicial: "Se suman 3 gastos nuevos", notaFija: "Nómina, aportes patronales y prestaciones",
+          pintar: function (ef) { return { delta: "-" + formatoCOP(ef.neto + ef.aportes + ef.prestaciones) + " en gastos de este mes" }; }
+        }
+      ]
+    },
+    panel: {
+      sinDisparo: true,
+      tituloOrigen: "Panel de control",
+      detalleOrigen: "Lee esto mismo, en tiempo real",
+      destinos: [
+        { modulo: "ventas", pintarSiempre: function () {
+          var n = ESTADO.ventas.length;
+          var total = ESTADO.ventas.reduce(function (s, v) { return s + v.monto; }, 0);
+          return { delta: n + " venta" + (n === 1 ? "" : "s") + " · " + formatoCOP(total) + " vendido" };
+        } },
+        { modulo: "inventario", pintarSiempre: function () {
+          return { delta: calcularProducibles() + " " + ESTADO.receta.nombre + " se pueden preparar hoy" };
+        } },
+        { modulo: "crm", pintarSiempre: function () {
+          var n = ESTADO.clientes.length;
+          return { delta: n + " cliente" + (n === 1 ? "" : "s") + " en tu directorio" };
+        } },
+        { modulo: "pyg", pintarSiempre: function () {
+          return { delta: formatoCOP(totalUtilidadNeta()) + " de utilidad neta acumulada" };
+        } }
+      ]
+    },
+    promociones: {
+      sinDisparo: true,
+      tituloOrigen: "Promociones",
+      detalleOrigen: "Tus campañas activas se aplican solas",
+      destinos: [
+        { modulo: "ventas", pintarSiempre: function () {
+          return { delta: "Martes 2x1 — Hamburguesa Clásica", nota: "Se aplica directo en el formulario, sin cálculos manuales" };
+        } }
+      ]
+    }
+  };
+
+  var slideConexion = document.getElementById("slide-conexion");
+  var caption = document.getElementById("conexion-caption");
+  var titulo = document.getElementById("conexion-titulo");
+  var sub = document.getElementById("conexion-sub");
+  var escenario = document.getElementById("conexion-escenario");
+  var svg = document.getElementById("conexion-svg");
+  var origen = document.getElementById("conexion-origen");
+  var origenIcono = document.getElementById("conexion-origen-icono");
+  var origenTitulo = document.getElementById("conexion-origen-titulo");
+  var origenDetalle = document.getElementById("conexion-origen-detalle");
+  var destinosWrap = document.getElementById("conexion-destinos");
+  var hintTexto = document.getElementById("conexion-hint-texto");
+
+  var moduloActual = null;
+  var disparado = false;
+  var cardsActuales = [];
 
   function contarHasta(elDiv, desde, hasta, formatoFn, ms) {
     var inicio = null;
@@ -1863,16 +2007,34 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     requestAnimationFrame(paso);
   }
 
+  function crearCard(destino) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "efecto-card";
+    btn.setAttribute("data-modulo", destino.modulo);
+    btn.innerHTML =
+      '<div class="efecto-card-icono">' + ICONOS[destino.modulo] + "</div>" +
+      '<div class="efecto-card-texto">' +
+        '<div class="efecto-card-titulo">' + NOMBRES[destino.modulo] + "</div>" +
+        '<div class="efecto-card-delta"></div>' +
+        '<div class="efecto-card-nota"></div>' +
+      "</div>";
+    btn.addEventListener("click", function () {
+      if (window.irAConexion) window.irAConexion(destino.modulo);
+    });
+    return btn;
+  }
+
   function dibujarConexiones() {
-    var rectEsc = flujoEscenario.getBoundingClientRect();
-    var rectOrigen = flujoOrigen.getBoundingClientRect();
+    var rectEsc = escenario.getBoundingClientRect();
+    var rectOrigen = origen.getBoundingClientRect();
     var x1 = rectOrigen.right - rectEsc.left;
     var y1 = rectOrigen.top + rectOrigen.height / 2 - rectEsc.top;
 
-    flujoSvg.setAttribute("viewBox", "0 0 " + rectEsc.width + " " + rectEsc.height);
-    flujoSvg.innerHTML = "";
+    svg.setAttribute("viewBox", "0 0 " + rectEsc.width + " " + rectEsc.height);
+    svg.innerHTML = "";
 
-    cards.forEach(function (card, i) {
+    cardsActuales.forEach(function (card, i) {
       card.classList.remove("lista");
       var rectCard = card.getBoundingClientRect();
       var x2 = rectCard.left - rectEsc.left;
@@ -1882,7 +2044,7 @@ window.reiniciarEcosistema = reiniciarEcosistema;
 
       var path = document.createElementNS(SVG_NS, "path");
       path.setAttribute("d", d);
-      flujoSvg.appendChild(path);
+      svg.appendChild(path);
       var len = path.getTotalLength();
       path.style.strokeDasharray = String(len);
       path.style.strokeDashoffset = String(len);
@@ -1892,7 +2054,7 @@ window.reiniciarEcosistema = reiniciarEcosistema;
       circle.setAttribute("class", "pulso");
       circle.style.offsetPath = "path('" + d + "')";
       circle.style.animationDelay = (i * 0.14) + "s";
-      flujoSvg.appendChild(circle);
+      svg.appendChild(circle);
 
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
@@ -1904,88 +2066,101 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     });
   }
 
-  function pintarEfecto(ef) {
-    flujoOrigenTitulo.textContent = "✓ Venta registrada";
-    flujoOrigenDetalle.textContent = ef.cliente.nombre + " · " + ef.cantidad + " × " + ESTADO.receta.nombre + " · " + formatoCOP(ef.monto);
+  function pintarCard(card, destino, resultado) {
+    var deltaEl = card.querySelector(".efecto-card-delta");
+    var notaEl = card.querySelector(".efecto-card-nota");
+    if (resultado.animarA !== undefined) {
+      contarHasta(deltaEl, 0, resultado.animarA, resultado.animarFormato, 700);
+    } else if (resultado.deltaHTML) {
+      deltaEl.innerHTML = resultado.deltaHTML;
+    } else {
+      deltaEl.textContent = resultado.delta;
+    }
+    notaEl.textContent = resultado.nota || destino.notaFija || "";
+  }
 
-    var textoInv = ef.inventario.map(function (d) { return d.emoji + " " + d.delta; }).join("  ·  ");
-    deltaInventario.innerHTML = '<span class="negativo">' + textoInv + "</span>";
+  function pintarPlaceholders(config) {
+    cardsActuales.forEach(function (card, i) {
+      var destino = config.destinos[i];
+      card.querySelector(".efecto-card-delta").textContent = destino.deltaInicial || "";
+      card.querySelector(".efecto-card-nota").textContent = destino.notaFija || "";
+    });
+  }
 
-    deltaCrm.textContent = ef.crm.esNuevo ? "Cliente nuevo creado" : "Cliente actualizado";
-    notaCrm.textContent = ef.cliente.nombre + " · 📞 " + ef.cliente.telefono + " · 📧 " + ef.cliente.correo;
+  function disparar(config) {
+    if (disparado) return;
+    disparado = true;
+    var ef = config.disparo.accion();
+    origenTitulo.textContent = config.disparo.tituloDisparado(ef);
+    origenDetalle.textContent = config.disparo.detalleDisparado(ef);
+    cardsActuales.forEach(function (card, i) {
+      pintarCard(card, config.destinos[i], config.destinos[i].pintar(ef));
+    });
+    dibujarConexiones();
+    hintTexto.textContent = "Haz clic en el origen para ver la pantalla real de " + NOMBRES[moduloActual] + ", o sigue explorando con cualquier tarjeta.";
+  }
 
-    contarHasta(deltaPyg, 0, ef.pyg.utilidadDelta, function (v) { return "+" + formatoCOP(v) + " en utilidad"; }, 700);
-
-    var ventasHoy = ESTADO.ventas.length;
-    var vendidoHoy = ESTADO.ventas.reduce(function (s, v) { return s + v.monto; }, 0);
-    deltaPanel.textContent = ventasHoy + " venta" + (ventasHoy === 1 ? "" : "s") + " hoy · " + formatoCOP(vendidoHoy) + " vendido";
-
+  function pintarSinDisparo(config) {
+    cardsActuales.forEach(function (card, i) {
+      pintarCard(card, config.destinos[i], config.destinos[i].pintarSiempre());
+    });
     dibujarConexiones();
   }
 
-  function disparar() {
-    if (disparado) return;
-    disparado = true;
-    var ef = registrarVenta();
-    pintarEfecto(ef);
-    flujoHintTexto.textContent = "Haz clic en la venta para verla en Ventas, o en cualquier tarjeta para comprobar su módulo.";
-  }
-
-  function pintarInicial() {
+  window.irAConexion = function (modulo) {
+    var config = MODULOS[modulo];
+    if (!config) return;
+    moduloActual = modulo;
     disparado = false;
-    flujoOrigenTitulo.textContent = "Registrar una venta";
-    flujoOrigenDetalle.textContent = detalleOrigenPreview();
-    cards.forEach(function (c) { c.classList.remove("lista"); });
-    deltaCrm.textContent = "Se registran los datos del comprador";
-    notaCrm.textContent = "";
-    deltaInventario.textContent = "Se descuentan los productos vendidos";
-    deltaPyg.textContent = "Se suma el ingreso y su costo";
-    deltaPanel.textContent = "Sus cifras se actualizan solas";
-    flujoSvg.innerHTML = "";
-    flujoHintTexto.textContent = "Haz clic en “Registrar una venta” para verlo en vivo.";
-  }
 
-  function irAFase(f) {
-    fase = f;
-    slideHome.setAttribute("data-fase", fase);
-    homeIntro.hidden = fase !== "intro";
-    homeFlujo.hidden = fase !== "flujo";
-    btnReiniciarTodo.hidden = fase === "intro";
-    if (fase === "flujo") pintarInicial();
-  }
+    caption.textContent = CAPTIONES[modulo];
+    origenIcono.textContent = ICONOS[modulo];
+    titulo.textContent = "Así se conecta " + NOMBRES[modulo];
 
-  homeIntro.addEventListener("click", function () {
-    irAFase("flujo");
-  });
-
-  flujoOrigen.addEventListener("click", function () {
-    if (!disparado) { disparar(); return; }
-    if (window.reiniciarModulo && window.reiniciarModulo.ventas) window.reiniciarModulo.ventas();
-    if (window.irA) window.irA("slide-ventas");
-  });
-
-  cards.forEach(function (card) {
-    card.addEventListener("click", function () {
-      var modulo = card.getAttribute("data-modulo");
-      if (window.reiniciarModulo && window.reiniciarModulo[modulo]) window.reiniciarModulo[modulo]();
-      if (window.irA) window.irA("slide-" + modulo);
+    destinosWrap.innerHTML = "";
+    cardsActuales = config.destinos.map(function (destino) {
+      var card = crearCard(destino);
+      destinosWrap.appendChild(card);
+      return card;
     });
-  });
 
-  document.querySelectorAll(".nav-modulo-link[data-modulo]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var modulo = btn.getAttribute("data-modulo");
-      if (window.reiniciarModulo && window.reiniciarModulo[modulo]) window.reiniciarModulo[modulo]();
-      if (window.irA) window.irA("slide-" + modulo);
-    });
-  });
+    if (config.sinDisparo) {
+      sub.textContent = "Con datos reales de tu ecosistema, sin que nadie lo actualice a mano.";
+      origenTitulo.textContent = config.tituloOrigen;
+      origenDetalle.textContent = config.detalleOrigen;
+      svg.innerHTML = "";
+      pintarSinDisparo(config);
+      hintTexto.textContent = "Haz clic en cualquier tarjeta para explorar ese módulo, o en \"" + config.tituloOrigen + "\" para ver su pantalla real.";
+    } else {
+      sub.textContent = "Un clic, y mira cómo se mueve tu ecosistema al instante.";
+      origenTitulo.textContent = config.disparo.tituloInicial;
+      origenDetalle.textContent = config.disparo.detalleInicial();
+      pintarPlaceholders(config);
+      svg.innerHTML = "";
+      hintTexto.textContent = "Haz clic en \"" + config.disparo.tituloInicial + "\" para verlo en vivo.";
+    }
 
-  window.reiniciarModulo = window.reiniciarModulo || {};
-  window.reiniciarModulo.home = function () {
-    irAFase("intro");
+    if (window.irA) window.irA("slide-conexion");
   };
 
-  suscribirse(function () { if (fase === "flujo" && !disparado) pintarInicial(); });
+  origen.addEventListener("click", function () {
+    if (!moduloActual) return;
+    var config = MODULOS[moduloActual];
+    if (config.sinDisparo) {
+      if (window.reiniciarModulo && window.reiniciarModulo[moduloActual]) window.reiniciarModulo[moduloActual]();
+      if (window.irA) window.irA("slide-" + moduloActual);
+      return;
+    }
+    if (!disparado) { disparar(config); return; }
+    if (window.reiniciarModulo && window.reiniciarModulo[moduloActual]) window.reiniciarModulo[moduloActual]();
+    if (window.irA) window.irA("slide-" + moduloActual);
+  });
+
+  suscribirse(function () {
+    if (!moduloActual || slideConexion.hidden) return;
+    var config = MODULOS[moduloActual];
+    if (config.sinDisparo) pintarSinDisparo(config);
+  });
 })();
 
 (function () {
@@ -2265,9 +2440,11 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     var otros = ESTADO.pyg.otros;
 
     var abonado = frame >= 4;
+    var extra = ESTADO.pyg.extra;
+    var extraTotal = extra.abonoDeuda + extra.nominaNeto + extra.nominaAportes + extra.nominaPrestaciones;
     var bruta = ingresos - costo;
     var gastosBase = ESTADO.pyg.gastos.reduce(function (s, g) { return s + g.monto; }, 0);
-    var gastosTotal = gastosBase + (abonado ? ESTADO.pyg.abono : 0);
+    var gastosTotal = gastosBase + (abonado ? ESTADO.pyg.abono : 0) + extraTotal;
 
     if (frame >= 1) {
       el.ingresos.textContent = formatoCOP(ingresos);
@@ -2288,8 +2465,8 @@ window.reiniciarEcosistema = reiniciarEcosistema;
       el.neta.className = "";
     }
 
-    var pagado = ESTADO.pyg.deuda.pagadoInicial + (abonado ? ESTADO.pyg.abono : 0);
-    var pendiente = ESTADO.pyg.deuda.total - pagado;
+    var pagado = ESTADO.pyg.deuda.pagadoInicial + (abonado ? ESTADO.pyg.abono : 0) + extra.abonoDeuda;
+    var pendiente = Math.max(0, ESTADO.pyg.deuda.total - pagado);
     if (frame >= 2) {
       el.deudaTotal.textContent = formatoCOP(pendiente);
       el.listaDeudas.innerHTML = '<div class="fila-deuda"><span>' + ESTADO.pyg.deuda.desc + '</span><span class="monto">' + formatoCOP(pendiente) + "</span></div>";
@@ -2301,6 +2478,12 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     if (frame >= 3) {
       var filas = ESTADO.pyg.gastos.slice();
       if (abonado) filas = filas.concat([{ cat: "Pago de deuda", monto: ESTADO.pyg.abono, tipo: "Costo puntual", meta: "Abono — " + ESTADO.pyg.deuda.desc }]);
+      if (extra.abonoDeuda > 0) filas = filas.concat([{ cat: "Pago de deuda", monto: extra.abonoDeuda, tipo: "Costo puntual", meta: "Abono desde el ecosistema — " + ESTADO.pyg.deuda.desc }]);
+      if (extra.nominaNeto > 0) filas = filas.concat([
+        { cat: "Nómina", monto: extra.nominaNeto, tipo: "Recurrente · mensual", meta: "Período marcado como pagado" },
+        { cat: "Aportes patronales", monto: extra.nominaAportes, tipo: "Recurrente · mensual", meta: "Período marcado como pagado" },
+        { cat: "Prestaciones sociales", monto: extra.nominaPrestaciones, tipo: "Recurrente · mensual", meta: "Período marcado como pagado" }
+      ]);
       el.listaGastos.innerHTML = filas.map(function (g) {
         return (
           '<div class="fila-gasto' + (g.meta ? " entra" : "") + '">' +
@@ -2548,7 +2731,7 @@ window.reiniciarEcosistema = reiniciarEcosistema;
       el.detallePeriodo.hidden = true;
       return;
     }
-    var pagado = frame >= 3;
+    var pagado = frame >= 3 || ESTADO.nomina.pagado;
     el.listaPeriodos.innerHTML =
       '<div class="fila-cliente entra">' +
         "<div>" +
@@ -2583,6 +2766,7 @@ window.reiniciarEcosistema = reiniciarEcosistema;
     if (!pagado) {
       document.getElementById("btn-marcar-pagada").addEventListener("click", function (e) {
         e.stopPropagation();
+        marcarNominaPagada();
         avanzar();
       });
     }

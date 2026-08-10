@@ -21,6 +21,8 @@ Tomado literalmente de la sección "Planes y precios" de este archivo:
 
 > Descuentos y promociones va a ser su propio módulo — falta decidir en qué plan entra o si es un add-on aparte.
 
+> **Los precios de hoy no incluyen IVA — actualmente eres No responsable de IVA (código 49 en el RUT), así que no se cobra ni se declara.** Si en el futuro cambia esa condición (por ejemplo, al superar el umbral de 3.500 UVT/año en ingresos), queda pendiente decidir si $99.900 (y los demás precios de la tabla) se mantienen como precio final absorbiendo el IVA desde tu margen, o si se ajustan a $99.900 + IVA para que el cliente asuma el incremento y tu margen neto no cambie. No asumas ninguna de las dos hasta que yo lo confirme — solo queda anotado acá para retomarlo cuando llegue el momento.
+
 ### 2. Descuento por pago anual (código público, `src/app/landing.tsx`)
 Tomado literalmente del código de la landing pública:
 
@@ -292,6 +294,8 @@ No adelantes fases sin que yo lo pida. Prefiero un módulo bien hecho que cinco 
 Estos son los nombres y precios que ya están publicados en la landing — se unificó esta tabla con lo que ve el público, para no tener dos fuentes de verdad distintas.
 
 Descuentos y promociones va a ser su propio módulo — falta decidir en qué plan entra o si es un add-on aparte.
+
+**Los precios de hoy no incluyen IVA — actualmente eres No responsable de IVA (código 49 en el RUT), así que no se cobra ni se declara.** Si en el futuro cambia esa condición (por ejemplo, al superar el umbral de 3.500 UVT/año en ingresos), queda pendiente decidir si $99.900 (y los demás precios de la tabla) se mantienen como precio final absorbiendo el IVA desde tu margen, o si se ajustan a $99.900 + IVA para que el cliente asuma el incremento y tu margen neto no cambie. No asumas ninguna de las dos hasta que yo lo confirme — solo queda anotado acá para retomarlo cuando llegue el momento.
 
 **Desarrollo específico para un cliente se cobra aparte, fuera de la suscripción.** Si una empresa cabe en la plataforma tal como está — usando `atributos` (JSON) para lo que varía por su tipo de negocio, sin tocar el esquema ni el código — no hay ningún cobro adicional, la suscripción mensual ya lo cubre. Pero si un cliente de verdad necesita algo que requiere código nuevo (una tabla propia, una integración, una función de negocio a la medida — el mismo criterio que ya usa este archivo para decidir cuándo algo amerita tabla propia en vez de `atributos`), ese trabajo se cotiza y se cobra aparte, como un proyecto puntual. Todavía falta definir cómo se cotiza ese trabajo a la medida (por horas, por alcance fijo, etc.) — no asumas una tarifa ni un formato hasta que yo lo confirme.
 

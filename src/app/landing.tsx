@@ -267,9 +267,9 @@ export function Landing() {
           <div className="chapter-cta">
             <a
               className="btn"
-              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2030%20d%C3%ADas%20con%20Datum"
+              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2015%20d%C3%ADas%20con%20Datum"
             >
-              Solicita tu prueba gratis de 30 días
+              Solicita tu prueba gratis de 15 días
             </a>
           </div>
         </div>
@@ -301,9 +301,9 @@ export function Landing() {
           <div className="chapter-cta">
             <a
               className="btn"
-              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2030%20d%C3%ADas%20con%20Datum"
+              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2015%20d%C3%ADas%20con%20Datum"
             >
-              Solicita tu prueba gratis de 30 días
+              Solicita tu prueba gratis de 15 días
             </a>
           </div>
         </div>
@@ -382,10 +382,10 @@ export function Landing() {
                 key={plan.nombre}
                 className="precios-cta"
                 href={`mailto:andresp7070@gmail.com?subject=${encodeURIComponent(
-                  `Quiero mi prueba gratis de 30 días — Plan ${plan.nombre}`,
+                  `Quiero mi prueba gratis de 15 días — Plan ${plan.nombre}`,
                 )}`}
               >
-                Solicita tu prueba gratis de 30 días
+                Solicita tu prueba gratis de 15 días
               </a>
             ))}
           </div>

@@ -2,6 +2,77 @@
 
 Contexto del proyecto para Claude Code. Este archivo se actualiza a medida que el negocio y la aplicación avanzan — no es estático, edítalo cuando algo cambie.
 
+## Datos con impacto legal
+
+> Sección de referencia rápida para uso legal/tributario — pensada para copiar y pegar tal cual a un asesor legal. Todo el contenido de acá abajo es texto tomado literalmente de otras partes de este archivo o del código fuente (`src/app/landing.tsx`), no un resumen ni una interpretación. Se actualiza en el mismo momento en que cambie cualquiera de estos datos en el resto del archivo o en el código — nunca queda desactualizada a propósito.
+
+### 1. Planes y precios vigentes
+Tomado literalmente de la sección "Planes y precios" de este archivo:
+
+> **La estructura ya está decidida: suscripción mensual pura, sin ningún cobro inicial de implementación.** Los montos exactos de cada plan todavía no están en firme — lo de abajo es un punto de partida, no una decisión cerrada. No lo trates como definitivo hasta que yo lo confirme explícitamente.
+
+| Plan | Módulos incluidos | Mensual |
+|---|---|---|
+| Startup | Ventas + CRM | $99.900 COP/mes |
+| Pyme | + Inventario + Estado P y G | $199.900 COP/mes |
+| Enterprise | + Proyecciones e Insights | $349.900 COP/mes |
+
+> Estos son los nombres y precios que ya están publicados en la landing — se unificó esta tabla con lo que ve el público, para no tener dos fuentes de verdad distintas.
+
+> Descuentos y promociones va a ser su propio módulo — falta decidir en qué plan entra o si es un add-on aparte.
+
+### 2. Descuento por pago anual (código público, `src/app/landing.tsx`)
+Tomado literalmente del código de la landing pública:
+
+- `const DESCUENTO_ANUAL = 0.15;`
+- Badge visible al público en el selector de facturación: `Anual <span className="off-badge">-15% OFF</span>`
+- Precios base mensuales usados en el cálculo (constante `PLANES`): Startup `mensual: 99900`, Pyme `mensual: 199900`, Enterprise `mensual: 349900`.
+- Fórmula tal cual está en el código: `totalSinDescuento = plan.mensual * 12`; `totalConDescuento = totalSinDescuento * (1 - DESCUENTO_ANUAL)`.
+
+**Cambio reciente:** este descuento bajó de 20% a 15% el 2026-08-06.
+
+### 3. Lista completa de módulos del producto (estén o no asignados a un plan)
+Tomado literalmente de la sección "Los módulos del producto, y su estado" de este archivo:
+
+| Módulo | Estado |
+|---|---|
+| Informe general de ventas | **especificación cerrada** — ver detalle arriba, listo para construir |
+| CRM | **especificación cerrada** — ver detalle arriba, listo para construir |
+| Inventario | **especificación cerrada** — ver detalle arriba, listo para construir |
+| Estado de pérdidas y ganancias | **especificación cerrada** — ver detalle arriba, listo para construir |
+| Proyecciones e insights | **construido** — Panel de control, ver detalle arriba |
+| Descuentos y promociones | **especificación cerrada** — ver detalle arriba, listo para construir |
+| Facturación electrónica | **rumbo decidido, construcción deliberadamente de último.** Ser reconocidos directamente por la DIAN como proveedor tecnológico se descartó — exige patrimonio líquido ≥20.000 UVT (~$1.047 millones COP en 2026) y activos fijos ≥10.000 UVT, fuera de alcance para Datum en esta etapa. El camino es integrar el módulo de Ventas con un proveedor tecnológico YA habilitado por la DIAN (ej. Factus, Alanube, Bilidox) vía su API — Datum le manda los datos de la venta, ellos firman/transmiten/validan ante la DIAN y devuelven el documento. Falta cotizar con 2-3 proveedores (plan para "casas de software"/multi-tenant) y definir cómo se cobra al cliente final antes de escribir código. Es explícitamente lo último que se construye, después de todos los demás módulos y fases — no adelantarlo aunque algún cliente lo pida antes. |
+| Nómina | **fase 1 y fase 2 construidas** — ver detalle arriba: empleados, generar período, marcarlo pagado (con aportes patronales), desprendible en pantalla, y prestaciones sociales acumuladas. Falta confirmar el envío del desprendible por correo (pendiente a propósito). |
+| Devoluciones y garantías | **construido** — ver detalle arriba. Vive como pestaña dentro de Ventas, no como módulo propio en `modulos_activos`. |
+
+Nota aparte, no listada en esa tabla porque no es un módulo del producto sino desarrollo a la medida de un cliente específico (Manantial): **Apartados**. Tomado literalmente de la sección "Apartados — desarrollo a la medida de Manantial, no un módulo del producto":
+
+> Esto es desarrollo específico para un cliente (ver "Planes y precios" — se cobra aparte de la suscripción), no un módulo general: se activa a mano con `empresas.permite_apartados`, igual criterio que `crm_modo` — ninguna otra empresa ve el check "Es un apartado" en Agregar venta ni la pestaña "Apartados".
+
+### 4. Cómo se cobra
+Tomado literalmente de la sección "Cobros" de este archivo:
+
+> Por ahora, manuales (transferencia + factura de venta simple). No integrar ninguna pasarela de pagos todavía — eso viene después de validar con los primeros clientes reales.
+>
+> **En preparación: cobro recurrente autogestionable con un mes de prueba.** La idea es que cada empresa cliente pueda agregar su propio método de pago dentro de la plataforma (sin que tú tengas que cobrar manual), con un mes gratis antes del primer cobro. La tarjeta nunca se guarda en la base de datos de Datum — eso siempre vive en la pasarela de pago, por PCI. Candidatos evaluados: Wompi y Bold (ambos permiten registrarse como persona natural, sin necesidad de Cámara de Comercio — solo RUT y cuenta bancaria; en ambos, el momento de cobrar se decide desde el código propio, no desde la pasarela, siguiendo el principio de portabilidad de este documento). Ya existe la tabla `suscripciones` en `schema.sql` con el estado de cada empresa (prueba/activa/vencida/cancelada) y las fechas del ciclo — todavía no hay pasarela elegida ni webhook conectado, así que esto no cambia el cobro manual de hoy.
+
+Tomado literalmente de la sección "Planes y precios" de este archivo (cargos únicos fuera de la suscripción):
+
+> **Desarrollo específico para un cliente se cobra aparte, fuera de la suscripción.** Si una empresa cabe en la plataforma tal como está — usando `atributos` (JSON) para lo que varía por su tipo de negocio, sin tocar el esquema ni el código — no hay ningún cobro adicional, la suscripción mensual ya lo cubre. Pero si un cliente de verdad necesita algo que requiere código nuevo (una tabla propia, una integración, una función de negocio a la medida — el mismo criterio que ya usa este archivo para decidir cuándo algo amerita tabla propia en vez de `atributos`), ese trabajo se cotiza y se cobra aparte, como un proyecto puntual. Todavía falta definir cómo se cotiza ese trabajo a la medida (por horas, por alcance fijo, etc.) — no asumas una tarifa ni un formato hasta que yo lo confirme.
+
+Texto público vigente en Términos y condiciones (`src/app/landing.tsx`, sección "4. Planes, pagos y facturación" del diálogo legal, última actualización ahí indicada: enero de 2026):
+
+> El acceso a Datum se ofrece mediante suscripción mensual o anual, según el plan elegido. Los precios pueden ajustarse con previo aviso razonable. La cancelación no genera reembolsos por periodos ya facturados, salvo que la ley aplicable indique lo contrario.
+
+### 5. Otros datos con implicación legal o tributaria ya definidos en el proyecto
+- **Manejo de tarjetas / PCI** (sección "Cobros"): "La tarjeta nunca se guarda en la base de datos de Datum — eso siempre vive en la pasarela de pago, por PCI."
+- **Jurisdicción declarada en los Términos y condiciones publicados** (`src/app/landing.tsx`, sección "8. Ley aplicable"): "Estos términos se rigen por las leyes de la República de Colombia."
+- **Correo de contacto legal publicado** (`src/app/landing.tsx`, sección "9. Contacto" de Términos y condiciones): `andresp7070@gmail.com`.
+- **Última actualización declarada de los Términos y condiciones publicados**: enero de 2026.
+- **Descripción del servicio publicada** (`src/app/landing.tsx`, sección "2. Descripción del servicio"): "Datum es una plataforma de gestión para empresas que incluye, según el plan contratado, módulos de ventas, CRM, inventario, estado de resultados, nómina y paneles de control, entre otros. Nos reservamos el derecho de agregar, modificar o retirar funcionalidades para mejorar el servicio."
+- **Propiedad de los datos, publicado en Términos y condiciones** (sección "5. Propiedad intelectual"): "El software, el diseño y la marca Datum son propiedad de sus creadores. Los datos que ingreses a la plataforma (ventas, clientes, inventario, etc.) siguen siendo tuyos en todo momento."
+
 ## El negocio, en una frase
 Diagnóstico personalizado + plataforma propia de gestión para pymes colombianas: ventas, CRM, inventario, estado de pérdidas y ganancias, proyecciones e insights en un solo lugar, sin que la empresa necesite un equipo de BI interno.
 

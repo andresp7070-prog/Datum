@@ -10,18 +10,33 @@ Contexto del proyecto para Claude Code. Este archivo se actualiza a medida que e
 Tomado literalmente de la sección "Planes y precios" de este archivo:
 
 > **La estructura ya está decidida: suscripción mensual pura, sin ningún cobro inicial de implementación.** Los montos exactos de cada plan todavía no están en firme — lo de abajo es un punto de partida, no una decisión cerrada. No lo trates como definitivo hasta que yo lo confirme explícitamente.
+>
+> **Los planes NO son paquetes fijos de módulos — el cliente elige cuáles quiere, hasta el límite de su plan.**
 
-| Plan | Módulos incluidos | Mensual |
+| Plan | Módulos permitidos | Mensual |
 |---|---|---|
-| Startup | Ventas + CRM | $99.900 COP/mes |
-| Pyme | + Inventario + Estado P y G | $199.900 COP/mes |
-| Enterprise | + Proyecciones e Insights | $349.900 COP/mes |
+| Startup | 1 a 2 módulos, a elección del cliente | $99.900 COP/mes |
+| Pyme | 3 a 4 módulos, a elección del cliente | $199.900 COP/mes |
+| Enterprise | Todos los módulos disponibles | $349.900 COP/mes |
 
-> Estos son los nombres y precios que ya están publicados en la landing — se unificó esta tabla con lo que ve el público, para no tener dos fuentes de verdad distintas.
+> Estos son los nombres y precios que ya están publicados en la landing (`src/app/landing.tsx`, constante `PLANES`) y en el Anexo No. 1 del contrato de prestación de servicios (`Contrato_Datum_Prestacion_Servicios_SaaS.docx`) — se unificó esta tabla con lo que ve el público y lo que firma el cliente, para no tener tres fuentes de verdad distintas.
 
-> Descuentos y promociones va a ser su propio módulo — falta decidir en qué plan entra o si es un add-on aparte.
+> Como el cliente elige libremente sus módulos dentro del límite de su plan, ningún módulo del catálogo (Ventas, CRM, Inventario, Estado de Resultados, Nómina, Promociones, Panel de control/Insights) necesita asignación especial a un plan — todos están disponibles para elegir en los tres planes, la única diferencia es cuántos. Facturación electrónica no aparece en esa lista porque todavía no existe como funcionalidad; Devoluciones y garantías tampoco, porque vive dentro de Ventas, no como módulo aparte.
 
 > **Los precios de hoy no incluyen IVA — actualmente eres No responsable de IVA (código 49 en el RUT), así que no se cobra ni se declara.** Si en el futuro cambia esa condición (por ejemplo, al superar el umbral de 3.500 UVT/año en ingresos), queda pendiente decidir si $99.900 (y los demás precios de la tabla) se mantienen como precio final absorbiendo el IVA desde tu margen, o si se ajustan a $99.900 + IVA para que el cliente asuma el incremento y tu margen neto no cambie. No asumas ninguna de las dos hasta que yo lo confirme — solo queda anotado acá para retomarlo cuando llegue el momento.
+
+### 1.1. Período de prueba gratuita y vigencia (contrato)
+Tomado literalmente del `Contrato_Datum_Prestacion_Servicios_SaaS.docx` (Cláusula Primera, literal h; Cláusula Quinta; Cláusula Sexta):
+
+> h) Período de Prueba Gratuita: los primeros treinta (30) días calendario contados desde la fecha de activación de la Plataforma, durante los cuales EL CLIENTE podrá usarla sin costo, conforme a la Cláusula Quinta.
+>
+> 5.1. Período de Prueba Gratuita. EL CLIENTE contará con un Período de Prueba Gratuita de treinta (30) días calendario, contado a partir de la fecha de activación de la Plataforma, durante el cual podrá usarla sin costo. El cobro de la Cuota de Suscripción iniciará a partir del segundo mes contado desde dicha activación. Durante el Período de Prueba Gratuita, EL CLIENTE podrá terminar este Contrato en cualquier momento, sin necesidad de preaviso ni penalidad alguna, mediante aviso escrito a EL PRESTADOR.
+>
+> 5.2. Condiciones del Período de Prueba Gratuita. El Período de Prueba Gratuita solo aplica una única vez por EL CLIENTE. Si EL CLIENTE cancela el Contrato durante o al finalizar dicho período y posteriormente contrata nuevamente los servicios de EL PRESTADOR, no tendrá derecho a un nuevo Período de Prueba Gratuita.
+>
+> 6.2. La Fase de Suscripción tendrá una vigencia inicial de doce (12) meses contados a partir de la fecha de activación de la Plataforma, y se renovará automáticamente por períodos iguales y sucesivos, salvo que cualquiera de las partes manifieste por escrito su intención de no renovar, con una antelación mínima de treinta (30) días al vencimiento del período en curso.
+
+> **Nota:** este contrato es un borrador de uso interno (así lo indica su propia nota inicial) — falta que un abogado colombiano habilitado lo revise antes de usarlo con un cliente real.
 
 ### 2. Descuento por pago anual (código público, `src/app/landing.tsx`)
 Tomado literalmente del código de la landing pública:
@@ -74,6 +89,11 @@ Texto público vigente en Términos y condiciones (`src/app/landing.tsx`, secci�
 - **Última actualización declarada de los Términos y condiciones publicados**: enero de 2026.
 - **Descripción del servicio publicada** (`src/app/landing.tsx`, sección "2. Descripción del servicio"): "Datum es una plataforma de gestión para empresas que incluye, según el plan contratado, módulos de ventas, CRM, inventario, estado de resultados, nómina y paneles de control, entre otros. Nos reservamos el derecho de agregar, modificar o retirar funcionalidades para mejorar el servicio."
 - **Propiedad de los datos, publicado en Términos y condiciones** (sección "5. Propiedad intelectual"): "El software, el diseño y la marca Datum son propiedad de sus creadores. Los datos que ingreses a la plataforma (ventas, clientes, inventario, etc.) siguen siendo tuyos en todo momento."
+
+### 6. Documentos legales existentes (borradores, pendientes de revisión por abogado)
+- **`Contrato_Datum_Prestacion_Servicios_SaaS.docx`** — contrato de prestación de servicios de implementación y licencia de uso de la Plataforma, con el Anexo No. 1 (ficha técnica del plan) integrado en el mismo archivo. Ya incorpora: identificación de EL PRESTADOR como persona natural, condición de No responsable de IVA, el modelo de módulos a elección por plan (sección 1 arriba), el descuento del 15% por pago anual, el Período de Prueba Gratuita de 30 días (sección 1.1 arriba), vigencia inicial de 12 meses con renovación automática, forma de pago por transferencia bancaria (con la pasarela electrónica prevista como opción futura), tratamiento de datos personales (EL CLIENTE como Responsable, Datum como Encargado), y habilitación expresa de firma electrónica conforme a la Ley 527 de 1999 — sin que a la fecha se haya elegido un proveedor de firma electrónica para ejecutarla.
+- **Política de Tratamiento de Datos Personales** (`Politica_Tratamiento_Datos_Personales_Datum.docx`) — primer borrador construido sobre la Ley 1581 de 2012 y el Decreto 1377 de 2013. El propio documento marca dos puntos sin confirmar antes de publicarlo: (1) la sección de Transferencia y transmisión de datos asume que los proveedores de hosting/base de datos (Supabase, Vercel) almacenan o procesan información fuera de Colombia — falta confirmar la región exacta; (2) hoy designa a Edgar Andrés Peña López como único responsable de atender las solicitudes de los titulares, sin definir si eso cambia más adelante.
+- **Ambos documentos son borradores de uso interno** (así lo indica su propia nota inicial) — falta que un abogado colombiano habilitado los revise antes de usarlos con un cliente real.
 
 ## El negocio, en una frase
 Diagnóstico personalizado + plataforma propia de gestión para pymes colombianas: ventas, CRM, inventario, estado de pérdidas y ganancias, proyecciones e insights en un solo lugar, sin que la empresa necesite un equipo de BI interno.
@@ -285,15 +305,15 @@ No adelantes fases sin que yo lo pida. Prefiero un módulo bien hecho que cinco 
 ## Planes y precios (para decidir qué módulo mostrarle a cada empresa)
 **La estructura ya está decidida: suscripción mensual pura, sin ningún cobro inicial de implementación.** Los montos exactos de cada plan todavía no están en firme — lo de abajo es un punto de partida, no una decisión cerrada. No lo trates como definitivo hasta que yo lo confirme explícitamente.
 
-| Plan | Módulos incluidos | Mensual |
+**Los planes NO son paquetes fijos de módulos — el cliente elige cuáles quiere, hasta el límite de su plan.** Todo módulo del catálogo (Ventas, CRM, Inventario, Estado de Resultados, Nómina, Promociones, Panel de control/Insights) está disponible para elegir en los tres planes; la única diferencia es cuántos puede activar cada uno. Por eso ningún módulo nuevo necesita "asignarse" a un plan específico — simplemente se suma a la lista de opciones.
+
+| Plan | Módulos permitidos | Mensual |
 |---|---|---|
-| Startup | Ventas + CRM | $99.900 COP/mes |
-| Pyme | + Inventario + Estado P y G | $199.900 COP/mes |
-| Enterprise | + Proyecciones e Insights | $349.900 COP/mes |
+| Startup | 1 a 2 módulos, a elección del cliente | $99.900 COP/mes |
+| Pyme | 3 a 4 módulos, a elección del cliente | $199.900 COP/mes |
+| Enterprise | Todos los módulos disponibles | $349.900 COP/mes |
 
-Estos son los nombres y precios que ya están publicados en la landing — se unificó esta tabla con lo que ve el público, para no tener dos fuentes de verdad distintas.
-
-Descuentos y promociones va a ser su propio módulo — falta decidir en qué plan entra o si es un add-on aparte.
+Estos son los nombres y precios que ya están publicados en la landing (`src/app/landing.tsx`) y en el Anexo No. 1 del contrato de prestación de servicios — se unificó esta tabla con lo que ve el público y lo que firma el cliente, para no tener tres fuentes de verdad distintas.
 
 **Los precios de hoy no incluyen IVA — actualmente eres No responsable de IVA (código 49 en el RUT), así que no se cobra ni se declara.** Si en el futuro cambia esa condición (por ejemplo, al superar el umbral de 3.500 UVT/año en ingresos), queda pendiente decidir si $99.900 (y los demás precios de la tabla) se mantienen como precio final absorbiendo el IVA desde tu margen, o si se ajustan a $99.900 + IVA para que el cliente asuma el incremento y tu margen neto no cambie. No asumas ninguna de las dos hasta que yo lo confirme — solo queda anotado acá para retomarlo cuando llegue el momento.
 

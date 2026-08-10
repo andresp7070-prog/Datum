@@ -28,13 +28,15 @@ Tomado literalmente de la sección "Planes y precios" de este archivo:
 ### 1.1. Período de prueba gratuita y vigencia (contrato)
 Tomado literalmente del `Contrato_Datum_Prestacion_Servicios_SaaS.docx` (Cláusula Primera, literal h; Cláusula Quinta; Cláusula Sexta):
 
-> h) Período de Prueba Gratuita: los primeros treinta (30) días calendario contados desde la fecha de activación de la Plataforma, durante los cuales EL CLIENTE podrá usarla sin costo, conforme a la Cláusula Quinta.
+> h) Período de Prueba Gratuita: los primeros quince (15) días calendario contados desde la fecha de activación de la Plataforma, durante los cuales EL CLIENTE podrá usarla sin costo, conforme a la Cláusula Quinta.
 >
-> 5.1. Período de Prueba Gratuita. EL CLIENTE contará con un Período de Prueba Gratuita de treinta (30) días calendario, contado a partir de la fecha de activación de la Plataforma, durante el cual podrá usarla sin costo. El cobro de la Cuota de Suscripción iniciará a partir del segundo mes contado desde dicha activación. Durante el Período de Prueba Gratuita, EL CLIENTE podrá terminar este Contrato en cualquier momento, sin necesidad de preaviso ni penalidad alguna, mediante aviso escrito a EL PRESTADOR.
+> 5.1. Período de Prueba Gratuita. EL CLIENTE contará con un Período de Prueba Gratuita de quince (15) días calendario, contado a partir de la fecha de activación de la Plataforma, durante el cual podrá usarla sin costo. El cobro de la Cuota de Suscripción iniciará al vencimiento del Período de Prueba Gratuita. Durante el Período de Prueba Gratuita, EL CLIENTE podrá terminar este Contrato en cualquier momento, sin necesidad de preaviso ni penalidad alguna, mediante aviso escrito a EL PRESTADOR.
 >
 > 5.2. Condiciones del Período de Prueba Gratuita. El Período de Prueba Gratuita solo aplica una única vez por EL CLIENTE. Si EL CLIENTE cancela el Contrato durante o al finalizar dicho período y posteriormente contrata nuevamente los servicios de EL PRESTADOR, no tendrá derecho a un nuevo Período de Prueba Gratuita.
 >
 > 6.2. La Fase de Suscripción tendrá una vigencia inicial de doce (12) meses contados a partir de la fecha de activación de la Plataforma, y se renovará automáticamente por períodos iguales y sucesivos, salvo que cualquiera de las partes manifieste por escrito su intención de no renovar, con una antelación mínima de treinta (30) días al vencimiento del período en curso.
+
+**Cambio reciente:** el Período de Prueba Gratuita bajó de 30 a 15 días el 2026-08-10 — ya editado en `Contrato_Datum_Prestacion_Servicios_SaaS.docx` (cláusulas 1.h, 5.1 y el Anexo No. 1; la frase de inicio de cobro se reescribió de "a partir del segundo mes" a "al vencimiento del Período de Prueba Gratuita", ya que "segundo mes" solo tenía sentido con un período de 30 días).
 
 > **Nota:** este contrato es un borrador de uso interno (así lo indica su propia nota inicial) — falta que un abogado colombiano habilitado lo revise antes de usarlo con un cliente real.
 

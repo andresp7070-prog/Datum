@@ -1,0 +1,183 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ahoraFecha } from "@/lib/fecha";
+import { CampoMoneda } from "@/components/campo-moneda";
+import { crearMovimiento } from "../../actions";
+
+const frecuencias = [
+  { value: "diario", label: "Diario" },
+  { value: "mensual", label: "Mensual" },
+  { value: "anual", label: "Anual" },
+];
+
+export function NuevoMovimientoForm() {
+  const router = useRouter();
+
+  const [tipo, setTipo] = useState<"gasto" | "ingreso">("gasto");
+  const [categoria, setCategoria] = useState("");
+  const [monto, setMonto] = useState("");
+  const [fecha, setFecha] = useState(ahoraFecha());
+  const [nota, setNota] = useState("");
+  const [recurrente, setRecurrente] = useState(false);
+  const [frecuencia, setFrecuencia] = useState("mensual");
+
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function guardar() {
+    setError(null);
+
+    const montoNum = Number(monto);
+    if (monto.trim() === "" || Number.isNaN(montoNum) || montoNum <= 0) {
+      setError("El monto es obligatorio y debe ser mayor a cero.");
+      return;
+    }
+
+    setGuardando(true);
+    try {
+      const resultado = await crearMovimiento({
+        tipo,
+        categoria: categoria.trim(),
+        monto: montoNum,
+        fecha,
+        nota: nota.trim(),
+        recurrente: tipo === "gasto" ? recurrente : false,
+        frecuencia: tipo === "gasto" && recurrente ? frecuencia : "",
+      });
+      if (resultado.error) {
+        setError(resultado.error);
+        return;
+      }
+      router.push("/admin/finanzas");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="max-w-md">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-gray-900">Agregar gasto o ingreso</h1>
+        <Link href="/admin/finanzas" className="text-sm text-gray-500 hover:text-gray-700">
+          Volver
+        </Link>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Tipo *</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTipo("gasto")}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                tipo === "gasto"
+                  ? "border-accent bg-accent text-white"
+                  : "border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Gasto
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipo("ingreso")}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                tipo === "ingreso"
+                  ? "border-accent bg-accent text-white"
+                  : "border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Ingreso
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Categoría (opcional)
+          </label>
+          <input
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+            placeholder="Ej. Supabase, Vercel, Claude, Hostinger"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          />
+        </div>
+
+        <CampoMoneda id="monto" label="Monto" required value={monto} onChange={setMonto} />
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Fecha *</label>
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          />
+        </div>
+
+        {tipo === "gasto" && (
+          <div>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={recurrente}
+                onChange={(e) => setRecurrente(e.target.checked)}
+              />
+              Es un gasto que se repite (Supabase, Vercel, Claude...)
+            </label>
+            {recurrente && (
+              <div className="mt-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Cada cuánto se repite
+                </label>
+                <select
+                  value={frecuencia}
+                  onChange={(e) => setFrecuencia(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                >
+                  {frecuencias.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-400">
+                  Solo como referencia — el siguiente gasto lo sigues registrando tú cuando ocurra.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Nota (opcional)</label>
+          <textarea
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            rows={2}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          />
+        </div>
+
+        <p className="text-xs text-gray-400">* Campos obligatorios</p>
+      </div>
+
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+      <button
+        type="button"
+        onClick={guardar}
+        disabled={guardando}
+        className="mt-6 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+      >
+        {guardando ? "Guardando..." : "Guardar"}
+      </button>
+    </div>
+  );
+}

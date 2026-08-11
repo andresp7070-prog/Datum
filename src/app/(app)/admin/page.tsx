@@ -104,12 +104,20 @@ export default async function AdminDashboardPage() {
     <div className="max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Panel de administrador</h1>
-        <Link
-          href="/admin/bienvenida"
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-        >
-          Enviar bienvenida
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/finanzas"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Finanzas de Datum
+          </Link>
+          <Link
+            href="/admin/bienvenida"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Enviar bienvenida
+          </Link>
+        </div>
       </div>
 
       {errorEmpresas && (

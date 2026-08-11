@@ -30,6 +30,34 @@ export async function calificarCliente(
   return { error: null };
 }
 
+export async function guardarCampoValor(input: {
+  contactoId: string;
+  campoId: string;
+  valor: string | boolean | null;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+
+  const { data: contacto, error: errorLectura } = await supabase
+    .from("crm_contactos")
+    .select("campos_etapa")
+    .eq("id", input.contactoId)
+    .single();
+
+  if (errorLectura || !contacto) {
+    return { error: errorLectura?.message ?? "No se encontró el contacto." };
+  }
+
+  const camposActualizados = { ...(contacto.campos_etapa ?? {}), [input.campoId]: input.valor };
+
+  const { error } = await supabase
+    .from("crm_contactos")
+    .update({ campos_etapa: camposActualizados })
+    .eq("id", input.contactoId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 export async function agregarInteraccion(input: {
   contactoId: string;
   fecha: string;

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CambiarEtapa } from "./cambiar-etapa";
 import { NuevaInteraccionForm } from "./nueva-interaccion-form";
 import { CalificarLead } from "./calificar-lead";
+import { CamposAdicionales } from "./campos-adicionales";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -29,7 +30,7 @@ export default async function FichaLeadPage({
 
   const { data: lead } = await supabase
     .from("datum_leads")
-    .select("id, nombre, empresa, telefono, email, etapa_id, calificacion, notas")
+    .select("id, nombre, empresa, telefono, email, etapa_id, calificacion, notas, campos_etapa")
     .eq("id", id)
     .single();
 
@@ -39,6 +40,22 @@ export default async function FichaLeadPage({
     .from("datum_crm_etapas")
     .select("id, nombre, orden")
     .order("orden");
+
+  // Igual criterio que en la ficha del cliente: se muestran los campos de
+  // la etapa actual del lead y de todas las anteriores.
+  const etapaActual = (etapas ?? []).find((e) => e.id === lead.etapa_id);
+  const etapaIdsHastaAhora = (etapas ?? [])
+    .filter((e) => !etapaActual || e.orden <= etapaActual.orden)
+    .map((e) => e.id);
+
+  const { data: camposDefinidos } =
+    etapaIdsHastaAhora.length > 0
+      ? await supabase
+          .from("datum_crm_etapa_campos")
+          .select("id, etapa_id, nombre, tipo, opciones, requerido")
+          .in("etapa_id", etapaIdsHastaAhora)
+          .order("orden")
+      : { data: [] };
 
   const { data: interacciones } = await supabase
     .from("datum_crm_interacciones")
@@ -73,6 +90,12 @@ export default async function FichaLeadPage({
           <CambiarEtapa leadId={lead.id} etapas={etapas ?? []} etapaActualId={lead.etapa_id} />
         </div>
       </div>
+
+      <CamposAdicionales
+        leadId={lead.id}
+        campos={camposDefinidos ?? []}
+        valores={(lead.campos_etapa as Record<string, string | boolean | null>) ?? {}}
+      />
 
       <div className="rounded-xl border border-gray-200 p-4">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Interacciones</h2>

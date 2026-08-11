@@ -37,5 +37,16 @@ export default async function EtapasCrmPage() {
     .eq("empresa_id", perfil.empresa_id)
     .order("orden");
 
-  return <EtapasForm etapas={etapas ?? []} />;
+  const etapaIds = (etapas ?? []).map((e) => e.id);
+
+  const { data: campos } =
+    etapaIds.length > 0
+      ? await supabase
+          .from("crm_etapa_campos")
+          .select("id, etapa_id, nombre, tipo, opciones, requerido")
+          .in("etapa_id", etapaIds)
+          .order("orden")
+      : { data: [] };
+
+  return <EtapasForm etapas={etapas ?? []} campos={campos ?? []} />;
 }

@@ -390,6 +390,32 @@ create table crm_interacciones (
   nota text
 );
 
+-- ------------------------------------------------------------
+-- Campos personalizados por etapa del CRM (modo 'leads'): cada etapa del
+-- embudo puede pedir información distinta — la primera etapa apenas datos
+-- básicos, una etapa final ya necesita documentación, país de facturación,
+-- etc. Es "atributos" (JSON) para el contacto, pero la LISTA de qué
+-- preguntar la define la etapa, no el tipo de negocio — por eso es una
+-- tabla propia (la lista de campos es una entidad en sí misma, con su
+-- tipo y sus opciones) en vez de solo otro campo de `atributos`.
+-- ------------------------------------------------------------
+create table crm_etapa_campos (
+  id uuid primary key default gen_random_uuid(),
+  etapa_id uuid references crm_etapas(id) not null,
+  nombre text not null,
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  opciones text[],   -- solo aplica si tipo = 'seleccion'
+  requerido boolean not null default false,
+  orden int not null default 1,
+  created_at timestamptz default now()
+);
+
+-- Los valores que cada contacto tiene para esos campos, keyed por el id del
+-- campo (no por nombre, para no romperse si el campo se renombra). Aparte
+-- de `atributos` (que varía por tipo de negocio) porque este varía por
+-- etapa del embudo — son dos cosas distintas que no deben mezclarse.
+alter table crm_contactos add column campos_etapa jsonb not null default '{}';
+
 -- Aplica las reglas de inactividad de una empresa: por cada etapa que tenga
 -- una configurada, mueve a "etapa_destino_inactividad_id" a cualquier
 -- contacto que lleve más de "dias_inactividad" sin ninguna interacción
@@ -542,6 +568,21 @@ create table datum_crm_interacciones (
   tipo text check (tipo in ('llamada','email','reunion','otro')),
   nota text
 );
+
+-- Mismo patrón que crm_etapa_campos: cada etapa del embudo de leads de
+-- Datum puede pedir información distinta a medida que un lead avanza.
+create table datum_crm_etapa_campos (
+  id uuid primary key default gen_random_uuid(),
+  etapa_id uuid references datum_crm_etapas(id) not null,
+  nombre text not null,
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  opciones text[],
+  requerido boolean not null default false,
+  orden int not null default 1,
+  created_at timestamptz default now()
+);
+
+alter table datum_leads add column campos_etapa jsonb not null default '{}';
 
 -- Mismo criterio que aplicar_reglas_inactividad_crm(): se llama cada vez
 -- que alguien abre la pantalla de leads, no corre en segundo plano.
@@ -2771,6 +2812,7 @@ alter table suscripciones enable row level security;
 alter table ventas enable row level security;
 alter table ventas_items enable row level security;
 alter table crm_etapas enable row level security;
+alter table crm_etapa_campos enable row level security;
 alter table crm_contactos enable row level security;
 alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
@@ -2796,6 +2838,7 @@ alter table insights_resumen_ia enable row level security;
 alter table datum_pasivos enable row level security;
 alter table datum_movimientos enable row level security;
 alter table datum_crm_etapas enable row level security;
+alter table datum_crm_etapa_campos enable row level security;
 alter table datum_leads enable row level security;
 alter table datum_crm_interacciones enable row level security;
 
@@ -2920,6 +2963,12 @@ create policy "ver interacciones de mi crm" on crm_interacciones
     or es_admin()
   );
 
+create policy "ver campos de mis etapas de crm" on crm_etapa_campos
+  for all using (
+    etapa_id in (select id from crm_etapas where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
 create policy "ver movimientos de mi inventario" on inventario_movimientos
   for all using (
     item_id in (select id from inventario_items where empresa_id = mi_empresa_id())
@@ -2992,6 +3041,9 @@ create policy "solo admin ve movimientos de datum" on datum_movimientos
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve etapas de leads de datum" on datum_crm_etapas
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve campos de etapas de leads de datum" on datum_crm_etapa_campos
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve leads de datum" on datum_leads

@@ -51,6 +51,36 @@ export async function renombrarEtapaDatum(
   return { error: null };
 }
 
+export async function borrarEtapaDatum(etapaId: string): Promise<{ error: string | null }> {
+  await requerirAdmin();
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("datum_leads")
+    .select("id", { count: "exact", head: true })
+    .eq("etapa_id", etapaId);
+
+  if (count && count > 0) {
+    return {
+      error: `No puedes borrar esta etapa: todavía tiene ${count} lead(s) en ella. Muévelos a otra etapa primero.`,
+    };
+  }
+
+  const { error } = await supabase.from("datum_crm_etapas").delete().eq("id", etapaId);
+
+  if (error) {
+    // 23503: otra etapa la usa como destino de su regla de inactividad.
+    if (error.code === "23503") {
+      return {
+        error: "No puedes borrar esta etapa: otra etapa la tiene como destino de su regla de inactividad. Quita esa regla primero.",
+      };
+    }
+    return { error: error.message };
+  }
+  revalidatePath("/admin/leads/etapas");
+  return { error: null };
+}
+
 export async function moverEtapaDatum(
   etapaId: string,
   direccion: "arriba" | "abajo",

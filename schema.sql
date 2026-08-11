@@ -432,6 +432,141 @@ alter table ventas add column contacto_id uuid references crm_contactos(id);
 alter table crm_contactos add column calificacion smallint check (calificacion between 0 and 5);
 
 -- ------------------------------------------------------------
+-- CRM de Datum — los leads propios de Andrés (empresas a las que le está
+-- vendiendo Datum), separado por completo del CRM que usan sus empresas
+-- cliente para SUS propios clientes. Mismo patrón de embudo con etapas
+-- personalizables y reglas de inactividad opcionales que ya usa el CRM en
+-- modo 'leads', pero sin empresa_id — no es multi-tenant, es un solo
+-- embudo para el negocio de Datum. Solo la cuenta de administrador puede
+-- verlo o tocarlo (ver políticas RLS más abajo).
+-- ------------------------------------------------------------
+create table datum_crm_etapas (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  orden int not null,
+  es_cierre boolean not null default false,
+  dias_inactividad int,
+  etapa_destino_inactividad_id uuid references datum_crm_etapas(id),
+  created_at timestamptz default now(),
+  unique (nombre),
+  unique (orden)
+);
+
+create unique index datum_crm_etapas_una_cierre on datum_crm_etapas (es_cierre) where es_cierre;
+
+insert into datum_crm_etapas (nombre, orden, es_cierre) values
+  ('Nuevo', 1, false),
+  ('Contactado', 2, false),
+  ('Propuesta', 3, false),
+  ('Cerrado', 4, true);
+
+create table datum_leads (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,          -- persona de contacto
+  empresa text,                  -- empresa prospecto que representa
+  telefono text,
+  email text,
+  etapa_id uuid references datum_crm_etapas(id),
+  calificacion smallint check (calificacion between 0 and 5),
+  notas text,
+  created_at timestamptz default now()
+);
+
+create or replace function datum_etapa_inicial_crm()
+returns uuid language sql stable as $$
+  select id from datum_crm_etapas order by orden asc limit 1;
+$$;
+
+create or replace function fijar_etapa_inicial_datum_lead()
+returns trigger language plpgsql as $$
+begin
+  if new.etapa_id is null then
+    new.etapa_id := datum_etapa_inicial_crm();
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trigger_etapa_inicial_datum_lead
+before insert on datum_leads
+for each row execute function fijar_etapa_inicial_datum_lead();
+
+-- Cambia cuál es la etapa de cierre, quitándosela a la anterior primero —
+-- así nunca queda ninguna, ni dos a la vez (rompería el índice único de arriba).
+create or replace function marcar_etapa_cierre_datum(p_etapa_id uuid)
+returns void language plpgsql as $$
+begin
+  update datum_crm_etapas set es_cierre = false where es_cierre;
+  update datum_crm_etapas set es_cierre = true where id = p_etapa_id;
+end;
+$$;
+
+-- Mueve una etapa un lugar hacia arriba o hacia abajo, igual criterio que
+-- mover_etapa_crm(): pasa por un valor temporal (-1) porque "orden" es único.
+create or replace function mover_etapa_datum(p_etapa_id uuid, p_direccion text)
+returns void language plpgsql as $$
+declare
+  v_orden_actual int;
+  v_vecino_id uuid;
+  v_vecino_orden int;
+begin
+  select orden into v_orden_actual from datum_crm_etapas where id = p_etapa_id;
+  if v_orden_actual is null then
+    raise exception 'Etapa no encontrada';
+  end if;
+
+  if p_direccion = 'arriba' then
+    select id, orden into v_vecino_id, v_vecino_orden
+    from datum_crm_etapas where orden < v_orden_actual
+    order by orden desc limit 1;
+  else
+    select id, orden into v_vecino_id, v_vecino_orden
+    from datum_crm_etapas where orden > v_orden_actual
+    order by orden asc limit 1;
+  end if;
+
+  if v_vecino_id is null then
+    return;
+  end if;
+
+  update datum_crm_etapas set orden = -1 where id = p_etapa_id;
+  update datum_crm_etapas set orden = v_orden_actual where id = v_vecino_id;
+  update datum_crm_etapas set orden = v_vecino_orden where id = p_etapa_id;
+end;
+$$;
+
+create table datum_crm_interacciones (
+  id uuid primary key default gen_random_uuid(),
+  lead_id uuid references datum_leads(id) not null,
+  fecha date default current_date,
+  tipo text check (tipo in ('llamada','email','reunion','otro')),
+  nota text
+);
+
+-- Mismo criterio que aplicar_reglas_inactividad_crm(): se llama cada vez
+-- que alguien abre la pantalla de leads, no corre en segundo plano.
+create or replace function aplicar_reglas_inactividad_crm_datum()
+returns void language plpgsql as $$
+declare
+  v_etapa record;
+begin
+  for v_etapa in
+    select id, dias_inactividad, etapa_destino_inactividad_id
+    from datum_crm_etapas
+    where dias_inactividad is not null and etapa_destino_inactividad_id is not null
+  loop
+    update datum_leads l
+    set etapa_id = v_etapa.etapa_destino_inactividad_id
+    where l.etapa_id = v_etapa.id
+      and coalesce(
+        (select max(i.fecha) from datum_crm_interacciones i where i.lead_id = l.id),
+        l.created_at::date
+      ) <= current_date - v_etapa.dias_inactividad;
+  end loop;
+end;
+$$;
+
+-- ------------------------------------------------------------
 -- 8. INVENTARIO
 -- ------------------------------------------------------------
 -- Proveedores: a quién le compra cada producto la empresa, y en qué condición
@@ -2660,6 +2795,9 @@ alter table nomina_vacaciones enable row level security;
 alter table insights_resumen_ia enable row level security;
 alter table datum_pasivos enable row level security;
 alter table datum_movimientos enable row level security;
+alter table datum_crm_etapas enable row level security;
+alter table datum_leads enable row level security;
+alter table datum_crm_interacciones enable row level security;
 
 -- Funciones auxiliares, para no repetir la misma subconsulta en cada política.
 -- security definer es necesario aquí: la política de "perfiles" usa es_admin(),
@@ -2851,6 +2989,15 @@ create policy "solo admin ve pasivos de datum" on datum_pasivos
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve movimientos de datum" on datum_movimientos
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve etapas de leads de datum" on datum_crm_etapas
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve leads de datum" on datum_leads
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve interacciones de leads de datum" on datum_crm_interacciones
   for all using (es_admin()) with check (es_admin());
 
 -- ============================================================

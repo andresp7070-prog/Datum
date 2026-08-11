@@ -106,6 +106,18 @@ export default async function AdminDashboardPage() {
         <h1 className="text-lg font-semibold text-gray-900">Panel de administrador</h1>
         <div className="flex gap-2">
           <Link
+            href="/admin/panel"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Panel de control de Datum
+          </Link>
+          <Link
+            href="/admin/leads"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Leads de Datum
+          </Link>
+          <Link
             href="/admin/finanzas"
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
           >

@@ -156,3 +156,49 @@ export async function borrarCampoEtapa(campoId: string): Promise<{ error: string
   revalidatePath("/crm/etapas");
   return { error: null };
 }
+
+export async function crearCampoGeneral(input: {
+  nombre: string;
+  tipo: string;
+  opciones: string[];
+  requerido: boolean;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const empresaId = await empresaIdDeSesion(supabase);
+  if (!empresaId) return { error: "No hay sesión activa." };
+
+  if (!input.nombre.trim()) return { error: "El nombre del campo es obligatorio." };
+  if (input.tipo === "seleccion" && input.opciones.length === 0) {
+    return { error: "Escribe al menos una opción para un campo de selección." };
+  }
+
+  const { data: ultimo } = await supabase
+    .from("crm_campos_generales")
+    .select("orden")
+    .eq("empresa_id", empresaId)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase.from("crm_campos_generales").insert({
+    empresa_id: empresaId,
+    nombre: input.nombre.trim(),
+    tipo: input.tipo,
+    opciones: input.tipo === "seleccion" ? input.opciones : null,
+    requerido: input.requerido,
+    orden: (ultimo?.orden ?? 0) + 1,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/crm/etapas");
+  return { error: null };
+}
+
+export async function borrarCampoGeneral(campoId: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("crm_campos_generales").delete().eq("id", campoId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/crm/etapas");
+  return { error: null };
+}

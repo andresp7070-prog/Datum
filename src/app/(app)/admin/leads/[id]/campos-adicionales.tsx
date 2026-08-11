@@ -5,7 +5,7 @@ import { guardarCampoValorLead } from "./actions";
 
 type CampoEtapa = {
   id: string;
-  etapa_id: string;
+  etapa_id: string | null;
   nombre: string;
   tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion";
   opciones: string[] | null;

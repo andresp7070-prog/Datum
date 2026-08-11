@@ -6,22 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 export async function cambiarEtapaLead(
   leadId: string,
   etapaId: string,
+  valorVenta?: number,
 ): Promise<{ error: string | null }> {
   await requerirAdmin();
   const supabase = await createClient();
-  const { error } = await supabase.from("datum_leads").update({ etapa_id: etapaId }).eq("id", leadId);
 
-  if (error) return { error: error.message };
-  return { error: null };
-}
+  const actualizacion: { etapa_id: string; valor_venta?: number } = { etapa_id: etapaId };
+  if (valorVenta !== undefined) actualizacion.valor_venta = valorVenta;
 
-export async function calificarLead(
-  leadId: string,
-  calificacion: number | null,
-): Promise<{ error: string | null }> {
-  await requerirAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase.from("datum_leads").update({ calificacion }).eq("id", leadId);
+  const { error } = await supabase.from("datum_leads").update(actualizacion).eq("id", leadId);
 
   if (error) return { error: error.message };
   return { error: null };

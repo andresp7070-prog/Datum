@@ -12,6 +12,8 @@ import {
   borrarEtapaDatum,
   crearCampoEtapaDatum,
   borrarCampoEtapaDatum,
+  crearCampoGeneralDatum,
+  borrarCampoGeneralDatum,
 } from "./actions";
 
 type Etapa = {
@@ -26,6 +28,14 @@ type Etapa = {
 export type CampoEtapa = {
   id: string;
   etapa_id: string;
+  nombre: string;
+  tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion";
+  opciones: string[] | null;
+  requerido: boolean;
+};
+
+export type CampoGeneral = {
+  id: string;
   nombre: string;
   tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion";
   opciones: string[] | null;
@@ -123,6 +133,126 @@ function CamposEtapaConfig({ etapaId, campos }: { etapaId: string; campos: Campo
         <select
           value={tipo}
           onChange={(e) => setTipo(e.target.value as CampoEtapa["tipo"])}
+          className="rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none"
+        >
+          {tiposCampo.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+        {tipo === "seleccion" && (
+          <input
+            value={opciones}
+            onChange={(e) => setOpciones(e.target.value)}
+            placeholder="Opciones separadas por coma"
+            className="w-48 rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none"
+          />
+        )}
+        <label className="flex items-center gap-1 text-xs text-gray-600">
+          <input type="checkbox" checked={requerido} onChange={(e) => setRequerido(e.target.checked)} />
+          Obligatorio
+        </label>
+        <button
+          type="button"
+          onClick={agregar}
+          disabled={guardando}
+          className="rounded-lg bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+        >
+          Agregar campo
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function CamposGeneralesConfig({ campos }: { campos: CampoGeneral[] }) {
+  const router = useRouter();
+  const [nombre, setNombre] = useState("");
+  const [tipo, setTipo] = useState<CampoGeneral["tipo"]>("texto");
+  const [opciones, setOpciones] = useState("");
+  const [requerido, setRequerido] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [borrandoId, setBorrandoId] = useState<string | null>(null);
+
+  async function agregar() {
+    setError(null);
+    setGuardando(true);
+    const resultado = await crearCampoGeneralDatum({
+      nombre,
+      tipo,
+      opciones: opciones
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean),
+      requerido,
+    });
+    setGuardando(false);
+    if (resultado.error) {
+      setError(resultado.error);
+      return;
+    }
+    setNombre("");
+    setTipo("texto");
+    setOpciones("");
+    setRequerido(false);
+    router.refresh();
+  }
+
+  async function borrar(campoId: string) {
+    setBorrandoId(campoId);
+    await borrarCampoGeneralDatum(campoId);
+    setBorrandoId(null);
+    router.refresh();
+  }
+
+  return (
+    <div className="mb-6 rounded-xl border border-gray-200 p-4">
+      <h2 className="mb-1 text-sm font-semibold text-gray-900">Campos generales</h2>
+      <p className="mb-3 text-xs text-gray-500">
+        Se piden para todos los leads, sin importar en qué etapa estén — a diferencia de los
+        campos de cada etapa, estos no dependen de dónde va el lead en el embudo.
+      </p>
+      {campos.length === 0 ? (
+        <p className="mb-3 text-xs text-gray-400">Todavía no hay campos generales definidos.</p>
+      ) : (
+        <ul className="mb-3 space-y-1.5">
+          {campos.map((campo) => (
+            <li key={campo.id} className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-gray-700">
+                {campo.nombre}
+                <span className="text-gray-400">
+                  {" "}
+                  · {tiposCampo.find((t) => t.value === campo.tipo)?.label ?? campo.tipo}
+                  {campo.requerido ? " · obligatorio" : ""}
+                  {campo.opciones && campo.opciones.length > 0 ? ` · ${campo.opciones.join(", ")}` : ""}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => borrar(campo.id)}
+                disabled={borrandoId === campo.id}
+                className="shrink-0 text-gray-400 hover:text-red-600 disabled:opacity-50"
+              >
+                Borrar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Nombre del campo"
+          className="w-40 rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none"
+        />
+        <select
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value as CampoGeneral["tipo"])}
           className="rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none"
         >
           {tiposCampo.map((t) => (
@@ -407,7 +537,15 @@ function EtapaFila({
   );
 }
 
-export function EtapasForm({ etapas, campos }: { etapas: Etapa[]; campos: CampoEtapa[] }) {
+export function EtapasForm({
+  etapas,
+  campos,
+  camposGenerales,
+}: {
+  etapas: Etapa[];
+  campos: CampoEtapa[];
+  camposGenerales: CampoGeneral[];
+}) {
   const router = useRouter();
   const [nuevaEtapa, setNuevaEtapa] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -446,6 +584,8 @@ export function EtapasForm({ etapas, campos }: { etapas: Etapa[]; campos: CampoE
         una. La regla de inactividad, opcional, mueve solo a un lead que lleva mucho tiempo sin
         seguimiento (se revisa cada vez que abres la pantalla de Leads, no al instante).
       </p>
+
+      <CamposGeneralesConfig campos={camposGenerales} />
 
       <ul className="mb-6 divide-y divide-gray-200 rounded-xl border border-gray-200">
         {etapas.map((etapa, indice) => (

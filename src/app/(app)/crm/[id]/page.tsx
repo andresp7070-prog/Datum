@@ -80,6 +80,21 @@ export default async function FichaClientePage({
           .order("orden")
       : { data: [] };
 
+  // Los campos generales aplican a todo contacto sin importar la etapa —
+  // se muestran siempre, junto con los que sí dependen de la etapa.
+  const { data: camposGenerales } = perfil?.empresa_id
+    ? await supabase
+        .from("crm_campos_generales")
+        .select("id, nombre, tipo, opciones, requerido")
+        .eq("empresa_id", perfil.empresa_id)
+        .order("orden")
+    : { data: [] };
+
+  const todosLosCampos = [
+    ...(camposGenerales ?? []).map((c) => ({ ...c, etapa_id: null })),
+    ...(camposDefinidos ?? []),
+  ];
+
   const { data: perfilCompra } = await supabase
     .from("vista_perfil_cliente")
     .select("*")
@@ -259,7 +274,7 @@ export default async function FichaClientePage({
 
       <CamposAdicionales
         contactoId={contacto.id}
-        campos={camposDefinidos ?? []}
+        campos={todosLosCampos}
         valores={(contacto.campos_etapa as Record<string, string | boolean | null>) ?? {}}
       />
 

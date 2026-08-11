@@ -22,5 +22,12 @@ export default async function EtapasLeadsDatumPage() {
           .order("orden")
       : { data: [] };
 
-  return <EtapasForm etapas={etapas ?? []} campos={campos ?? []} />;
+  const { data: camposGenerales } = await supabase
+    .from("datum_crm_campos_generales")
+    .select("id, nombre, tipo, opciones, requerido")
+    .order("orden");
+
+  return (
+    <EtapasForm etapas={etapas ?? []} campos={campos ?? []} camposGenerales={camposGenerales ?? []} />
+  );
 }

@@ -6,6 +6,7 @@ import { sinTildes } from "@/lib/texto";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { Estrellas } from "@/app/(app)/crm/estrellas";
 import { cambiarEtapaLead } from "./[id]/actions";
+import { ValorVentaModal } from "./valor-venta-modal";
 
 type Lead = {
   id: string;
@@ -14,10 +15,11 @@ type Lead = {
   telefono: string | null;
   email: string | null;
   etapa_id: string | null;
+  valor_venta: number | null;
   calificacion: number | null;
 };
 
-type Etapa = { id: string; nombre: string; orden: number };
+type Etapa = { id: string; nombre: string; orden: number; es_cierre: boolean };
 
 function TarjetaLead({
   lead,
@@ -60,6 +62,9 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
   const [busqueda, setBusqueda] = useState("");
   const [arrastrandoId, setArrastrandoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dropPendiente, setDropPendiente] = useState<{ leadId: string; etapaId: string } | null>(
+    null,
+  );
 
   const q = sinTildes(busqueda.trim());
   const filtrados = leads.filter((lead) => {
@@ -78,6 +83,25 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
     };
   });
 
+  async function aplicarCambioEtapa(leadId: string, etapaId: string, valorVenta?: number) {
+    const leadActual = leads.find((l) => l.id === leadId);
+    const anterior = leadActual?.etapa_id ?? null;
+
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === leadId
+          ? { ...l, etapa_id: etapaId, valor_venta: valorVenta ?? l.valor_venta }
+          : l,
+      ),
+    );
+
+    const resultado = await cambiarEtapaLead(leadId, etapaId, valorVenta);
+    if (resultado.error) {
+      setError(resultado.error);
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, etapa_id: anterior } : l)));
+    }
+  }
+
   async function soltarEn(etapaId: string) {
     if (!arrastrandoId) return;
     const leadId = arrastrandoId;
@@ -86,14 +110,13 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
     const leadArrastrado = leads.find((l) => l.id === leadId);
     if (!leadArrastrado || leadArrastrado.etapa_id === etapaId) return;
 
-    const anterior = leadArrastrado.etapa_id;
-    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, etapa_id: etapaId } : l)));
-
-    const resultado = await cambiarEtapaLead(leadId, etapaId);
-    if (resultado.error) {
-      setError(resultado.error);
-      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, etapa_id: anterior } : l)));
+    const etapaDestino = etapas.find((e) => e.id === etapaId);
+    if (etapaDestino?.es_cierre && leadArrastrado.valor_venta == null) {
+      setDropPendiente({ leadId, etapaId });
+      return;
     }
+
+    await aplicarCambioEtapa(leadId, etapaId);
   }
 
   return (
@@ -184,6 +207,17 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
             );
           })}
         </div>
+      )}
+
+      {dropPendiente && (
+        <ValorVentaModal
+          onConfirm={(valorVenta) => {
+            const pendiente = dropPendiente;
+            setDropPendiente(null);
+            aplicarCambioEtapa(pendiente.leadId, pendiente.etapaId, valorVenta);
+          }}
+          onCancel={() => setDropPendiente(null)}
+        />
       )}
     </div>
   );

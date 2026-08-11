@@ -416,6 +416,25 @@ create table crm_etapa_campos (
 -- etapa del embudo — son dos cosas distintas que no deben mezclarse.
 alter table crm_contactos add column campos_etapa jsonb not null default '{}';
 
+-- Campos generales del CRM: a diferencia de crm_etapa_campos (que solo
+-- aplica desde cierta etapa en adelante), estos siempre se piden para
+-- cualquier contacto, sin importar en qué etapa esté — ej. "horario de
+-- atención", "interesado en qué tipo de servicio". Tabla propia por el
+-- mismo motivo que crm_etapa_campos (la lista de campos es una entidad en
+-- sí misma), pero a nivel de empresa en vez de etapa. Los valores se
+-- guardan en el mismo campos_etapa de arriba — las claves son ids de
+-- campo, así que no chocan entre las dos tablas.
+create table crm_campos_generales (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  nombre text not null,
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  opciones text[],
+  requerido boolean not null default false,
+  orden int not null default 1,
+  created_at timestamptz default now()
+);
+
 -- Aplica las reglas de inactividad de una empresa: por cada etapa que tenga
 -- una configurada, mueve a "etapa_destino_inactividad_id" a cualquier
 -- contacto que lleve más de "dias_inactividad" sin ninguna interacción
@@ -584,6 +603,24 @@ create table datum_crm_etapa_campos (
 
 alter table datum_leads add column campos_etapa jsonb not null default '{}';
 
+-- Campos generales del CRM de leads de Datum: mismo criterio que
+-- crm_campos_generales, pero sin empresa_id — un solo embudo para Datum.
+create table datum_crm_campos_generales (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  opciones text[],
+  requerido boolean not null default false,
+  orden int not null default 1,
+  created_at timestamptz default now()
+);
+
+-- El monto real de la venta que ese lead generó — se pide al mover el
+-- lead a la etapa marcada como "de cierre" (cualquiera sea su nombre), y
+-- alimenta vista_calificacion_leads_datum más abajo. Null mientras el
+-- lead no haya cerrado todavía.
+alter table datum_leads add column valor_venta numeric(12,2);
+
 -- Mismo criterio que aplicar_reglas_inactividad_crm(): se llama cada vez
 -- que alguien abre la pantalla de leads, no corre en segundo plano.
 create or replace function aplicar_reglas_inactividad_crm_datum()
@@ -606,6 +643,45 @@ begin
   end loop;
 end;
 $$;
+
+-- ------------------------------------------------------------
+-- Vista: Calificación automática de leads de Datum por venta generada
+-- Mismo principio que vista_calificacion_clientes, pero comparando el
+-- valor de venta de cada lead cerrado contra el promedio de los demás
+-- leads YA CERRADOS (valor_venta no nulo) — un lead sin cerrar todavía
+-- no aparece acá, porque no hay nada que comparar.
+-- ------------------------------------------------------------
+create or replace view vista_calificacion_leads_datum as
+with base as (
+  select id as lead_id, valor_venta
+  from datum_leads
+  where valor_venta is not null
+),
+promedio as (
+  select avg(valor_venta) as promedio_valor from base
+),
+porcentajes as (
+  select
+    b.lead_id,
+    case when p.promedio_valor > 0
+      then 100.0 * (b.valor_venta - p.promedio_valor) / p.promedio_valor
+      else 0
+    end as pct_valor
+  from base b
+  cross join promedio p
+)
+select
+  lead_id,
+  round(pct_valor, 1) as pct_valor,
+  case
+    when pct_valor >= 90 then 5
+    when pct_valor >= 70 then 4
+    when pct_valor >= 50 then 3
+    when pct_valor >= 30 then 2
+    when pct_valor >= 10 then 1
+    else 0
+  end as calificacion_automatica
+from porcentajes;
 
 -- ------------------------------------------------------------
 -- 8. INVENTARIO
@@ -2881,6 +2957,7 @@ alter table ventas enable row level security;
 alter table ventas_items enable row level security;
 alter table crm_etapas enable row level security;
 alter table crm_etapa_campos enable row level security;
+alter table crm_campos_generales enable row level security;
 alter table crm_contactos enable row level security;
 alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
@@ -2907,6 +2984,7 @@ alter table datum_pasivos enable row level security;
 alter table datum_movimientos enable row level security;
 alter table datum_crm_etapas enable row level security;
 alter table datum_crm_etapa_campos enable row level security;
+alter table datum_crm_campos_generales enable row level security;
 alter table datum_leads enable row level security;
 alter table datum_crm_interacciones enable row level security;
 
@@ -3037,6 +3115,9 @@ create policy "ver campos de mis etapas de crm" on crm_etapa_campos
     or es_admin()
   );
 
+create policy "ver mis campos generales de crm" on crm_campos_generales
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
 create policy "ver movimientos de mi inventario" on inventario_movimientos
   for all using (
     item_id in (select id from inventario_items where empresa_id = mi_empresa_id())
@@ -3112,6 +3193,9 @@ create policy "solo admin ve etapas de leads de datum" on datum_crm_etapas
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve campos de etapas de leads de datum" on datum_crm_etapa_campos
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve campos generales de leads de datum" on datum_crm_campos_generales
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve leads de datum" on datum_leads

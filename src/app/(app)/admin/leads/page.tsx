@@ -13,13 +13,28 @@ export default async function LeadsDatumPage() {
 
   const { data: etapas } = await supabase
     .from("datum_crm_etapas")
-    .select("id, nombre, orden")
+    .select("id, nombre, orden, es_cierre")
     .order("orden");
 
   const { data: leads, error } = await supabase
     .from("datum_leads")
-    .select("id, nombre, empresa, telefono, email, etapa_id, calificacion")
+    .select("id, nombre, empresa, telefono, email, etapa_id, valor_venta")
     .order("nombre");
+
+  // La calificación ya no se pone a mano — se calcula sola según el valor
+  // de venta que generó cada lead (ver vista_calificacion_leads_datum).
+  const { data: calificaciones } = await supabase
+    .from("vista_calificacion_leads_datum")
+    .select("lead_id, calificacion_automatica");
+
+  const calificacionPorLead = new Map(
+    (calificaciones ?? []).map((c) => [c.lead_id, c.calificacion_automatica]),
+  );
+
+  const leadsConCalificacion = (leads ?? []).map((lead) => ({
+    ...lead,
+    calificacion: calificacionPorLead.get(lead.id) ?? null,
+  }));
 
   return (
     <>
@@ -28,7 +43,7 @@ export default async function LeadsDatumPage() {
           Error al cargar leads: {error.message}
         </div>
       )}
-      <DirectorioLeads leads={leads ?? []} etapas={etapas ?? []} />
+      <DirectorioLeads leads={leadsConCalificacion} etapas={etapas ?? []} />
     </>
   );
 }

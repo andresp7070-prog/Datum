@@ -87,7 +87,13 @@ export default async function FichaLeadPage({
     .order("fecha", { ascending: false });
 
   let googleConectado = false;
-  let eventosCalendar: { id: string; fecha: string; nota: string | null; link: string | null }[] = [];
+  let eventosCalendar: {
+    id: string;
+    fecha: string;
+    nota: string | null;
+    link: string | null;
+    meet_link: string | null;
+  }[] = [];
   if (user) {
     const { data: integracion } = await supabase
       .from("integraciones_google")
@@ -98,7 +104,7 @@ export default async function FichaLeadPage({
 
     const { data: eventos } = await supabase
       .from("datum_crm_eventos_calendar")
-      .select("id, fecha, nota, link")
+      .select("id, fecha, nota, link, meet_link")
       .eq("lead_id", id)
       .order("fecha", { ascending: true });
     eventosCalendar = eventos ?? [];
@@ -175,6 +181,7 @@ export default async function FichaLeadPage({
       <SeguimientoCalendar
         leadId={lead.id}
         nombreLead={lead.nombre}
+        emailLead={lead.email}
         conectado={googleConectado}
         eventos={eventosCalendar}
         rutaConexion={`/admin/leads/${lead.id}`}

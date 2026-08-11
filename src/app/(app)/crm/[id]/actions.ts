@@ -52,9 +52,10 @@ const DURACION_SEGUIMIENTO_MINUTOS = 30;
 
 export async function agendarSeguimiento(input: {
   contactoId: string;
-  nombreContacto: string;
+  titulo: string;
   fechaInicio: string;
   nota: string;
+  invitados: string;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const {
@@ -62,17 +63,23 @@ export async function agendarSeguimiento(input: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No hay sesión activa." };
 
+  if (!input.titulo.trim()) return { error: "Escribe un título para el evento." };
+
   const inicio = new Date(input.fechaInicio);
   if (Number.isNaN(inicio.getTime())) return { error: "Elige una fecha y hora válidas." };
   const fin = new Date(inicio.getTime() + DURACION_SEGUIMIENTO_MINUTOS * 60 * 1000);
-  const titulo = `Seguimiento: ${input.nombreContacto}`;
+  const invitados = input.invitados
+    .split(",")
+    .map((correo) => correo.trim())
+    .filter(Boolean);
 
   const resultado = await crearEventoCalendar({
     perfilId: user.id,
-    titulo,
+    titulo: input.titulo.trim(),
     descripcion: input.nota || "Seguimiento agendado desde Datum.",
     fechaInicioISO: inicio.toISOString(),
     fechaFinISO: fin.toISOString(),
+    invitados,
   });
   if ("error" in resultado) return { error: resultado.error };
 
@@ -81,7 +88,8 @@ export async function agendarSeguimiento(input: {
     perfil_id: user.id,
     google_event_id: resultado.googleEventId,
     link: resultado.link,
-    titulo,
+    meet_link: resultado.meetLink,
+    titulo: input.titulo.trim(),
     fecha: inicio.toISOString(),
     nota: input.nota || null,
   });

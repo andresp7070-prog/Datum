@@ -2965,6 +2965,7 @@ create table crm_eventos_calendar (
   perfil_id uuid references perfiles(id) not null,
   google_event_id text not null,
   link text,   -- htmlLink que devuelve Google, para abrir el evento sin otra llamada a su API
+  meet_link text,   -- hangoutLink que devuelve Google al pedir conferenceData
   titulo text not null,
   fecha timestamptz not null,
   nota text,
@@ -2978,6 +2979,7 @@ create table datum_crm_eventos_calendar (
   perfil_id uuid references perfiles(id) not null,
   google_event_id text not null,
   link text,
+  meet_link text,
   titulo text not null,
   fecha timestamptz not null,
   nota text,

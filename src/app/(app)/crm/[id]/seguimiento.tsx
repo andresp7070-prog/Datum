@@ -4,24 +4,34 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { agendarSeguimiento, cancelarSeguimiento } from "./actions";
 
-type Evento = { id: string; fecha: string; nota: string | null; link: string | null };
+type Evento = {
+  id: string;
+  fecha: string;
+  nota: string | null;
+  link: string | null;
+  meet_link: string | null;
+};
 
 export function SeguimientoCalendar({
   contactoId,
   nombreContacto,
+  emailContacto,
   conectado,
   eventos,
   rutaConexion,
 }: {
   contactoId: string;
   nombreContacto: string;
+  emailContacto: string | null;
   conectado: boolean;
   eventos: Evento[];
   rutaConexion: string;
 }) {
   const router = useRouter();
+  const [titulo, setTitulo] = useState(`Seguimiento: ${nombreContacto}`);
   const [fecha, setFecha] = useState("");
   const [nota, setNota] = useState("");
+  const [invitados, setInvitados] = useState(emailContacto ?? "");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelandoId, setCancelandoId] = useState<string | null>(null);
@@ -36,16 +46,19 @@ export function SeguimientoCalendar({
     try {
       const resultado = await agendarSeguimiento({
         contactoId,
-        nombreContacto,
+        titulo,
         fechaInicio: fecha,
         nota: nota.trim(),
+        invitados,
       });
       if (resultado.error) {
         setError(resultado.error);
         return;
       }
+      setTitulo(`Seguimiento: ${nombreContacto}`);
       setFecha("");
       setNota("");
+      setInvitados(emailContacto ?? "");
       router.refresh();
     } finally {
       setGuardando(false);
@@ -90,16 +103,28 @@ export function SeguimientoCalendar({
                       })}
                     </p>
                     {evento.nota && <p className="text-gray-500">{evento.nota}</p>}
-                    {evento.link && (
-                      <a
-                        href={evento.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-accent hover:underline"
-                      >
-                        Ver en Google Calendar
-                      </a>
-                    )}
+                    <div className="flex gap-3">
+                      {evento.link && (
+                        <a
+                          href={evento.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-accent hover:underline"
+                        >
+                          Ver en Google Calendar
+                        </a>
+                      )}
+                      {evento.meet_link && (
+                        <a
+                          href={evento.meet_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-accent hover:underline"
+                        >
+                          Unirse por Meet
+                        </a>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -116,7 +141,14 @@ export function SeguimientoCalendar({
             <p className="mb-4 text-sm text-gray-400">Sin seguimientos agendados todavía.</p>
           )}
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              disabled={guardando}
+              placeholder="Título del evento"
+              className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50 sm:col-span-2"
+            />
             <input
               type="datetime-local"
               value={fecha}
@@ -125,21 +157,28 @@ export function SeguimientoCalendar({
               className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
             />
             <input
+              value={invitados}
+              onChange={(e) => setInvitados(e.target.value)}
+              disabled={guardando}
+              placeholder="Invitados (correos separados por coma)"
+              className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
+            />
+            <input
               value={nota}
               onChange={(e) => setNota(e.target.value)}
               disabled={guardando}
               placeholder="Nota (opcional)"
-              className="flex-1 rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
+              className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50 sm:col-span-2"
             />
-            <button
-              type="button"
-              onClick={agendar}
-              disabled={guardando}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
-            >
-              {guardando ? "Agendando..." : "Agendar seguimiento"}
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={agendar}
+            disabled={guardando}
+            className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+          >
+            {guardando ? "Agendando..." : "Agendar seguimiento"}
+          </button>
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         </>
       )}

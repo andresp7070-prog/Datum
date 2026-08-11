@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 
 // Integración con Google Calendar — ver CLAUDE.md, sección "Agendar
@@ -105,12 +106,19 @@ export async function crearEventoCalendar(input: {
   descripcion: string;
   fechaInicioISO: string;
   fechaFinISO: string;
-}): Promise<{ googleEventId: string; link: string | null } | { error: string }> {
+  invitados: string[];
+}): Promise<
+  | { googleEventId: string; link: string | null; meetLink: string | null }
+  | { error: string }
+> {
   const accessToken = await accessTokenDePerfil(input.perfilId);
   if (typeof accessToken !== "string") return accessToken;
 
   try {
-    const res = await fetch(CALENDAR_EVENTS_URL, {
+    // conferenceDataVersion=1 le pide a Google que cree el link de Meet;
+    // sendUpdates=all manda el correo de invitación a cada invitado.
+    const url = `${CALENDAR_EVENTS_URL}?conferenceDataVersion=1&sendUpdates=all`;
+    const res = await fetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -118,11 +126,17 @@ export async function crearEventoCalendar(input: {
         description: input.descripcion,
         start: { dateTime: input.fechaInicioISO },
         end: { dateTime: input.fechaFinISO },
+        attendees: input.invitados.map((email) => ({ email })),
+        conferenceData: { createRequest: { requestId: randomUUID() } },
       }),
     });
     if (!res.ok) return { error: `Google rechazó el evento: ${await res.text()}` };
     const data = await res.json();
-    return { googleEventId: data.id as string, link: (data.htmlLink as string | undefined) ?? null };
+    return {
+      googleEventId: data.id as string,
+      link: (data.htmlLink as string | undefined) ?? null,
+      meetLink: (data.hangoutLink as string | undefined) ?? null,
+    };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error desconocido al crear el evento." };
   }

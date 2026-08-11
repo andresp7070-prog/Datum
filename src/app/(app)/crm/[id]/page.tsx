@@ -134,7 +134,13 @@ export default async function FichaClientePage({
   // 'ventas' ni siquiera se consulta, mismo criterio que "Configurar
   // etapas" y las reglas de inactividad.
   let googleConectado = false;
-  let eventosCalendar: { id: string; fecha: string; nota: string | null; link: string | null }[] = [];
+  let eventosCalendar: {
+    id: string;
+    fecha: string;
+    nota: string | null;
+    link: string | null;
+    meet_link: string | null;
+  }[] = [];
   if (crmModo === "leads") {
     const { data: integracion } = await supabase
       .from("integraciones_google")
@@ -145,7 +151,7 @@ export default async function FichaClientePage({
 
     const { data: eventos } = await supabase
       .from("crm_eventos_calendar")
-      .select("id, fecha, nota, link")
+      .select("id, fecha, nota, link, meet_link")
       .eq("contacto_id", id)
       .order("fecha", { ascending: true });
     eventosCalendar = eventos ?? [];
@@ -321,6 +327,7 @@ export default async function FichaClientePage({
         <SeguimientoCalendar
           contactoId={contacto.id}
           nombreContacto={contacto.nombre}
+          emailContacto={contacto.email}
           conectado={googleConectado}
           eventos={eventosCalendar}
           rutaConexion={`/crm/${contacto.id}`}

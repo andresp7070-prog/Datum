@@ -112,7 +112,14 @@ export function Sidebar({
           </div>
           <ul className="space-y-1">
             {enlacesAdmin.map((enlace) => {
-              const activo = pathname === enlace.href || pathname.startsWith(`${enlace.href}/`);
+              // "/admin" es prefijo de todas las demás rutas de este menú
+              // (/admin/leads, /admin/finanzas...) — sin este caso especial,
+              // "Panel" y la sección en la que de verdad estás quedan
+              // marcadas activas al mismo tiempo.
+              const activo =
+                enlace.href === "/admin"
+                  ? pathname === "/admin"
+                  : pathname === enlace.href || pathname.startsWith(`${enlace.href}/`);
               return (
                 <li key={enlace.href}>
                   <Link

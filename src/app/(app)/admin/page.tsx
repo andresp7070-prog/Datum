@@ -66,7 +66,7 @@ export default async function AdminDashboardPage() {
   const hace30DiasIso = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
-    { data: empresas },
+    { data: empresas, error: errorEmpresas },
     { data: ventasMes },
     { data: ventasAnio },
     { data: ventasRecientes },
@@ -111,6 +111,12 @@ export default async function AdminDashboardPage() {
           Enviar bienvenida
         </Link>
       </div>
+
+      {errorEmpresas && (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+          Error al cargar empresas: {errorEmpresas.message}
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-gray-200 p-4">

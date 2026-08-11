@@ -4,6 +4,7 @@ import { requerirModulo } from "@/lib/empresa";
 import { CambiarEtapa } from "./cambiar-etapa";
 import { NuevaInteraccionForm } from "./nueva-interaccion-form";
 import { CalificarCliente } from "./calificar-cliente";
+import { CamposAdicionales } from "./campos-adicionales";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -38,7 +39,9 @@ export default async function FichaClientePage({
 
   const { data: contacto } = await supabase
     .from("crm_contactos")
-    .select("id, nombre, telefono, email, etapa_id, calificacion, empresa_cliente:atributos->>empresa")
+    .select(
+      "id, nombre, telefono, email, etapa_id, calificacion, campos_etapa, empresa_cliente:atributos->>empresa",
+    )
     .eq("id", id)
     .single();
 
@@ -51,6 +54,23 @@ export default async function FichaClientePage({
         .eq("empresa_id", perfil.empresa_id)
         .order("orden")
     : { data: [] };
+
+  // Se muestran los campos de la etapa actual del contacto y de todas las
+  // anteriores — así no se pierde de vista lo que ya se pidió en el camino
+  // a medida que el contacto avanza en el embudo.
+  const etapaActual = (etapas ?? []).find((e) => e.id === contacto.etapa_id);
+  const etapaIdsHastaAhora = (etapas ?? [])
+    .filter((e) => !etapaActual || e.orden <= etapaActual.orden)
+    .map((e) => e.id);
+
+  const { data: camposDefinidos } =
+    etapaIdsHastaAhora.length > 0
+      ? await supabase
+          .from("crm_etapa_campos")
+          .select("id, etapa_id, nombre, tipo, opciones, requerido")
+          .in("etapa_id", etapaIdsHastaAhora)
+          .order("orden")
+      : { data: [] };
 
   const { data: perfilCompra } = await supabase
     .from("vista_perfil_cliente")
@@ -223,6 +243,12 @@ export default async function FichaClientePage({
           <p className="text-sm text-gray-400">Sin compras registradas todavía.</p>
         )}
       </div>
+
+      <CamposAdicionales
+        contactoId={contacto.id}
+        campos={camposDefinidos ?? []}
+        valores={(contacto.campos_etapa as Record<string, string | boolean | null>) ?? {}}
+      />
 
       <div className="rounded-xl border border-gray-200 p-4">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Interacciones</h2>

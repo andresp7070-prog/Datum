@@ -11,5 +11,16 @@ export default async function EtapasLeadsDatumPage() {
     .select("id, nombre, orden, es_cierre, dias_inactividad, etapa_destino_inactividad_id")
     .order("orden");
 
-  return <EtapasForm etapas={etapas ?? []} />;
+  const etapaIds = (etapas ?? []).map((e) => e.id);
+
+  const { data: campos } =
+    etapaIds.length > 0
+      ? await supabase
+          .from("datum_crm_etapa_campos")
+          .select("id, etapa_id, nombre, tipo, opciones, requerido")
+          .in("etapa_id", etapaIds)
+          .order("orden")
+      : { data: [] };
+
+  return <EtapasForm etapas={etapas ?? []} campos={campos ?? []} />;
 }

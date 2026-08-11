@@ -107,6 +107,53 @@ export async function marcarEtapaCierreDatum(etapaId: string): Promise<{ error: 
   return { error: null };
 }
 
+export async function crearCampoEtapaDatum(input: {
+  etapaId: string;
+  nombre: string;
+  tipo: string;
+  opciones: string[];
+  requerido: boolean;
+}): Promise<{ error: string | null }> {
+  await requerirAdmin();
+  if (!input.nombre.trim()) return { error: "El nombre del campo es obligatorio." };
+  if (input.tipo === "seleccion" && input.opciones.length === 0) {
+    return { error: "Escribe al menos una opción para un campo de selección." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: ultimo } = await supabase
+    .from("datum_crm_etapa_campos")
+    .select("orden")
+    .eq("etapa_id", input.etapaId)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase.from("datum_crm_etapa_campos").insert({
+    etapa_id: input.etapaId,
+    nombre: input.nombre.trim(),
+    tipo: input.tipo,
+    opciones: input.tipo === "seleccion" ? input.opciones : null,
+    requerido: input.requerido,
+    orden: (ultimo?.orden ?? 0) + 1,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/leads/etapas");
+  return { error: null };
+}
+
+export async function borrarCampoEtapaDatum(campoId: string): Promise<{ error: string | null }> {
+  await requerirAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("datum_crm_etapa_campos").delete().eq("id", campoId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/leads/etapas");
+  return { error: null };
+}
+
 export async function actualizarReglaInactividadDatum(input: {
   etapaId: string;
   diasInactividad: number | null;

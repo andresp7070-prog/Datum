@@ -1370,6 +1370,39 @@ alter table finanzas_movimientos add column frecuencia text
   check (frecuencia is null or frecuencia in ('diario','mensual','anual'));
 
 -- ------------------------------------------------------------
+-- Finanzas de Datum — el propio P y G del negocio Datum, aparte del de
+-- cada empresa cliente. Mismo criterio de caja que pasivos/finanzas_movimientos
+-- de arriba (crear una deuda no genera gasto; solo el abono real lo hace),
+-- pero sin empresa_id: esto no es de ninguna empresa cliente, es del negocio
+-- Datum mismo. Solo la cuenta de administrador puede verlas o tocarlas (ver
+-- políticas RLS más abajo) — ningún cliente tiene acceso ni las ve nunca.
+-- ------------------------------------------------------------
+create table datum_pasivos (
+  id uuid primary key default gen_random_uuid(),
+  descripcion text not null,
+  tipo text check (tipo in ('prestamo','proveedor','tarjeta_credito','otro')),
+  monto_total numeric(12,2) not null,
+  monto_pagado numeric(12,2) not null default 0,
+  fecha_vencimiento date,
+  estado text not null default 'pendiente' check (estado in ('pendiente','pagado','vencido')),
+  frecuencia_pago text check (frecuencia_pago is null or frecuencia_pago in ('diario','mensual','anual','unico')),
+  created_at timestamptz default now()
+);
+
+create table datum_movimientos (
+  id uuid primary key default gen_random_uuid(),
+  tipo text not null check (tipo in ('ingreso','gasto')),
+  categoria text,
+  monto numeric(12,2) not null,
+  fecha date default current_date,
+  nota text,
+  pasivo_id uuid references datum_pasivos(id),
+  recurrente boolean not null default false,
+  frecuencia text check (frecuencia is null or frecuencia in ('diario','mensual','anual')),
+  created_at timestamptz default now()
+);
+
+-- ------------------------------------------------------------
 -- Vista: Utilidad por producto y por categoría
 -- Usa el costo congelado en cada venta (no el costo actual), para que
 -- la utilidad de ventas pasadas no cambie si el costo del producto sube después.
@@ -2625,6 +2658,8 @@ alter table nomina_periodos enable row level security;
 alter table nomina_detalles enable row level security;
 alter table nomina_vacaciones enable row level security;
 alter table insights_resumen_ia enable row level security;
+alter table datum_pasivos enable row level security;
+alter table datum_movimientos enable row level security;
 
 -- Funciones auxiliares, para no repetir la misma subconsulta en cada política.
 -- security definer es necesario aquí: la política de "perfiles" usa es_admin(),
@@ -2809,6 +2844,14 @@ create policy "ver vacaciones de mis empleados" on nomina_vacaciones
 
 create policy "ver resumen de insights de mi empresa" on insights_resumen_ia
   for all using (empresa_id = mi_empresa_id() or es_admin());
+
+-- Sin empresa_id: no hay "mi_empresa_id() = ..." posible acá. Solo la cuenta
+-- de administrador puede ver o tocar las finanzas propias de Datum.
+create policy "solo admin ve pasivos de datum" on datum_pasivos
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve movimientos de datum" on datum_movimientos
+  for all using (es_admin()) with check (es_admin());
 
 -- ============================================================
 -- STORAGE — fotos de productos

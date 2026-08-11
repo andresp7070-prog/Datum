@@ -35,6 +35,7 @@ const modulos = [
 
 const enlacesAdmin = [
   { nombre: "Panel", href: "/admin" },
+  { nombre: "Finanzas de Datum", href: "/admin/finanzas" },
   { nombre: "Enviar bienvenida", href: "/admin/bienvenida" },
   { nombre: "Probar correos", href: "/admin/correos" },
 ];

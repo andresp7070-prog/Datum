@@ -275,7 +275,9 @@ export default async function FichaClientePage({
       <CamposAdicionales
         contactoId={contacto.id}
         campos={todosLosCampos}
-        valores={(contacto.campos_etapa as Record<string, string | boolean | null>) ?? {}}
+        valores={
+          (contacto.campos_etapa as Record<string, string | boolean | { nombre: string; url: string } | null>) ?? {}
+        }
       />
 
       <div className="rounded-xl border border-gray-200 p-4">

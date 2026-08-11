@@ -19,7 +19,7 @@ export async function cambiarEtapa(
 export async function guardarCampoValor(input: {
   contactoId: string;
   campoId: string;
-  valor: string | boolean | null;
+  valor: string | boolean | { nombre: string; url: string } | null;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
 

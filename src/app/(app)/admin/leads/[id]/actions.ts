@@ -23,7 +23,7 @@ export async function cambiarEtapaLead(
 export async function guardarCampoValorLead(input: {
   leadId: string;
   campoId: string;
-  valor: string | boolean | null;
+  valor: string | boolean | { nombre: string; url: string } | null;
 }): Promise<{ error: string | null }> {
   await requerirAdmin();
   const supabase = await createClient();

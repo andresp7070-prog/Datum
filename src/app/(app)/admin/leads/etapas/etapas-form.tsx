@@ -9,6 +9,7 @@ import {
   moverEtapaDatum,
   marcarEtapaCierreDatum,
   actualizarReglaInactividadDatum,
+  borrarEtapaDatum,
 } from "./actions";
 
 type Etapa = {
@@ -40,7 +41,23 @@ function EtapaFila({
   const [dias, setDias] = useState(etapa.dias_inactividad?.toString() ?? "");
   const [destino, setDestino] = useState(etapa.etapa_destino_inactividad_id ?? "");
 
+  const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
+  const [borrando, setBorrando] = useState(false);
+
   const opcionesDestino = etapas.filter((e) => e.id !== etapa.id);
+
+  async function borrar() {
+    setError(null);
+    setBorrando(true);
+    const resultado = await borrarEtapaDatum(etapa.id);
+    setBorrando(false);
+    if (resultado.error) {
+      setError(resultado.error);
+      setConfirmandoBorrado(false);
+      return;
+    }
+    router.refresh();
+  }
 
   async function guardarNombre() {
     if (nombre.trim() === etapa.nombre) return;
@@ -159,6 +176,36 @@ function EtapaFila({
         >
           {etapa.dias_inactividad ? "Regla de inactividad ✓" : "+ Regla de inactividad"}
         </button>
+
+        {confirmandoBorrado ? (
+          <span className="flex shrink-0 items-center gap-1.5 text-xs">
+            <span className="text-gray-500">¿Borrar?</span>
+            <button
+              type="button"
+              onClick={borrar}
+              disabled={borrando}
+              className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+            >
+              {borrando ? "..." : "Sí"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmandoBorrado(false)}
+              disabled={borrando}
+              className="text-gray-400 hover:text-gray-700"
+            >
+              No
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmandoBorrado(true)}
+            className="shrink-0 text-xs text-gray-400 hover:text-red-600"
+          >
+            Borrar
+          </button>
+        )}
       </div>
 
       {mostrarRegla && (

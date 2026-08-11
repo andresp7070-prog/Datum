@@ -2,18 +2,44 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { crearEventoCalendar, eliminarEventoCalendar } from "@/lib/google";
+import { formatearValorHistorial } from "@/lib/historial";
 
 export async function cambiarEtapa(
   contactoId: string,
   etapaId: string,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: contactoActual } = await supabase
+    .from("crm_contactos")
+    .select("etapa_id")
+    .eq("id", contactoId)
+    .single();
+
   const { error } = await supabase
     .from("crm_contactos")
     .update({ etapa_id: etapaId })
     .eq("id", contactoId);
 
   if (error) return { error: error.message };
+
+  if (contactoActual && contactoActual.etapa_id !== etapaId) {
+    const idsEtapas = [contactoActual.etapa_id, etapaId].filter(Boolean) as string[];
+    const { data: etapas } = await supabase.from("crm_etapas").select("id, nombre").in("id", idsEtapas);
+    const nombreEtapa = (id: string | null) => etapas?.find((e) => e.id === id)?.nombre ?? null;
+
+    await supabase.from("crm_historial_contacto").insert({
+      contacto_id: contactoId,
+      perfil_id: user?.id ?? null,
+      campo: "Etapa",
+      valor_anterior: nombreEtapa(contactoActual.etapa_id),
+      valor_nuevo: nombreEtapa(etapaId),
+    });
+  }
+
   return { error: null };
 }
 
@@ -23,6 +49,9 @@ export async function guardarCampoValor(input: {
   valor: string | boolean | { nombre: string; url: string } | null;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: contacto, error: errorLectura } = await supabase
     .from("crm_contactos")
@@ -34,6 +63,7 @@ export async function guardarCampoValor(input: {
     return { error: errorLectura?.message ?? "No se encontró el contacto." };
   }
 
+  const valorAnterior = (contacto.campos_etapa ?? {})[input.campoId] ?? null;
   const camposActualizados = { ...(contacto.campos_etapa ?? {}), [input.campoId]: input.valor };
 
   const { error } = await supabase
@@ -42,6 +72,20 @@ export async function guardarCampoValor(input: {
     .eq("id", input.contactoId);
 
   if (error) return { error: error.message };
+
+  const [{ data: campoEtapa }, { data: campoGeneral }] = await Promise.all([
+    supabase.from("crm_etapa_campos").select("nombre").eq("id", input.campoId).maybeSingle(),
+    supabase.from("crm_campos_generales").select("nombre").eq("id", input.campoId).maybeSingle(),
+  ]);
+
+  await supabase.from("crm_historial_contacto").insert({
+    contacto_id: input.contactoId,
+    perfil_id: user?.id ?? null,
+    campo: campoEtapa?.nombre ?? campoGeneral?.nombre ?? "Campo personalizado",
+    valor_anterior: formatearValorHistorial(valorAnterior),
+    valor_nuevo: formatearValorHistorial(input.valor),
+  });
+
   return { error: null };
 }
 

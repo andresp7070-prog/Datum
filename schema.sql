@@ -2986,6 +2986,35 @@ create table datum_crm_eventos_calendar (
   created_at timestamptz default now()
 );
 
+-- ------------------------------------------------------------
+-- Historial de cambios (agregado 2026-08-11): cada cambio de etapa, de un
+-- campo personalizado (general o de etapa) o del valor de venta de un
+-- lead deja una línea acá — qué cambió, de qué valor a cuál, quién y
+-- cuándo. "campo" guarda el nombre para mostrar (no el id), así el
+-- historial se sigue leyendo bien aunque después se renombre o se borre
+-- ese campo. perfil_id null = lo cambió el sistema (ej. reglas de
+-- inactividad del CRM), no una persona.
+-- ------------------------------------------------------------
+create table crm_historial_contacto (
+  id uuid primary key default gen_random_uuid(),
+  contacto_id uuid references crm_contactos(id) not null,
+  perfil_id uuid references perfiles(id),
+  campo text not null,
+  valor_anterior text,
+  valor_nuevo text,
+  created_at timestamptz default now()
+);
+
+create table datum_crm_historial_lead (
+  id uuid primary key default gen_random_uuid(),
+  lead_id uuid references datum_leads(id) not null,
+  perfil_id uuid references perfiles(id),
+  campo text not null,
+  valor_anterior text,
+  valor_nuevo text,
+  created_at timestamptz default now()
+);
+
 -- ============================================================
 -- ROW LEVEL SECURITY — el corazón del multi-tenant
 -- Cada empresa ve solo sus propias filas; el admin las ve todas.
@@ -3026,6 +3055,7 @@ alter table nomina_vacaciones enable row level security;
 alter table insights_resumen_ia enable row level security;
 alter table integraciones_google enable row level security;
 alter table crm_eventos_calendar enable row level security;
+alter table crm_historial_contacto enable row level security;
 alter table datum_pasivos enable row level security;
 alter table datum_movimientos enable row level security;
 alter table datum_crm_etapas enable row level security;
@@ -3034,6 +3064,7 @@ alter table datum_crm_campos_generales enable row level security;
 alter table datum_leads enable row level security;
 alter table datum_crm_interacciones enable row level security;
 alter table datum_crm_eventos_calendar enable row level security;
+alter table datum_crm_historial_lead enable row level security;
 
 -- Funciones auxiliares, para no repetir la misma subconsulta en cada política.
 -- security definer es necesario aquí: la política de "perfiles" usa es_admin(),
@@ -3173,6 +3204,12 @@ create policy "ver eventos de calendar de mi crm" on crm_eventos_calendar
     or es_admin()
   );
 
+create policy "ver historial de mi crm" on crm_historial_contacto
+  for all using (
+    contacto_id in (select id from crm_contactos where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
 create policy "ver mis campos generales de crm" on crm_campos_generales
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
@@ -3263,6 +3300,9 @@ create policy "solo admin ve interacciones de leads de datum" on datum_crm_inter
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve eventos de calendar de leads de datum" on datum_crm_eventos_calendar
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve historial de leads de datum" on datum_crm_historial_lead
   for all using (es_admin()) with check (es_admin());
 
 -- ============================================================

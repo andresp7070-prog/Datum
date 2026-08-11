@@ -119,6 +119,12 @@ export default async function FichaClientePage({
     .eq("contacto_id", id)
     .order("fecha", { ascending: false });
 
+  const { data: historial } = await supabase
+    .from("crm_historial_contacto")
+    .select("id, campo, valor_anterior, valor_nuevo, created_at, perfiles ( nombre )")
+    .eq("contacto_id", id)
+    .order("created_at", { ascending: false });
+
   const { data: cupones } = await supabase
     .from("cupones")
     .select("id, monto, monto_usado, fecha_vencimiento, estado")
@@ -353,6 +359,35 @@ export default async function FichaClientePage({
         )}
 
         <NuevaInteraccionForm contactoId={contacto.id} />
+      </div>
+
+      <div className="rounded-xl border border-gray-200 p-4">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
+        {historial && historial.length > 0 ? (
+          <ul className="divide-y divide-gray-200">
+            {historial.map((item) => {
+              const nombreQuien = (item.perfiles as unknown as { nombre: string | null } | null)?.nombre;
+              return (
+                <li key={item.id} className="py-2 text-sm">
+                  <p className="text-gray-500">
+                    {new Date(item.created_at).toLocaleString("es-CO", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                    {nombreQuien ? ` · ${nombreQuien}` : ""}
+                  </p>
+                  <p className="text-gray-900">
+                    <span className="font-medium">{item.campo}:</span>{" "}
+                    {item.valor_anterior ? `${item.valor_anterior} → ` : ""}
+                    {item.valor_nuevo ?? "(vacío)"}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-400">Sin cambios registrados todavía.</p>
+        )}
       </div>
     </div>
   );

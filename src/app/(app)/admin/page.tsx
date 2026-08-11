@@ -9,6 +9,7 @@ const NOMBRE_MODULO: Record<string, string> = {
   pyg: "Estado P y G",
   insights: "Panel de control",
   promociones: "Promociones",
+  nomina: "Nómina",
 };
 
 const NOMBRE_TIPO_NEGOCIO: Record<string, string> = {

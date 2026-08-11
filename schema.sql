@@ -1841,6 +1841,16 @@ items_frecuentes as (
     where v.contacto_id is not null
     group by v.contacto_id, i.nombre
   ) sub
+),
+-- Total de unidades compradas (todos los productos, no solo el más
+-- comprado) — lo usa vista_calificacion_clientes, aparte de rn_frecuente
+-- de arriba que es por producto individual.
+unidades_totales as (
+  select v.contacto_id, sum(vi.cantidad) as unidades_totales
+  from ventas v
+  join ventas_items vi on vi.venta_id = v.id
+  where v.contacto_id is not null
+  group by v.contacto_id
 )
 select
   a.contacto_id,
@@ -1856,11 +1866,69 @@ select
   caro.producto_nombre as producto_mas_costoso,
   caro.precio_unitario as precio_mas_costoso,
   frecuente.producto_nombre as producto_mas_comprado,
-  frecuente.unidades as unidades_producto_mas_comprado
+  frecuente.unidades as unidades_producto_mas_comprado,
+  coalesce(ut.unidades_totales, 0) as unidades_totales
 from agregados a
 left join (select * from items_cliente where rn_barato = 1) barato on barato.contacto_id = a.contacto_id
 left join (select * from items_cliente where rn_caro = 1) caro on caro.contacto_id = a.contacto_id
-left join (select * from items_frecuentes where rn_frecuente = 1) frecuente on frecuente.contacto_id = a.contacto_id;
+left join (select * from items_frecuentes where rn_frecuente = 1) frecuente on frecuente.contacto_id = a.contacto_id
+left join unidades_totales ut on ut.contacto_id = a.contacto_id;
+
+-- ------------------------------------------------------------
+-- Vista: Calificación automática de clientes por historial de compras
+-- Reemplaza la calificación manual de estrellas (crm_contactos.calificacion,
+-- que queda en el esquema sin usarse por si algún día se retoma). Cada
+-- cliente se compara contra el PROMEDIO de los demás clientes de su misma
+-- empresa (nunca contra un número inventado igual para todas las empresas
+-- — mismo principio que el motor de anomalías de Panel de control), en un
+-- mix de cuánto ha comprado en valor y en cantidad de unidades:
+--   >= 90% sobre el promedio → 5 estrellas
+--   >= 70% → 4 · >= 50% → 3 · >= 30% → 2 · >= 10% → 1 · si no, 0
+-- El "mix" es el promedio simple del % en valor y el % en unidades.
+-- ------------------------------------------------------------
+create or replace view vista_calificacion_clientes as
+with base as (
+  select contacto_id, empresa_id, inversion_total, unidades_totales
+  from vista_perfil_cliente
+),
+promedios as (
+  select
+    empresa_id,
+    avg(inversion_total) as promedio_valor,
+    avg(unidades_totales) as promedio_unidades
+  from base
+  group by empresa_id
+),
+porcentajes as (
+  select
+    b.contacto_id,
+    b.empresa_id,
+    case when p.promedio_valor > 0
+      then 100.0 * (b.inversion_total - p.promedio_valor) / p.promedio_valor
+      else 0
+    end as pct_valor,
+    case when p.promedio_unidades > 0
+      then 100.0 * (b.unidades_totales - p.promedio_unidades) / p.promedio_unidades
+      else 0
+    end as pct_unidades
+  from base b
+  join promedios p on p.empresa_id = b.empresa_id
+)
+select
+  contacto_id,
+  empresa_id,
+  round(pct_valor, 1) as pct_valor,
+  round(pct_unidades, 1) as pct_unidades,
+  round((pct_valor + pct_unidades) / 2, 1) as pct_mixto,
+  case
+    when (pct_valor + pct_unidades) / 2 >= 90 then 5
+    when (pct_valor + pct_unidades) / 2 >= 70 then 4
+    when (pct_valor + pct_unidades) / 2 >= 50 then 3
+    when (pct_valor + pct_unidades) / 2 >= 30 then 2
+    when (pct_valor + pct_unidades) / 2 >= 10 then 1
+    else 0
+  end as calificacion_automatica
+from porcentajes;
 
 -- ------------------------------------------------------------
 -- 10. PROMOCIONES Y DESCUENTOS

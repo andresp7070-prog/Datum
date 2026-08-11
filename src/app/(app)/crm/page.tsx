@@ -46,13 +46,29 @@ export default async function CrmPage() {
 
   const { data: contactos } = await supabase
     .from("crm_contactos")
-    .select("id, nombre, telefono, email, etapa_id, calificacion, empresa_cliente:atributos->>empresa")
+    .select("id, nombre, telefono, email, etapa_id, empresa_cliente:atributos->>empresa")
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
 
+  // La calificación ya no se pone a mano — se calcula sola según el
+  // historial de compras de cada cliente (ver vista_calificacion_clientes).
+  const { data: calificaciones } = await supabase
+    .from("vista_calificacion_clientes")
+    .select("contacto_id, calificacion_automatica")
+    .eq("empresa_id", perfil.empresa_id);
+
+  const calificacionPorContacto = new Map(
+    (calificaciones ?? []).map((c) => [c.contacto_id, c.calificacion_automatica]),
+  );
+
+  const contactosConCalificacion = (contactos ?? []).map((contacto) => ({
+    ...contacto,
+    calificacion: calificacionPorContacto.get(contacto.id) ?? null,
+  }));
+
   return (
     <DirectorioClientes
-      contactos={contactos ?? []}
+      contactos={contactosConCalificacion}
       etapas={etapas ?? []}
       mostrarConfigEtapas={esCrmDeLeads}
     />

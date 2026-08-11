@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { requerirModulo } from "@/lib/empresa";
 import { CambiarEtapa } from "./cambiar-etapa";
 import { NuevaInteraccionForm } from "./nueva-interaccion-form";
-import { CalificarCliente } from "./calificar-cliente";
+import { Estrellas } from "../estrellas";
 import { CamposAdicionales } from "./campos-adicionales";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
@@ -40,12 +40,20 @@ export default async function FichaClientePage({
   const { data: contacto } = await supabase
     .from("crm_contactos")
     .select(
-      "id, nombre, telefono, email, etapa_id, calificacion, campos_etapa, empresa_cliente:atributos->>empresa",
+      "id, nombre, telefono, email, etapa_id, campos_etapa, empresa_cliente:atributos->>empresa",
     )
     .eq("id", id)
     .single();
 
   if (!contacto) notFound();
+
+  // La calificación ya no se pone a mano — se calcula sola según el
+  // historial de compras (ver vista_calificacion_clientes).
+  const { data: calificacionData } = await supabase
+    .from("vista_calificacion_clientes")
+    .select("calificacion_automatica")
+    .eq("contacto_id", id)
+    .maybeSingle();
 
   const { data: etapas } = perfil?.empresa_id
     ? await supabase
@@ -120,7 +128,12 @@ export default async function FichaClientePage({
               {contacto.telefono ?? "Sin teléfono"} · {contacto.email ?? "Sin correo"}
             </p>
             <div className="mt-2">
-              <CalificarCliente contactoId={contacto.id} calificacionInicial={contacto.calificacion} />
+              <Estrellas valor={calificacionData?.calificacion_automatica ?? null} />
+              {calificacionData && (
+                <p className="mt-1 text-xs text-gray-400">
+                  Calculada sola según cuánto compra vs. el promedio de tus demás clientes.
+                </p>
+              )}
             </div>
           </div>
           <CambiarEtapa contactoId={contacto.id} etapas={etapas ?? []} etapaActualId={contacto.etapa_id} />

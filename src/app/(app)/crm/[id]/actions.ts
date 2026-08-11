@@ -16,20 +16,6 @@ export async function cambiarEtapa(
   return { error: null };
 }
 
-export async function calificarCliente(
-  contactoId: string,
-  calificacion: number | null,
-): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("crm_contactos")
-    .update({ calificacion })
-    .eq("id", contactoId);
-
-  if (error) return { error: error.message };
-  return { error: null };
-}
-
 export async function guardarCampoValor(input: {
   contactoId: string;
   campoId: string;

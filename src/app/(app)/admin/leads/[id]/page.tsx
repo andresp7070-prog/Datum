@@ -6,6 +6,7 @@ import { CambiarEtapa } from "./cambiar-etapa";
 import { NuevaInteraccionForm } from "./nueva-interaccion-form";
 import { Estrellas } from "@/app/(app)/crm/estrellas";
 import { CamposAdicionales } from "./campos-adicionales";
+import { SeguimientoCalendar } from "./seguimiento";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -19,14 +20,17 @@ export default async function FichaLeadPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ creado?: string }>;
+  searchParams: Promise<{ creado?: string; google_conectado?: string; google_error?: string }>;
 }) {
   await requerirAdmin();
 
   const { id } = await params;
-  const { creado } = await searchParams;
+  const { creado, google_conectado, google_error } = await searchParams;
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: lead } = await supabase
     .from("datum_leads")
@@ -82,6 +86,24 @@ export default async function FichaLeadPage({
     .eq("lead_id", id)
     .order("fecha", { ascending: false });
 
+  let googleConectado = false;
+  let eventosCalendar: { id: string; fecha: string; nota: string | null; link: string | null }[] = [];
+  if (user) {
+    const { data: integracion } = await supabase
+      .from("integraciones_google")
+      .select("perfil_id")
+      .eq("perfil_id", user.id)
+      .maybeSingle();
+    googleConectado = Boolean(integracion);
+
+    const { data: eventos } = await supabase
+      .from("datum_crm_eventos_calendar")
+      .select("id, fecha, nota, link")
+      .eq("lead_id", id)
+      .order("fecha", { ascending: true });
+    eventosCalendar = eventos ?? [];
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
       <Link href="/admin/leads" className="text-sm text-gray-500 hover:text-gray-700">
@@ -91,6 +113,16 @@ export default async function FichaLeadPage({
       {creado === "1" && (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
           Lead creado correctamente.
+        </p>
+      )}
+      {google_conectado === "1" && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          Google Calendar conectado correctamente.
+        </p>
+      )}
+      {google_error === "1" && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          No se pudo conectar con Google Calendar. Intenta de nuevo.
         </p>
       )}
 
@@ -138,6 +170,14 @@ export default async function FichaLeadPage({
         valores={
           (lead.campos_etapa as Record<string, string | boolean | { nombre: string; url: string } | null>) ?? {}
         }
+      />
+
+      <SeguimientoCalendar
+        leadId={lead.id}
+        nombreLead={lead.nombre}
+        conectado={googleConectado}
+        eventos={eventosCalendar}
+        rutaConexion={`/admin/leads/${lead.id}`}
       />
 
       <div className="rounded-xl border border-gray-200 p-4">

@@ -2942,6 +2942,48 @@ create table insights_resumen_ia (
   generado_en timestamptz default now()
 );
 
+-- ------------------------------------------------------------
+-- Integración con Google Calendar (CRM modo 'leads', tanto en empresas
+-- cliente como en el CRM propio de Datum): cada usuario conecta su propia
+-- cuenta de Google, no hay una cuenta compartida para toda la plataforma.
+-- Solo se guarda el refresh_token — el access_token nunca se guarda, se
+-- pide de nuevo con el refresh_token cada vez que hace falta, así este
+-- código no tiene que preocuparse por manejar su expiración.
+-- ------------------------------------------------------------
+create table integraciones_google (
+  perfil_id uuid primary key references perfiles(id) on delete cascade,
+  refresh_token text not null,
+  correo_google text,
+  created_at timestamptz default now()
+);
+
+-- Un seguimiento agendado desde la ficha de un cliente, enlazado al evento
+-- real creado en el Google Calendar de quien lo agendó.
+create table crm_eventos_calendar (
+  id uuid primary key default gen_random_uuid(),
+  contacto_id uuid references crm_contactos(id) not null,
+  perfil_id uuid references perfiles(id) not null,
+  google_event_id text not null,
+  link text,   -- htmlLink que devuelve Google, para abrir el evento sin otra llamada a su API
+  titulo text not null,
+  fecha timestamptz not null,
+  nota text,
+  created_at timestamptz default now()
+);
+
+-- Mismo patrón, para el CRM propio de leads de Datum.
+create table datum_crm_eventos_calendar (
+  id uuid primary key default gen_random_uuid(),
+  lead_id uuid references datum_leads(id) not null,
+  perfil_id uuid references perfiles(id) not null,
+  google_event_id text not null,
+  link text,
+  titulo text not null,
+  fecha timestamptz not null,
+  nota text,
+  created_at timestamptz default now()
+);
+
 -- ============================================================
 -- ROW LEVEL SECURITY — el corazón del multi-tenant
 -- Cada empresa ve solo sus propias filas; el admin las ve todas.
@@ -2980,6 +3022,8 @@ alter table nomina_periodos enable row level security;
 alter table nomina_detalles enable row level security;
 alter table nomina_vacaciones enable row level security;
 alter table insights_resumen_ia enable row level security;
+alter table integraciones_google enable row level security;
+alter table crm_eventos_calendar enable row level security;
 alter table datum_pasivos enable row level security;
 alter table datum_movimientos enable row level security;
 alter table datum_crm_etapas enable row level security;
@@ -2987,6 +3031,7 @@ alter table datum_crm_etapa_campos enable row level security;
 alter table datum_crm_campos_generales enable row level security;
 alter table datum_leads enable row level security;
 alter table datum_crm_interacciones enable row level security;
+alter table datum_crm_eventos_calendar enable row level security;
 
 -- Funciones auxiliares, para no repetir la misma subconsulta en cada política.
 -- security definer es necesario aquí: la política de "perfiles" usa es_admin(),
@@ -3032,6 +3077,11 @@ create policy "ver mi propio perfil" on perfiles
 create policy "actualizar mi propio perfil" on perfiles
   for update using (id = auth.uid() or es_admin())
   with check (id = auth.uid() or es_admin());
+
+-- Personal, no de empresa: cada quien conecta y ve solo su propia cuenta de
+-- Google, nadie más (ni siquiera el admin) necesita leer este token.
+create policy "ver mi propia integracion de google" on integraciones_google
+  for all using (perfil_id = auth.uid()) with check (perfil_id = auth.uid());
 
 -- No es un dato de ninguna empresa en particular (como festivos) — cualquier
 -- persona con sesión puede leerlas, para que el pop-up funcione.
@@ -3112,6 +3162,12 @@ create policy "ver interacciones de mi crm" on crm_interacciones
 create policy "ver campos de mis etapas de crm" on crm_etapa_campos
   for all using (
     etapa_id in (select id from crm_etapas where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver eventos de calendar de mi crm" on crm_eventos_calendar
+  for all using (
+    contacto_id in (select id from crm_contactos where empresa_id = mi_empresa_id())
     or es_admin()
   );
 
@@ -3202,6 +3258,9 @@ create policy "solo admin ve leads de datum" on datum_leads
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve interacciones de leads de datum" on datum_crm_interacciones
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve eventos de calendar de leads de datum" on datum_crm_eventos_calendar
   for all using (es_admin()) with check (es_admin());
 
 -- ============================================================

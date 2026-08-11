@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { crearEventoCalendar, eliminarEventoCalendar } from "@/lib/google";
 
 export async function cambiarEtapa(
   contactoId: string,
@@ -40,6 +41,74 @@ export async function guardarCampoValor(input: {
     .update({ campos_etapa: camposActualizados })
     .eq("id", input.contactoId);
 
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+// Duración fija de 30 minutos — no hay ningún campo en la app para elegir
+// otra cosa todavía, y así se evita pedirle un dato más a alguien que solo
+// quiere dejar un recordatorio rápido de seguimiento.
+const DURACION_SEGUIMIENTO_MINUTOS = 30;
+
+export async function agendarSeguimiento(input: {
+  contactoId: string;
+  nombreContacto: string;
+  fechaInicio: string;
+  nota: string;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No hay sesión activa." };
+
+  const inicio = new Date(input.fechaInicio);
+  if (Number.isNaN(inicio.getTime())) return { error: "Elige una fecha y hora válidas." };
+  const fin = new Date(inicio.getTime() + DURACION_SEGUIMIENTO_MINUTOS * 60 * 1000);
+  const titulo = `Seguimiento: ${input.nombreContacto}`;
+
+  const resultado = await crearEventoCalendar({
+    perfilId: user.id,
+    titulo,
+    descripcion: input.nota || "Seguimiento agendado desde Datum.",
+    fechaInicioISO: inicio.toISOString(),
+    fechaFinISO: fin.toISOString(),
+  });
+  if ("error" in resultado) return { error: resultado.error };
+
+  const { error } = await supabase.from("crm_eventos_calendar").insert({
+    contacto_id: input.contactoId,
+    perfil_id: user.id,
+    google_event_id: resultado.googleEventId,
+    link: resultado.link,
+    titulo,
+    fecha: inicio.toISOString(),
+    nota: input.nota || null,
+  });
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function cancelarSeguimiento(eventoId: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No hay sesión activa." };
+
+  const { data: evento } = await supabase
+    .from("crm_eventos_calendar")
+    .select("google_event_id")
+    .eq("id", eventoId)
+    .single();
+
+  if (evento) {
+    const resultado = await eliminarEventoCalendar(user.id, evento.google_event_id);
+    if (resultado.error) return { error: resultado.error };
+  }
+
+  const { error } = await supabase.from("crm_eventos_calendar").delete().eq("id", eventoId);
   if (error) return { error: error.message };
   return { error: null };
 }

@@ -5,6 +5,7 @@ import { CambiarEtapa } from "./cambiar-etapa";
 import { NuevaInteraccionForm } from "./nueva-interaccion-form";
 import { Estrellas } from "../estrellas";
 import { CamposAdicionales } from "./campos-adicionales";
+import { SeguimientoCalendar } from "./seguimiento";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -18,12 +19,12 @@ export default async function FichaClientePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ creado?: string }>;
+  searchParams: Promise<{ creado?: string; google_conectado?: string; google_error?: string }>;
 }) {
   await requerirModulo("crm");
 
   const { id } = await params;
-  const { creado } = await searchParams;
+  const { creado, google_conectado, google_error } = await searchParams;
 
   const supabase = await createClient();
   const {
@@ -33,9 +34,14 @@ export default async function FichaClientePage({
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("empresa_id")
+    .select("empresa_id, empresas ( crm_modo )")
     .eq("id", user.id)
     .single();
+
+  // La relación empresa_id -> empresas.id es uno-a-uno; Supabase la tipa
+  // como arreglo por falta de tipos generados, pero en tiempo de ejecución
+  // es un objeto (mismo caso que getPerfilActual() en lib/empresa.ts).
+  const crmModo = (perfil?.empresas as unknown as { crm_modo: string } | null)?.crm_modo ?? "ventas";
 
   const { data: contacto } = await supabase
     .from("crm_contactos")
@@ -124,11 +130,42 @@ export default async function FichaClientePage({
     ? Math.ceil(Number(perfilCompra.dias_promedio_entre_compras))
     : null;
 
+  // Solo se pide si la empresa tiene el CRM en modo 'leads' — en modo
+  // 'ventas' ni siquiera se consulta, mismo criterio que "Configurar
+  // etapas" y las reglas de inactividad.
+  let googleConectado = false;
+  let eventosCalendar: { id: string; fecha: string; nota: string | null; link: string | null }[] = [];
+  if (crmModo === "leads") {
+    const { data: integracion } = await supabase
+      .from("integraciones_google")
+      .select("perfil_id")
+      .eq("perfil_id", user.id)
+      .maybeSingle();
+    googleConectado = Boolean(integracion);
+
+    const { data: eventos } = await supabase
+      .from("crm_eventos_calendar")
+      .select("id, fecha, nota, link")
+      .eq("contacto_id", id)
+      .order("fecha", { ascending: true });
+    eventosCalendar = eventos ?? [];
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
       {creado === "1" && (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
           Cliente creado correctamente.
+        </p>
+      )}
+      {google_conectado === "1" && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          Google Calendar conectado correctamente.
+        </p>
+      )}
+      {google_error === "1" && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          No se pudo conectar con Google Calendar. Intenta de nuevo.
         </p>
       )}
 
@@ -279,6 +316,16 @@ export default async function FichaClientePage({
           (contacto.campos_etapa as Record<string, string | boolean | { nombre: string; url: string } | null>) ?? {}
         }
       />
+
+      {crmModo === "leads" && (
+        <SeguimientoCalendar
+          contactoId={contacto.id}
+          nombreContacto={contacto.nombre}
+          conectado={googleConectado}
+          eventos={eventosCalendar}
+          rutaConexion={`/crm/${contacto.id}`}
+        />
+      )}
 
       <div className="rounded-xl border border-gray-200 p-4">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Interacciones</h2>

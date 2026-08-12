@@ -15,7 +15,7 @@ export async function cambiarEtapa(
 
   const { data: contactoActual } = await supabase
     .from("crm_contactos")
-    .select("etapa_id")
+    .select("etapa_id, empresas ( crm_modo )")
     .eq("id", contactoId)
     .single();
 
@@ -26,7 +26,10 @@ export async function cambiarEtapa(
 
   if (error) return { error: error.message };
 
-  if (contactoActual && contactoActual.etapa_id !== etapaId) {
+  const esCrmLeads =
+    (contactoActual?.empresas as unknown as { crm_modo: string } | null)?.crm_modo === "leads";
+
+  if (esCrmLeads && contactoActual && contactoActual.etapa_id !== etapaId) {
     const idsEtapas = [contactoActual.etapa_id, etapaId].filter(Boolean) as string[];
     const { data: etapas } = await supabase.from("crm_etapas").select("id, nombre").in("id", idsEtapas);
     const nombreEtapa = (id: string | null) => etapas?.find((e) => e.id === id)?.nombre ?? null;
@@ -55,7 +58,7 @@ export async function guardarCampoValor(input: {
 
   const { data: contacto, error: errorLectura } = await supabase
     .from("crm_contactos")
-    .select("campos_etapa")
+    .select("campos_etapa, empresas ( crm_modo )")
     .eq("id", input.contactoId)
     .single();
 
@@ -72,6 +75,9 @@ export async function guardarCampoValor(input: {
     .eq("id", input.contactoId);
 
   if (error) return { error: error.message };
+
+  const esCrmLeads = (contacto.empresas as unknown as { crm_modo: string } | null)?.crm_modo === "leads";
+  if (!esCrmLeads) return { error: null };
 
   const [{ data: campoEtapa }, { data: campoGeneral }] = await Promise.all([
     supabase.from("crm_etapa_campos").select("nombre").eq("id", input.campoId).maybeSingle(),
@@ -205,13 +211,22 @@ export async function agregarInteraccion(input: {
 
   if (error) return { error: error.message };
 
-  await supabase.from("crm_historial_contacto").insert({
-    contacto_id: input.contactoId,
-    perfil_id: user?.id ?? null,
-    campo: "Interacción",
-    valor_anterior: null,
-    valor_nuevo: `${input.tipo}: ${input.nota}`,
-  });
+  const { data: contacto } = await supabase
+    .from("crm_contactos")
+    .select("empresas ( crm_modo )")
+    .eq("id", input.contactoId)
+    .single();
+  const esCrmLeads = (contacto?.empresas as unknown as { crm_modo: string } | null)?.crm_modo === "leads";
+
+  if (esCrmLeads) {
+    await supabase.from("crm_historial_contacto").insert({
+      contacto_id: input.contactoId,
+      perfil_id: user?.id ?? null,
+      campo: "Interacción",
+      valor_anterior: null,
+      valor_nuevo: `${input.tipo}: ${input.nota}`,
+    });
+  }
 
   return { error: null };
 }

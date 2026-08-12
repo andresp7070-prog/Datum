@@ -13,10 +13,10 @@ import {
   crearResponsableLead,
 } from "./actions";
 
-// Datum no vende inventario propio, así que en vez de un catálogo de
-// productos se usa la misma lista de módulos del producto — son
-// servicios sin insumos ni receta, no tiene sentido modelarlos como
-// inventario_items con costo $0.
+// Respaldo mientras la empresa propia del admin no tenga Inventario activo
+// con servicios cargados — en cuanto los tenga, serviciosDisponibles deja de
+// ser null y "Módulos de interés" pasa a mostrar el catálogo real en vez de
+// esta lista fija. Ver actualización en CLAUDE.md.
 const MODULOS_DATUM = [
   { value: "ventas", label: "Ventas" },
   { value: "crm", label: "CRM" },
@@ -33,6 +33,7 @@ export function DetallesLead({
   prioridad,
   fechaLead,
   modulosInteres,
+  serviciosDisponibles,
   responsableNombre,
   responsables,
 }: {
@@ -41,6 +42,7 @@ export function DetallesLead({
   prioridad: number | null;
   fechaLead: string;
   modulosInteres: string[];
+  serviciosDisponibles: { value: string; label: string }[] | null;
   responsableNombre: string | null;
   responsables: { id: string; nombre: string }[];
 }) {
@@ -128,7 +130,7 @@ export function DetallesLead({
       <div className="flex items-center gap-1.5">
         <span className="text-gray-400">Módulos de interés</span>
         <MultiSelector
-          opciones={MODULOS_DATUM}
+          opciones={serviciosDisponibles ?? MODULOS_DATUM}
           seleccionados={modulosInteres}
           onChange={cambiarModulos}
           deshabilitado={guardandoModulos}

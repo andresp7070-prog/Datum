@@ -42,6 +42,27 @@ export default async function FichaLeadPage({
     .select("id, nombre")
     .order("nombre");
 
+  // "Módulos de interés" usa el catálogo real de Inventario de la empresa
+  // propia del admin (si la tiene y la tiene activa) — no una lista fija.
+  // Ver CLAUDE.md, sección de datos de calificación de un lead.
+  const { data: perfilAdmin } = user
+    ? await supabase
+        .from("perfiles")
+        .select("empresa_id, empresas ( modulos_activos )")
+        .eq("id", user.id)
+        .single()
+    : { data: null };
+
+  const empresaAdminInfo = perfilAdmin?.empresas as unknown as { modulos_activos: string[] } | null;
+  const { data: serviciosDisponibles } =
+    perfilAdmin?.empresa_id && empresaAdminInfo?.modulos_activos?.includes("inventario")
+      ? await supabase
+          .from("inventario_items")
+          .select("id, nombre")
+          .eq("empresa_id", perfilAdmin.empresa_id)
+          .order("nombre")
+      : { data: null };
+
   // La calificación ya no se pone a mano — se calcula sola según el valor
   // de venta que generó el lead (ver vista_calificacion_leads_datum).
   const { data: calificacionData } = await supabase
@@ -180,6 +201,11 @@ export default async function FichaLeadPage({
           prioridad={lead.prioridad}
           fechaLead={lead.created_at}
           modulosInteres={lead.modulos_interes ?? []}
+          serviciosDisponibles={
+            serviciosDisponibles
+              ? serviciosDisponibles.map((item) => ({ value: item.id, label: item.nombre }))
+              : null
+          }
           responsableNombre={(lead.responsable as unknown as { nombre: string } | null)?.nombre ?? null}
           responsables={responsables ?? []}
         />

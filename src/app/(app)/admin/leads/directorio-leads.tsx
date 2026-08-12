@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { sinTildes } from "@/lib/texto";
 import { DescargarCsv } from "@/components/descargar-csv";
@@ -22,27 +22,38 @@ type Lead = {
 
 type Etapa = { id: string; nombre: string; orden: number; es_cierre: boolean };
 
+// Umbral en píxeles antes de considerar que el puntero se movió lo
+// suficiente como para ser un arrastre y no un clic normal.
+const UMBRAL_ARRASTRE = 6;
+
 function TarjetaLead({
   lead,
   arrastrando,
-  onDragStart,
-  onDragEnd,
+  bloquearClicRef,
+  onPointerDown,
 }: {
   lead: Lead;
   arrastrando: boolean;
-  onDragStart: () => void;
-  onDragEnd: () => void;
+  bloquearClicRef: React.MutableRefObject<boolean>;
+  onPointerDown: (e: React.PointerEvent, lead: Lead) => void;
 }) {
   return (
     <div
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      className={`cursor-grab rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm active:cursor-grabbing ${
-        arrastrando ? "opacity-40" : ""
+      onPointerDown={(e) => onPointerDown(e, lead)}
+      className={`touch-none select-none rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm ${
+        arrastrando ? "cursor-grabbing opacity-40" : "cursor-grab"
       }`}
     >
-      <Link href={`/admin/leads/${lead.id}`} className="block">
+      <Link
+        href={`/admin/leads/${lead.id}`}
+        onClick={(e) => {
+          if (bloquearClicRef.current) {
+            e.preventDefault();
+            bloquearClicRef.current = false;
+          }
+        }}
+        className="block"
+      >
         <p className="text-sm font-medium text-gray-900">{lead.nombre}</p>
         <p className="text-xs text-gray-400">
           {lead.empresa ? `${lead.empresa} · ` : ""}
@@ -62,15 +73,20 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
   const [leads, setLeads] = useState(leadsIniciales);
   const [busqueda, setBusqueda] = useState("");
   const [arrastrandoId, setArrastrandoId] = useState<string | null>(null);
+  const [zonaActiva, setZonaActiva] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dropPendiente, setDropPendiente] = useState<{ leadId: string; etapaId: string } | null>(
     null,
   );
-  const [sobrePapelera, setSobrePapelera] = useState(false);
   const [leadPendienteBorrar, setLeadPendienteBorrar] = useState<{ id: string; nombre: string } | null>(
     null,
   );
   const [borrando, setBorrando] = useState(false);
+
+  const bloquearClicRef = useRef(false);
+  const arrastreRef = useRef<{ leadId: string; startX: number; startY: number; moved: boolean } | null>(
+    null,
+  );
 
   const q = sinTildes(busqueda.trim());
   const filtrados = leads.filter((lead) => {
@@ -108,11 +124,7 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
     }
   }
 
-  async function soltarEn(etapaId: string) {
-    if (!arrastrandoId) return;
-    const leadId = arrastrandoId;
-    setArrastrandoId(null);
-
+  async function soltarEn(leadId: string, etapaId: string) {
     const leadArrastrado = leads.find((l) => l.id === leadId);
     if (!leadArrastrado || leadArrastrado.etapa_id === etapaId) return;
 
@@ -125,11 +137,8 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
     await aplicarCambioEtapa(leadId, etapaId);
   }
 
-  function soltarEnPapelera() {
-    setSobrePapelera(false);
-    if (!arrastrandoId) return;
-    const lead = leads.find((l) => l.id === arrastrandoId);
-    setArrastrandoId(null);
+  function soltarEnPapelera(leadId: string) {
+    const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
     setLeadPendienteBorrar({ id: lead.id, nombre: lead.nombre });
   }
@@ -146,6 +155,60 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
     }
     setLeads((prev) => prev.filter((l) => l.id !== leadPendienteBorrar.id));
     setLeadPendienteBorrar(null);
+  }
+
+  // Arrastre implementado con eventos de puntero + seguimiento manual de
+  // posición, en vez del "drag nativo" del navegador (draggable/dragstart):
+  // ese mecanismo nativo es justo el que en macOS a veces dispara el gesto
+  // de "vista dividida" del sistema operativo. Así, el sistema operativo
+  // nunca se entera de que hay un arrastre en curso.
+  function iniciarArrastre(e: React.PointerEvent, lead: Lead) {
+    if (e.button !== 0) return;
+    arrastreRef.current = { leadId: lead.id, startX: e.clientX, startY: e.clientY, moved: false };
+    window.addEventListener("pointermove", moverArrastre);
+    window.addEventListener("pointerup", soltarArrastre);
+  }
+
+  function zonaBajoPuntero(x: number, y: number): string | null {
+    const elemento = document.elementFromPoint(x, y);
+    const zona = elemento?.closest("[data-drop-zone]") as HTMLElement | null;
+    return zona?.dataset.dropZone ?? null;
+  }
+
+  function moverArrastre(e: PointerEvent) {
+    const d = arrastreRef.current;
+    if (!d) return;
+
+    if (!d.moved) {
+      const distancia = Math.hypot(e.clientX - d.startX, e.clientY - d.startY);
+      if (distancia < UMBRAL_ARRASTRE) return;
+      d.moved = true;
+      setArrastrandoId(d.leadId);
+    }
+
+    setZonaActiva(zonaBajoPuntero(e.clientX, e.clientY));
+  }
+
+  function soltarArrastre(e: PointerEvent) {
+    window.removeEventListener("pointermove", moverArrastre);
+    window.removeEventListener("pointerup", soltarArrastre);
+
+    const d = arrastreRef.current;
+    arrastreRef.current = null;
+    setArrastrandoId(null);
+    setZonaActiva(null);
+
+    if (!d || !d.moved) return;
+    bloquearClicRef.current = true;
+
+    const destino = zonaBajoPuntero(e.clientX, e.clientY);
+    if (!destino) return;
+
+    if (destino === "papelera") {
+      soltarEnPapelera(d.leadId);
+    } else {
+      soltarEn(d.leadId, destino);
+    }
   }
 
   return (
@@ -182,22 +245,23 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
             Agregar lead
           </Link>
           <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setSobrePapelera(true);
-            }}
-            onDragLeave={() => setSobrePapelera(false)}
-            onDrop={soltarEnPapelera}
+            data-drop-zone="papelera"
             className={`flex h-9 w-9 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
               arrastrandoId
-                ? sobrePapelera
+                ? zonaActiva === "papelera"
                   ? "border-red-500 bg-red-50 text-red-600"
                   : "border-gray-400 bg-gray-50 text-gray-500"
                 : "border-transparent text-gray-300"
             }`}
             title="Arrastra un lead aquí para borrarlo"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              className="h-5 w-5"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -234,9 +298,12 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
             return (
               <div
                 key={etapa.id}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => soltarEn(etapa.id)}
-                className="w-64 shrink-0 rounded-xl border border-gray-200 bg-gray-50 p-3"
+                data-drop-zone={etapa.id}
+                className={`w-64 shrink-0 rounded-xl border p-3 transition-colors ${
+                  zonaActiva === etapa.id
+                    ? "border-accent bg-accent/5"
+                    : "border-gray-200 bg-gray-50"
+                }`}
               >
                 <div className="mb-3 flex items-center justify-between px-0.5">
                   <h2 className="text-sm font-semibold text-gray-900">{etapa.nombre}</h2>
@@ -248,8 +315,8 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
                       key={lead.id}
                       lead={lead}
                       arrastrando={arrastrandoId === lead.id}
-                      onDragStart={() => setArrastrandoId(lead.id)}
-                      onDragEnd={() => setArrastrandoId(null)}
+                      bloquearClicRef={bloquearClicRef}
+                      onPointerDown={iniciarArrastre}
                     />
                   ))}
                   {leadsDeEtapa.length === 0 && (

@@ -224,7 +224,7 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
           <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-700">
             ← Volver al panel
           </Link>
-          <h1 className="mt-1 text-lg font-semibold text-gray-900">Leads de Datum</h1>
+          <h1 className="mt-1 text-lg font-semibold text-gray-900">CRM</h1>
         </div>
         <div className="flex gap-2">
           <DescargarCsv

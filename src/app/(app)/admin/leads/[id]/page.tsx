@@ -136,7 +136,7 @@ export default async function FichaLeadPage({
   return (
     <div className="max-w-5xl space-y-6">
       <Link href="/admin/leads" className="text-sm text-gray-500 hover:text-gray-700">
-        ← Volver a Leads
+        ← Volver al CRM
       </Link>
 
       {creado === "1" && (

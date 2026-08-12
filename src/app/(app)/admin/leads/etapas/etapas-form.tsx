@@ -574,7 +574,7 @@ export function EtapasForm({
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Configurar etapas de leads</h1>
         <Link href="/admin/leads" className="text-sm text-gray-500 hover:text-gray-700">
-          Volver a Leads
+          Volver al CRM
         </Link>
       </div>
 

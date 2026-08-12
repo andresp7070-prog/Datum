@@ -38,7 +38,7 @@ export default async function NuevoProductoPage({
   const { data: items } = await supabase
     .from("inventario_items")
     .select(
-      "id, nombre, categoria, cantidad, costo, precio_venta, unidad, proveedor_id, sku, es_insumo, punto_venta_id",
+      "id, nombre, categoria, cantidad, costo, precio_venta, unidad, proveedor_id, sku, es_insumo, punto_venta_id, tipo",
     )
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");

@@ -36,6 +36,7 @@ export async function crearProducto(input: {
   esInsumo?: boolean;
   atributos?: Record<string, unknown>;
   puntoVentaId?: string | null;
+  tipo?: "producto" | "servicio";
 }): Promise<{ error: string | null; id?: string }> {
   const supabase = await createClient();
   const {
@@ -63,6 +64,7 @@ export async function crearProducto(input: {
       nombre: input.nombre,
       sku: skuFinal,
       categoria: input.categoria || null,
+      tipo: input.tipo ?? "producto",
       unidad: input.unidad,
       cantidad: input.cantidad,
       costo: input.costo,

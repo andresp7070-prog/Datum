@@ -24,6 +24,7 @@ type ItemExistente = {
   sku: string | null;
   es_insumo: boolean;
   punto_venta_id: string | null;
+  tipo: "producto" | "servicio";
 };
 
 type Proveedor = {
@@ -74,6 +75,7 @@ export function NuevoProductoForm({
     new Set(items.map((item) => item.categoria).filter((valor): valor is string => Boolean(valor))),
   );
 
+  const [tipo, setTipo] = useState<"producto" | "servicio">("producto");
   const [nombre, setNombre] = useState(nombreInicial);
   const [mostrarSugerenciasNombre, setMostrarSugerenciasNombre] = useState(false);
   const [itemExistente, setItemExistente] = useState<ItemExistente | null>(null);
@@ -109,6 +111,8 @@ export function NuevoProductoForm({
       return Math.max(max, Number(item.sku));
     }, -1) + 1,
   ).padStart(5, "0");
+
+  const esServicio = tipo === "servicio" && !volverAReceta;
 
   const costoCalculado = receta.reduce((total, linea) => {
     const insumo = items.find((item) => item.id === linea.insumoId);
@@ -164,6 +168,7 @@ export function NuevoProductoForm({
     if (!item) return;
     setNombre(item.nombre);
     setItemExistente(item);
+    setTipo(item.tipo);
     setCategoria(item.categoria ?? "");
     setCosto(item.costo != null ? String(item.costo) : "");
     setPrecioVenta(item.precio_venta != null ? String(item.precio_venta) : "");
@@ -174,6 +179,7 @@ export function NuevoProductoForm({
   }
 
   function reiniciarFormulario() {
+    setTipo("producto");
     setNombre("");
     setItemExistente(null);
     setCategoria("");
@@ -215,11 +221,25 @@ export function NuevoProductoForm({
       return;
     }
 
-    const cantidadNum = volverAReceta ? 0 : Number(cantidad);
-    const costoNum = volverAReceta ? costoCalculado : Number(costo);
+    // Un servicio no maneja stock — no pide cantidad ni exige costo (Datum,
+    // por ejemplo, no tiene costo de producción para sus propios módulos).
+    // Si de verdad tiene un costo real, se puede escribir igual, es opcional.
+    const esServicio = tipo === "servicio" && !volverAReceta;
+    const cantidadNum = volverAReceta || esServicio ? 0 : Number(cantidad);
+    const costoNum = volverAReceta
+      ? costoCalculado
+      : esServicio
+        ? costo.trim()
+          ? Number(costo)
+          : 0
+        : Number(costo);
     const precioVentaNum = esInsumo ? null : Number(precioVenta);
 
-    if (!volverAReceta && (cantidad.trim() === "" || Number.isNaN(cantidadNum) || cantidadNum < 0)) {
+    if (
+      !volverAReceta &&
+      !esServicio &&
+      (cantidad.trim() === "" || Number.isNaN(cantidadNum) || cantidadNum < 0)
+    ) {
       setError(
         itemExistente
           ? "La cantidad a agregar es obligatoria y debe ser un número mayor o igual a cero."
@@ -228,8 +248,17 @@ export function NuevoProductoForm({
       irAlCampo(cantidadRef.current);
       return;
     }
-    if (!volverAReceta && (costo.trim() === "" || Number.isNaN(costoNum) || costoNum < 0)) {
+    if (
+      !volverAReceta &&
+      !esServicio &&
+      (costo.trim() === "" || Number.isNaN(costoNum) || costoNum < 0)
+    ) {
       setError("El costo es obligatorio y debe ser un número mayor o igual a cero.");
+      irAlCampo(document.getElementById("costo"));
+      return;
+    }
+    if (esServicio && costo.trim() !== "" && (Number.isNaN(costoNum) || costoNum < 0)) {
+      setError("El costo debe ser un número mayor o igual a cero.");
       irAlCampo(document.getElementById("costo"));
       return;
     }
@@ -312,6 +341,7 @@ export function NuevoProductoForm({
           proveedorId: proveedorId || null,
           sku: sku.trim() || null,
           esInsumo,
+          tipo: volverAReceta ? "producto" : tipo,
           puntoVentaId: usaPuntos ? puntoVentaId || null : null,
           atributos: Object.keys(atributos).length > 0 ? atributos : undefined,
         });
@@ -348,6 +378,36 @@ export function NuevoProductoForm({
       setGuardando(false);
     }
   }
+
+  const campoTipo =
+    itemExistente || volverAReceta ? null : (
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">Tipo</label>
+        <div className="flex gap-2">
+          {(["producto", "servicio"] as const).map((valor) => (
+            <button
+              key={valor}
+              type="button"
+              onClick={() => setTipo(valor)}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium capitalize ${
+                tipo === valor
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-gray-300 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {valor}
+            </button>
+          ))}
+        </div>
+        {esServicio && (
+          <p className="mt-1 text-xs text-gray-400">
+            Un servicio no maneja stock — solo pide nombre y precio. El costo es opcional (puedes
+            dejarlo en $0), y si más adelante quieres que consuma insumos como una receta, lo
+            puedes configurar después desde su ficha.
+          </p>
+        )}
+      </div>
+    );
 
   const campoPunto = usaPuntos ? (
     <div>
@@ -477,7 +537,7 @@ export function NuevoProductoForm({
     </div>
   );
 
-  const campoEsInsumo = itemExistente ? null : (
+  const campoEsInsumo = itemExistente || esServicio ? null : (
     <label className="flex items-start gap-2 text-sm text-gray-700">
       <input
         type="checkbox"
@@ -611,7 +671,7 @@ export function NuevoProductoForm({
       &ldquo;Ajustar cantidad&rdquo; para declarar cuántas unidades quedaron listas — eso
       descuenta automáticamente los insumos que usaste.
     </div>
-  ) : (
+  ) : esServicio ? null : (
     <div>
       <label className="mb-1 block text-sm font-medium text-gray-700">
         {itemExistente ? "Cantidad a agregar *" : "Cantidad *"} (
@@ -646,8 +706,8 @@ export function NuevoProductoForm({
   ) : (
     <CampoMoneda
       id="costo"
-      label="Costo por unidad (precio de compra)"
-      required
+      label={esServicio ? "Costo (opcional)" : "Costo por unidad (precio de compra)"}
+      required={!esServicio}
       value={costo}
       onChange={setCosto}
     />
@@ -741,12 +801,13 @@ export function NuevoProductoForm({
       ) : (
         <div className="max-w-md space-y-4">
           {campoPunto}
+          {campoTipo}
           {campoNombre}
           {campoSku}
           {campoCategoria}
           {campoMarca}
           {campoProveedor}
-          {campoUnidad}
+          {!esServicio && campoUnidad}
           {campoCantidad}
           {campoCosto}
           {campoEsInsumo}

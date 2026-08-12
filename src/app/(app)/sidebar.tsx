@@ -37,6 +37,7 @@ const enlacesAdmin = [
   { nombre: "Panel", href: "/admin" },
   { nombre: "Panel de control", href: "/admin/panel" },
   { nombre: "CRM", href: "/admin/leads" },
+  { nombre: "Inventario", href: "/inventario" },
   { nombre: "Estado P y G", href: "/admin/finanzas" },
   { nombre: "Enviar bienvenida", href: "/admin/bienvenida" },
   { nombre: "Probar correos", href: "/admin/correos" },

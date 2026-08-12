@@ -354,7 +354,7 @@ export function DirectorioPasivos({
       <div className="mb-6 flex items-center justify-between">
         <div>
           <Link href="/admin/finanzas" className="text-sm text-gray-500 hover:text-gray-700">
-            ← Volver a Finanzas de Datum
+            ← Volver a Estado P y G
           </Link>
           <h1 className="mt-1 text-lg font-semibold text-gray-900">Deudas</h1>
         </div>

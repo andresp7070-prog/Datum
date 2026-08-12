@@ -112,7 +112,7 @@ export default async function PanelDatumPage() {
         <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-700">
           ← Volver al panel
         </Link>
-        <h1 className="mt-1 text-lg font-semibold text-gray-900">Panel de control de Datum</h1>
+        <h1 className="mt-1 text-lg font-semibold text-gray-900">Panel de control</h1>
       </div>
 
       {error && (

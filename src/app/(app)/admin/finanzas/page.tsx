@@ -106,7 +106,7 @@ export default async function FinanzasDatumPage({
           <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-700">
             ← Volver al panel
           </Link>
-          <h1 className="mt-1 text-lg font-semibold text-gray-900">Finanzas de Datum</h1>
+          <h1 className="mt-1 text-lg font-semibold text-gray-900">Estado P y G</h1>
         </div>
         <div className="flex gap-2">
           <Link

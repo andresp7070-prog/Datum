@@ -109,7 +109,7 @@ export default async function AdminDashboardPage() {
             href="/admin/panel"
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
           >
-            Panel de control de Datum
+            Panel de control
           </Link>
           <Link
             href="/admin/leads"
@@ -121,7 +121,7 @@ export default async function AdminDashboardPage() {
             href="/admin/finanzas"
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
           >
-            Finanzas de Datum
+            Estado P y G
           </Link>
           <Link
             href="/admin/bienvenida"

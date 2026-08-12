@@ -48,45 +48,86 @@ export function DetallesLead({
 }) {
   const router = useRouter();
   const [valorTexto, setValorTexto] = useState(valorEstimado != null ? String(valorEstimado) : "");
+  const [valorEstimadoLocal, setValorEstimadoLocal] = useState(valorEstimado);
+  const [prioridadLocal, setPrioridadLocal] = useState(prioridad);
+  const [modulosLocal, setModulosLocal] = useState(modulosInteres);
+  const [responsableLocal, setResponsableLocal] = useState(responsableNombre);
   const [guardandoValor, setGuardandoValor] = useState(false);
   const [guardandoPrioridad, setGuardandoPrioridad] = useState(false);
   const [guardandoModulos, setGuardandoModulos] = useState(false);
   const [guardandoResponsable, setGuardandoResponsable] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Cada acción actualiza el estado local de inmediato (optimista) y solo
+  // revierte si el servidor responde con error — así el cambio se ve al
+  // instante en vez de esperar a que termine el viaje al servidor.
   async function guardarValor() {
     const numero = valorTexto.trim() ? Number(valorTexto) : null;
     if (valorTexto.trim() && Number.isNaN(numero)) return;
+    const anterior = valorEstimadoLocal;
     setGuardandoValor(true);
-    await actualizarValorEstimadoLead(leadId, numero);
+    const resultado = await actualizarValorEstimadoLead(leadId, numero, anterior);
+    if (resultado.error) setError(resultado.error);
+    else setValorEstimadoLocal(numero);
     setGuardandoValor(false);
     router.refresh();
   }
 
   async function cambiarPrioridad(valor: number | null) {
+    const anterior = prioridadLocal;
+    setPrioridadLocal(valor);
     setGuardandoPrioridad(true);
-    await actualizarPrioridadLead(leadId, valor);
+    const resultado = await actualizarPrioridadLead(leadId, valor, anterior);
+    if (resultado.error) {
+      setError(resultado.error);
+      setPrioridadLocal(anterior);
+    }
     setGuardandoPrioridad(false);
     router.refresh();
   }
 
   async function cambiarModulos(valores: string[]) {
+    const anterior = modulosLocal;
+    setModulosLocal(valores);
     setGuardandoModulos(true);
-    await actualizarModulosInteresLead(leadId, valores);
+    const resultado = await actualizarModulosInteresLead(leadId, valores);
+    if (resultado.error) {
+      setError(resultado.error);
+      setModulosLocal(anterior);
+    }
     setGuardandoModulos(false);
     router.refresh();
   }
 
   async function cambiarResponsable(id: string | null) {
+    const anterior = responsableLocal;
+    const nuevoNombre = id ? (responsables.find((r) => r.id === id)?.nombre ?? null) : null;
+    setResponsableLocal(nuevoNombre);
     setGuardandoResponsable(true);
-    await actualizarResponsableLead(leadId, id);
+    const resultado = await actualizarResponsableLead(leadId, id, anterior, nuevoNombre);
+    if (resultado.error) {
+      setError(resultado.error);
+      setResponsableLocal(anterior);
+    }
     setGuardandoResponsable(false);
     router.refresh();
   }
 
   async function crearYAsignarResponsable(nombre: string) {
+    const anterior = responsableLocal;
     setGuardandoResponsable(true);
     const resultado = await crearResponsableLead(nombre);
-    if (resultado.id) await actualizarResponsableLead(leadId, resultado.id);
+    if (resultado.error || !resultado.id) {
+      if (resultado.error) setError(resultado.error);
+      setGuardandoResponsable(false);
+      return;
+    }
+    setResponsableLocal(nombre);
+    const resultado2 = await actualizarResponsableLead(leadId, resultado.id, anterior, nombre);
+    if (resultado2.error) {
+      setError(resultado2.error);
+      setResponsableLocal(anterior);
+    }
     setGuardandoResponsable(false);
     router.refresh();
   }
@@ -124,7 +165,11 @@ export function DetallesLead({
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-gray-400">Prioridad</span>
-          <PrioridadSelector valor={prioridad} onChange={cambiarPrioridad} deshabilitado={guardandoPrioridad} />
+          <PrioridadSelector
+            valor={prioridadLocal}
+            onChange={cambiarPrioridad}
+            deshabilitado={guardandoPrioridad}
+          />
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -136,7 +181,7 @@ export function DetallesLead({
           <span className="text-gray-400">Módulos de interés</span>
           <MultiSelector
             opciones={serviciosDisponibles ?? MODULOS_DATUM}
-            seleccionados={modulosInteres}
+            seleccionados={modulosLocal}
             onChange={cambiarModulos}
             deshabilitado={guardandoModulos}
           />
@@ -146,13 +191,14 @@ export function DetallesLead({
           <span className="text-gray-400">Responsable</span>
           <ResponsableSelector
             responsables={responsables}
-            nombreActual={responsableNombre}
+            nombreActual={responsableLocal}
             guardando={guardandoResponsable}
             onSeleccionar={cambiarResponsable}
             onCrear={crearYAsignarResponsable}
           />
         </div>
       </div>
+      {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
     </div>
   );
 }

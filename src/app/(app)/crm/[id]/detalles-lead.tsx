@@ -34,45 +34,86 @@ export function DetallesLead({
 }) {
   const router = useRouter();
   const [valorTexto, setValorTexto] = useState(valorEstimado != null ? String(valorEstimado) : "");
+  const [valorEstimadoLocal, setValorEstimadoLocal] = useState(valorEstimado);
+  const [prioridadLocal, setPrioridadLocal] = useState(prioridad);
+  const [productosLocal, setProductosLocal] = useState(productosInteres);
+  const [responsableLocal, setResponsableLocal] = useState(responsableNombre);
   const [guardandoValor, setGuardandoValor] = useState(false);
   const [guardandoPrioridad, setGuardandoPrioridad] = useState(false);
   const [guardandoProductos, setGuardandoProductos] = useState(false);
   const [guardandoResponsable, setGuardandoResponsable] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Cada acción actualiza el estado local de inmediato (optimista) y solo
+  // revierte si el servidor responde con error — así el cambio se ve al
+  // instante en vez de esperar a que termine el viaje al servidor.
   async function guardarValor() {
     const numero = valorTexto.trim() ? Number(valorTexto) : null;
     if (valorTexto.trim() && Number.isNaN(numero)) return;
+    const anterior = valorEstimadoLocal;
     setGuardandoValor(true);
-    await actualizarValorEstimado(contactoId, numero);
+    const resultado = await actualizarValorEstimado(contactoId, numero, anterior);
+    if (resultado.error) setError(resultado.error);
+    else setValorEstimadoLocal(numero);
     setGuardandoValor(false);
     router.refresh();
   }
 
   async function cambiarPrioridad(valor: number | null) {
+    const anterior = prioridadLocal;
+    setPrioridadLocal(valor);
     setGuardandoPrioridad(true);
-    await actualizarPrioridad(contactoId, valor);
+    const resultado = await actualizarPrioridad(contactoId, valor, anterior);
+    if (resultado.error) {
+      setError(resultado.error);
+      setPrioridadLocal(anterior);
+    }
     setGuardandoPrioridad(false);
     router.refresh();
   }
 
   async function cambiarProductos(valores: string[]) {
+    const anterior = productosLocal;
+    setProductosLocal(valores);
     setGuardandoProductos(true);
-    await actualizarProductosInteres(contactoId, valores);
+    const resultado = await actualizarProductosInteres(contactoId, valores);
+    if (resultado.error) {
+      setError(resultado.error);
+      setProductosLocal(anterior);
+    }
     setGuardandoProductos(false);
     router.refresh();
   }
 
   async function cambiarResponsable(id: string | null) {
+    const anterior = responsableLocal;
+    const nuevoNombre = id ? (responsables.find((r) => r.id === id)?.nombre ?? null) : null;
+    setResponsableLocal(nuevoNombre);
     setGuardandoResponsable(true);
-    await actualizarResponsable(contactoId, id);
+    const resultado = await actualizarResponsable(contactoId, id, anterior, nuevoNombre);
+    if (resultado.error) {
+      setError(resultado.error);
+      setResponsableLocal(anterior);
+    }
     setGuardandoResponsable(false);
     router.refresh();
   }
 
   async function crearYAsignarResponsable(nombre: string) {
+    const anterior = responsableLocal;
     setGuardandoResponsable(true);
     const resultado = await crearResponsable(nombre);
-    if (resultado.id) await actualizarResponsable(contactoId, resultado.id);
+    if (resultado.error || !resultado.id) {
+      if (resultado.error) setError(resultado.error);
+      setGuardandoResponsable(false);
+      return;
+    }
+    setResponsableLocal(nombre);
+    const resultado2 = await actualizarResponsable(contactoId, resultado.id, anterior, nombre);
+    if (resultado2.error) {
+      setError(resultado2.error);
+      setResponsableLocal(anterior);
+    }
     setGuardandoResponsable(false);
     router.refresh();
   }
@@ -100,7 +141,11 @@ export function DetallesLead({
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-gray-400">Prioridad</span>
-          <PrioridadSelector valor={prioridad} onChange={cambiarPrioridad} deshabilitado={guardandoPrioridad} />
+          <PrioridadSelector
+            valor={prioridadLocal}
+            onChange={cambiarPrioridad}
+            deshabilitado={guardandoPrioridad}
+          />
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -113,7 +158,7 @@ export function DetallesLead({
             <span className="text-gray-400">Productos de interés</span>
             <MultiSelector
               opciones={itemsDisponibles}
-              seleccionados={productosInteres}
+              seleccionados={productosLocal}
               onChange={cambiarProductos}
               deshabilitado={guardandoProductos}
             />
@@ -124,13 +169,14 @@ export function DetallesLead({
           <span className="text-gray-400">Responsable</span>
           <ResponsableSelector
             responsables={responsables}
-            nombreActual={responsableNombre}
+            nombreActual={responsableLocal}
             guardando={guardandoResponsable}
             onSeleccionar={cambiarResponsable}
             onCrear={crearYAsignarResponsable}
           />
         </div>
       </div>
+      {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
     </div>
   );
 }

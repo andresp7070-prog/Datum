@@ -113,7 +113,9 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
 
   async function aplicarCambioEtapa(leadId: string, etapaId: string, valorVenta?: number) {
     const leadActual = leads.find((l) => l.id === leadId);
-    const anterior = leadActual?.etapa_id ?? null;
+    const etapaIdAnterior = leadActual?.etapa_id ?? null;
+    const valorVentaAnterior = leadActual?.valor_venta ?? null;
+    const nombreEtapa = (id: string | null) => etapas.find((e) => e.id === id)?.nombre ?? null;
 
     setLeads((prev) =>
       prev.map((l) =>
@@ -123,10 +125,18 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
       ),
     );
 
-    const resultado = await cambiarEtapaLead(leadId, etapaId, valorVenta);
+    const resultado = await cambiarEtapaLead({
+      leadId,
+      etapaId,
+      etapaNombreAnterior: nombreEtapa(etapaIdAnterior),
+      etapaNombreNueva: nombreEtapa(etapaId),
+      huboCambioEtapa: etapaIdAnterior !== etapaId,
+      valorVenta,
+      valorVentaAnterior,
+    });
     if (resultado.error) {
       setError(resultado.error);
-      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, etapa_id: anterior } : l)));
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, etapa_id: etapaIdAnterior } : l)));
     }
   }
 

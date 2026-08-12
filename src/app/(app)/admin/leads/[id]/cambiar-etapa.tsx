@@ -11,31 +11,49 @@ export function CambiarEtapa({
   leadId,
   etapas,
   etapaActualId,
-  tieneValorVenta,
+  valorVentaActual,
 }: {
   leadId: string;
   etapas: Etapa[];
   etapaActualId: string | null;
-  tieneValorVenta: boolean;
+  valorVentaActual: number | null;
 }) {
   const router = useRouter();
   const [etapa, setEtapa] = useState(etapaActualId ?? "");
+  const [valorVenta, setValorVenta] = useState(valorVentaActual);
   const [guardando, setGuardando] = useState(false);
   const [etapaPendiente, setEtapaPendiente] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function aplicarCambio(valor: string, valorVenta?: number) {
+  const nombreEtapa = (id: string) => etapas.find((item) => item.id === id)?.nombre ?? null;
+
+  async function aplicarCambio(valor: string, valorVentaNuevo?: number) {
+    const etapaAnterior = etapa;
+    const valorVentaAnterior = valorVenta;
     setEtapa(valor);
+    if (valorVentaNuevo !== undefined) setValorVenta(valorVentaNuevo);
     setGuardando(true);
-    const resultado = await cambiarEtapaLead(leadId, valor, valorVenta);
+    const resultado = await cambiarEtapaLead({
+      leadId,
+      etapaId: valor,
+      etapaNombreAnterior: nombreEtapa(etapaAnterior),
+      etapaNombreNueva: nombreEtapa(valor),
+      huboCambioEtapa: etapaAnterior !== valor,
+      valorVenta: valorVentaNuevo,
+      valorVentaAnterior,
+    });
     setError(resultado.error);
+    if (resultado.error) {
+      setEtapa(etapaAnterior);
+      if (valorVentaNuevo !== undefined) setValorVenta(valorVentaAnterior);
+    }
     setGuardando(false);
     router.refresh();
   }
 
   function onChange(valor: string) {
     const destino = etapas.find((item) => item.id === valor);
-    if (destino?.es_cierre && !tieneValorVenta) {
+    if (destino?.es_cierre && valorVenta == null) {
       setEtapaPendiente(valor);
       return;
     }
@@ -60,10 +78,10 @@ export function CambiarEtapa({
 
       {etapaPendiente && (
         <ValorVentaModal
-          onConfirm={(valorVenta) => {
+          onConfirm={(valorVentaNuevo) => {
             const destino = etapaPendiente;
             setEtapaPendiente(null);
-            aplicarCambio(destino, valorVenta);
+            aplicarCambio(destino, valorVentaNuevo);
           }}
           onCancel={() => setEtapaPendiente(null)}
         />

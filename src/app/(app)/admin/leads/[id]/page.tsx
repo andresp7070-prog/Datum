@@ -189,7 +189,7 @@ export default async function FichaLeadPage({
               leadId={lead.id}
               etapas={etapas ?? []}
               etapaActualId={lead.etapa_id}
-              tieneValorVenta={lead.valor_venta != null}
+              valorVentaActual={lead.valor_venta}
             />
             <EliminarLead leadId={lead.id} />
           </div>

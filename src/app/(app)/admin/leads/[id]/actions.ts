@@ -5,55 +5,51 @@ import { createClient } from "@/lib/supabase/server";
 import { crearEventoCalendar, eliminarEventoCalendar } from "@/lib/google";
 import { formatearValorHistorial } from "@/lib/historial";
 
-export async function cambiarEtapaLead(
-  leadId: string,
-  etapaId: string,
-  valorVenta?: number,
-): Promise<{ error: string | null }> {
+// El id/nombre de la etapa anterior y el valor de venta anterior los manda
+// quien llama (ya los tiene en pantalla) — así esta función no necesita leer
+// el lead antes de actualizarlo, y el cambio se siente instantáneo.
+export async function cambiarEtapaLead(input: {
+  leadId: string;
+  etapaId: string;
+  etapaNombreAnterior: string | null;
+  etapaNombreNueva: string | null;
+  huboCambioEtapa: boolean;
+  valorVenta?: number;
+  valorVentaAnterior?: number | null;
+}): Promise<{ error: string | null }> {
   await requerirAdmin();
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: leadActual } = await supabase
-    .from("datum_leads")
-    .select("etapa_id, valor_venta")
-    .eq("id", leadId)
-    .single();
+  const actualizacion: { etapa_id: string; valor_venta?: number } = { etapa_id: input.etapaId };
+  if (input.valorVenta !== undefined) actualizacion.valor_venta = input.valorVenta;
 
-  const actualizacion: { etapa_id: string; valor_venta?: number } = { etapa_id: etapaId };
-  if (valorVenta !== undefined) actualizacion.valor_venta = valorVenta;
-
-  const { error } = await supabase.from("datum_leads").update(actualizacion).eq("id", leadId);
-
+  const { error } = await supabase.from("datum_leads").update(actualizacion).eq("id", input.leadId);
   if (error) return { error: error.message };
 
   const historial: { lead_id: string; perfil_id: string | null; campo: string; valor_anterior: string | null; valor_nuevo: string | null }[] = [];
 
-  if (leadActual && leadActual.etapa_id !== etapaId) {
-    const idsEtapas = [leadActual.etapa_id, etapaId].filter(Boolean) as string[];
-    const { data: etapas } = await supabase.from("datum_crm_etapas").select("id, nombre").in("id", idsEtapas);
-    const nombreEtapa = (id: string | null) => etapas?.find((e) => e.id === id)?.nombre ?? null;
-
+  if (input.huboCambioEtapa) {
     historial.push({
-      lead_id: leadId,
+      lead_id: input.leadId,
       perfil_id: user?.id ?? null,
       campo: "Etapa",
-      valor_anterior: nombreEtapa(leadActual.etapa_id),
-      valor_nuevo: nombreEtapa(etapaId),
+      valor_anterior: input.etapaNombreAnterior,
+      valor_nuevo: input.etapaNombreNueva,
     });
   }
 
-  if (valorVenta !== undefined && leadActual?.valor_venta !== valorVenta) {
+  if (input.valorVenta !== undefined && input.valorVentaAnterior !== input.valorVenta) {
     historial.push({
-      lead_id: leadId,
+      lead_id: input.leadId,
       perfil_id: user?.id ?? null,
       campo: "Valor de venta",
       valor_anterior: formatearValorHistorial(
-        leadActual?.valor_venta != null ? String(leadActual.valor_venta) : null,
+        input.valorVentaAnterior != null ? String(input.valorVentaAnterior) : null,
       ),
-      valor_nuevo: formatearValorHistorial(String(valorVenta)),
+      valor_nuevo: formatearValorHistorial(String(input.valorVenta)),
     });
   }
 
@@ -271,6 +267,7 @@ export async function borrarLead(leadId: string): Promise<{ error: string | null
 export async function actualizarValorEstimadoLead(
   leadId: string,
   valor: number | null,
+  valorAnterior: number | null,
 ): Promise<{ error: string | null }> {
   await requerirAdmin();
   const supabase = await createClient();
@@ -278,24 +275,17 @@ export async function actualizarValorEstimadoLead(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: anterior } = await supabase
-    .from("datum_leads")
-    .select("valor_estimado")
-    .eq("id", leadId)
-    .single();
-
   const { error } = await supabase.from("datum_leads").update({ valor_estimado: valor }).eq("id", leadId);
   if (error) return { error: error.message };
 
-  await supabase.from("datum_crm_historial_lead").insert({
+  const { error: errorHistorial } = await supabase.from("datum_crm_historial_lead").insert({
     lead_id: leadId,
     perfil_id: user?.id ?? null,
     campo: "Valor estimado",
-    valor_anterior: formatearValorHistorial(
-      anterior?.valor_estimado != null ? String(anterior.valor_estimado) : null,
-    ),
+    valor_anterior: formatearValorHistorial(valorAnterior != null ? String(valorAnterior) : null),
     valor_nuevo: formatearValorHistorial(valor != null ? String(valor) : null),
   });
+  if (errorHistorial) return { error: errorHistorial.message };
 
   return { error: null };
 }
@@ -303,6 +293,7 @@ export async function actualizarValorEstimadoLead(
 export async function actualizarPrioridadLead(
   leadId: string,
   prioridad: number | null,
+  prioridadAnterior: number | null,
 ): Promise<{ error: string | null }> {
   await requerirAdmin();
   const supabase = await createClient();
@@ -310,22 +301,17 @@ export async function actualizarPrioridadLead(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: anterior } = await supabase
-    .from("datum_leads")
-    .select("prioridad")
-    .eq("id", leadId)
-    .single();
-
   const { error } = await supabase.from("datum_leads").update({ prioridad }).eq("id", leadId);
   if (error) return { error: error.message };
 
-  await supabase.from("datum_crm_historial_lead").insert({
+  const { error: errorHistorial } = await supabase.from("datum_crm_historial_lead").insert({
     lead_id: leadId,
     perfil_id: user?.id ?? null,
     campo: "Prioridad",
-    valor_anterior: anterior?.prioridad != null ? String(anterior.prioridad) : null,
+    valor_anterior: prioridadAnterior != null ? String(prioridadAnterior) : null,
     valor_nuevo: prioridad != null ? String(prioridad) : null,
   });
+  if (errorHistorial) return { error: errorHistorial.message };
 
   return { error: null };
 }
@@ -346,20 +332,26 @@ export async function actualizarModulosInteresLead(
     .eq("id", leadId);
   if (error) return { error: error.message };
 
-  await supabase.from("datum_crm_historial_lead").insert({
+  const { error: errorHistorial } = await supabase.from("datum_crm_historial_lead").insert({
     lead_id: leadId,
     perfil_id: user?.id ?? null,
     campo: "Módulos de interés",
     valor_anterior: null,
     valor_nuevo: modulos.length > 0 ? modulos.join(", ") : "Ninguno",
   });
+  if (errorHistorial) return { error: errorHistorial.message };
 
   return { error: null };
 }
 
+// nombreAnterior/nombreNuevo los manda quien llama (ya los tiene en la lista
+// de responsables que cargó la pantalla) — evita dos SELECT extra solo para
+// leer nombres que el cliente ya conoce.
 export async function actualizarResponsableLead(
   leadId: string,
   responsableId: string | null,
+  nombreAnterior: string | null,
+  nombreNuevo: string | null,
 ): Promise<{ error: string | null }> {
   await requerirAdmin();
   const supabase = await createClient();
@@ -367,29 +359,20 @@ export async function actualizarResponsableLead(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: anterior } = await supabase
-    .from("datum_leads")
-    .select("responsable:responsable_id ( nombre )")
-    .eq("id", leadId)
-    .single();
-
-  const { data: nuevo } = responsableId
-    ? await supabase.from("datum_responsables").select("nombre").eq("id", responsableId).maybeSingle()
-    : { data: null };
-
   const { error } = await supabase
     .from("datum_leads")
     .update({ responsable_id: responsableId })
     .eq("id", leadId);
   if (error) return { error: error.message };
 
-  await supabase.from("datum_crm_historial_lead").insert({
+  const { error: errorHistorial } = await supabase.from("datum_crm_historial_lead").insert({
     lead_id: leadId,
     perfil_id: user?.id ?? null,
     campo: "Responsable",
-    valor_anterior: (anterior?.responsable as unknown as { nombre: string } | null)?.nombre ?? null,
-    valor_nuevo: nuevo?.nombre ?? null,
+    valor_anterior: nombreAnterior,
+    valor_nuevo: nombreNuevo,
   });
+  if (errorHistorial) return { error: errorHistorial.message };
 
   return { error: null };
 }

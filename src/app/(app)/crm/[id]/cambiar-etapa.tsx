@@ -20,11 +20,21 @@ export function CambiarEtapa({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const nombreEtapa = (id: string) => etapas.find((item) => item.id === id)?.nombre ?? null;
+
   async function onChange(valor: string) {
+    const anterior = etapa;
     setEtapa(valor);
     setGuardando(true);
-    const resultado = await cambiarEtapa(contactoId, valor);
+    const resultado = await cambiarEtapa({
+      contactoId,
+      etapaId: valor,
+      etapaNombreAnterior: nombreEtapa(anterior),
+      etapaNombreNueva: nombreEtapa(valor),
+      huboCambioEtapa: anterior !== valor,
+    });
     setError(resultado.error);
+    if (resultado.error) setEtapa(anterior);
     setGuardando(false);
     router.refresh();
   }

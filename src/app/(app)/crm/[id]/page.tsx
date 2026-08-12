@@ -421,9 +421,8 @@ export default async function FichaClientePage({
       {encabezado}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">{datosCliente}</div>
-
         <div className="space-y-6">
+          {datosCliente}
           <SeguimientoCalendar
             contactoId={contacto.id}
             nombreContacto={contacto.nombre}
@@ -437,7 +436,9 @@ export default async function FichaClientePage({
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Agregar interacción</h2>
             <NuevaInteraccionForm contactoId={contacto.id} />
           </div>
+        </div>
 
+        <div className="space-y-6">
           <div className="rounded-xl border border-gray-200 p-4">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
             {historial && historial.length > 0 ? (

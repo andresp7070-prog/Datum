@@ -222,9 +222,6 @@ export default async function FichaLeadPage({
               >) ?? {}
             }
           />
-        </div>
-
-        <div className="space-y-6">
           <SeguimientoCalendar
             leadId={lead.id}
             nombreLead={lead.nombre}
@@ -238,7 +235,9 @@ export default async function FichaLeadPage({
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Agregar interacción</h2>
             <NuevaInteraccionForm leadId={lead.id} />
           </div>
+        </div>
 
+        <div className="space-y-6">
           <div className="rounded-xl border border-gray-200 p-4">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
             {historial && historial.length > 0 ? (

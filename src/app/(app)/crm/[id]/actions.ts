@@ -270,3 +270,156 @@ export async function borrarContacto(contactoId: string): Promise<{ error: strin
   if (error) return { error: error.message };
   return { error: null };
 }
+
+export async function actualizarValorEstimado(
+  contactoId: string,
+  valor: number | null,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: anterior } = await supabase
+    .from("crm_contactos")
+    .select("valor_estimado")
+    .eq("id", contactoId)
+    .single();
+
+  const { error } = await supabase
+    .from("crm_contactos")
+    .update({ valor_estimado: valor })
+    .eq("id", contactoId);
+  if (error) return { error: error.message };
+
+  await supabase.from("crm_historial_contacto").insert({
+    contacto_id: contactoId,
+    perfil_id: user?.id ?? null,
+    campo: "Valor estimado",
+    valor_anterior: formatearValorHistorial(
+      anterior?.valor_estimado != null ? String(anterior.valor_estimado) : null,
+    ),
+    valor_nuevo: formatearValorHistorial(valor != null ? String(valor) : null),
+  });
+
+  return { error: null };
+}
+
+export async function actualizarPrioridad(
+  contactoId: string,
+  prioridad: number | null,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: anterior } = await supabase
+    .from("crm_contactos")
+    .select("prioridad")
+    .eq("id", contactoId)
+    .single();
+
+  const { error } = await supabase.from("crm_contactos").update({ prioridad }).eq("id", contactoId);
+  if (error) return { error: error.message };
+
+  await supabase.from("crm_historial_contacto").insert({
+    contacto_id: contactoId,
+    perfil_id: user?.id ?? null,
+    campo: "Prioridad",
+    valor_anterior: anterior?.prioridad != null ? String(anterior.prioridad) : null,
+    valor_nuevo: prioridad != null ? String(prioridad) : null,
+  });
+
+  return { error: null };
+}
+
+export async function actualizarProductosInteres(
+  contactoId: string,
+  itemIds: string[],
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from("crm_contactos")
+    .update({ productos_interes: itemIds })
+    .eq("id", contactoId);
+  if (error) return { error: error.message };
+
+  await supabase.from("crm_historial_contacto").insert({
+    contacto_id: contactoId,
+    perfil_id: user?.id ?? null,
+    campo: "Productos de interés",
+    valor_anterior: null,
+    valor_nuevo: itemIds.length > 0 ? `${itemIds.length} producto(s) elegido(s)` : "Ninguno",
+  });
+
+  return { error: null };
+}
+
+export async function actualizarResponsable(
+  contactoId: string,
+  responsableId: string | null,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: anterior } = await supabase
+    .from("crm_contactos")
+    .select("responsable:responsable_id ( nombre )")
+    .eq("id", contactoId)
+    .single();
+
+  const { data: nuevo } = responsableId
+    ? await supabase.from("crm_responsables").select("nombre").eq("id", responsableId).maybeSingle()
+    : { data: null };
+
+  const { error } = await supabase
+    .from("crm_contactos")
+    .update({ responsable_id: responsableId })
+    .eq("id", contactoId);
+  if (error) return { error: error.message };
+
+  await supabase.from("crm_historial_contacto").insert({
+    contacto_id: contactoId,
+    perfil_id: user?.id ?? null,
+    campo: "Responsable",
+    valor_anterior: (anterior?.responsable as unknown as { nombre: string } | null)?.nombre ?? null,
+    valor_nuevo: nuevo?.nombre ?? null,
+  });
+
+  return { error: null };
+}
+
+export async function crearResponsable(
+  nombre: string,
+): Promise<{ error: string | null; id?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No hay sesión activa." };
+
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("empresa_id")
+    .eq("id", user.id)
+    .single();
+  if (!perfil?.empresa_id) return { error: "Tu usuario no tiene una empresa asignada." };
+
+  if (!nombre.trim()) return { error: "Escribe un nombre." };
+
+  const { data, error } = await supabase
+    .from("crm_responsables")
+    .insert({ empresa_id: perfil.empresa_id, nombre: nombre.trim() })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  return { error: null, id: data.id as string };
+}

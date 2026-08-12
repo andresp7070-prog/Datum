@@ -284,6 +284,17 @@ create trigger trigger_crear_etapas_por_defecto
 after insert on empresas
 for each row execute function crear_etapas_por_defecto();
 
+-- Responsable asignado a un contacto (CRM modo 'leads'): solo un nombre,
+-- sin cuenta ni acceso a Datum — permite saber quién lleva cada lead sin
+-- tener que crear un usuario real por cada vendedor. Se crea desde el
+-- mismo desplegable de "Responsable" en la ficha, escribiendo el nombre.
+create table crm_responsables (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  nombre text not null,
+  created_at timestamptz default now()
+);
+
 create table crm_contactos (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
@@ -292,6 +303,16 @@ create table crm_contactos (
   email text,
   etapa_id uuid references crm_etapas(id),
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: modelo de vehículo, preferencias, alergias, etc.
+  -- CRM modo 'leads': valor estimado del negocio (se llena a mano en
+  -- cualquier momento después del primer contacto/cotización — no
+  -- confundir con ventas.monto, que es la venta real ya cerrada),
+  -- prioridad manual (1 alta, 2 media, 3 baja, como un podio), productos
+  -- o servicios de interés (solo aplica si la empresa tiene Inventario
+  -- activo) y responsable asignado.
+  valor_estimado numeric(12,2),
+  prioridad smallint check (prioridad in (1,2,3)),
+  productos_interes uuid[],
+  responsable_id uuid references crm_responsables(id),
   created_at timestamptz default now()
 );
 
@@ -505,6 +526,14 @@ insert into datum_crm_etapas (nombre, orden, es_cierre) values
   ('Propuesta', 3, false),
   ('Cerrado', 4, true);
 
+-- Mismo criterio que crm_responsables: solo un nombre, sin cuenta ni
+-- acceso a Datum, para saber quién lleva cada lead propio.
+create table datum_responsables (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  created_at timestamptz default now()
+);
+
 create table datum_leads (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,          -- persona de contacto
@@ -514,6 +543,15 @@ create table datum_leads (
   etapa_id uuid references datum_crm_etapas(id),
   calificacion smallint check (calificacion between 0 and 5),
   notas text,
+  -- Mismo criterio que crm_contactos: valor estimado (distinto de
+  -- valor_venta, que es el cierre real), prioridad manual (1 alta, 2
+  -- media, 3 baja), módulos de interés (Datum no vende inventario propio,
+  -- así que en vez de un catálogo de inventario_items se usa la misma
+  -- lista de módulos del producto) y responsable asignado.
+  valor_estimado numeric(12,2),
+  prioridad smallint check (prioridad in (1,2,3)),
+  modulos_interes text[],
+  responsable_id uuid references datum_responsables(id),
   created_at timestamptz default now()
 );
 
@@ -3032,6 +3070,7 @@ alter table crm_etapas enable row level security;
 alter table crm_etapa_campos enable row level security;
 alter table crm_campos_generales enable row level security;
 alter table crm_contactos enable row level security;
+alter table crm_responsables enable row level security;
 alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
 alter table inventario_movimientos enable row level security;
@@ -3062,6 +3101,7 @@ alter table datum_crm_etapas enable row level security;
 alter table datum_crm_etapa_campos enable row level security;
 alter table datum_crm_campos_generales enable row level security;
 alter table datum_leads enable row level security;
+alter table datum_responsables enable row level security;
 alter table datum_crm_interacciones enable row level security;
 alter table datum_crm_eventos_calendar enable row level security;
 alter table datum_crm_historial_lead enable row level security;
@@ -3141,6 +3181,9 @@ create policy "ver mis etapas de crm" on crm_etapas
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mi crm" on crm_contactos
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver mis responsables de crm" on crm_responsables
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mi inventario" on inventario_items
@@ -3294,6 +3337,9 @@ create policy "solo admin ve campos generales de leads de datum" on datum_crm_ca
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve leads de datum" on datum_leads
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve responsables de leads de datum" on datum_responsables
   for all using (es_admin()) with check (es_admin());
 
 create policy "solo admin ve interacciones de leads de datum" on datum_crm_interacciones

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { sinTildes } from "@/lib/texto";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { Estrellas } from "@/app/(app)/crm/estrellas";
+import { PrioridadBadge, PrioridadFiltro } from "@/app/(app)/crm/prioridad";
 import { cambiarEtapaLead, borrarLead } from "./[id]/actions";
 import { ValorVentaModal } from "./valor-venta-modal";
 import { BorrarLeadModal } from "./borrar-lead-modal";
@@ -18,6 +19,7 @@ type Lead = {
   etapa_id: string | null;
   valor_venta: number | null;
   calificacion: number | null;
+  prioridad: number | null;
 };
 
 type Etapa = { id: string; nombre: string; orden: number; es_cierre: boolean };
@@ -59,11 +61,10 @@ function TarjetaLead({
           {lead.empresa ? `${lead.empresa} · ` : ""}
           {lead.telefono ?? "Sin teléfono"}
         </p>
-        {lead.calificacion != null && (
-          <div className="mt-1">
-            <Estrellas valor={lead.calificacion} />
-          </div>
-        )}
+        <div className="mt-1 flex items-center gap-1.5">
+          {lead.calificacion != null && <Estrellas valor={lead.calificacion} />}
+          <PrioridadBadge valor={lead.prioridad} />
+        </div>
       </Link>
     </div>
   );
@@ -72,6 +73,7 @@ function TarjetaLead({
 export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead[]; etapas: Etapa[] }) {
   const [leads, setLeads] = useState(leadsIniciales);
   const [busqueda, setBusqueda] = useState("");
+  const [prioridadFiltro, setPrioridadFiltro] = useState("todas");
   const [arrastrandoId, setArrastrandoId] = useState<string | null>(null);
   const [zonaActiva, setZonaActiva] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,8 +92,12 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
 
   const q = sinTildes(busqueda.trim());
   const filtrados = leads.filter((lead) => {
-    if (!q) return true;
-    return sinTildes(lead.nombre).includes(q) || sinTildes(lead.empresa ?? "").includes(q);
+    const coincideTexto =
+      !q || sinTildes(lead.nombre).includes(q) || sinTildes(lead.empresa ?? "").includes(q);
+    const coincidePrioridad =
+      prioridadFiltro === "todas" ||
+      (prioridadFiltro === "sin" ? lead.prioridad == null : lead.prioridad === Number(prioridadFiltro));
+    return coincideTexto && coincidePrioridad;
   });
 
   const filasCsv = filtrados.map((lead) => {
@@ -272,13 +278,14 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           placeholder="Buscar por nombre o empresa"
           className="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
         />
+        <PrioridadFiltro valor={prioridadFiltro} onChange={setPrioridadFiltro} />
       </div>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}

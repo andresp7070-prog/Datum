@@ -7,6 +7,7 @@ import { Estrellas } from "../estrellas";
 import { CamposAdicionales } from "./campos-adicionales";
 import { SeguimientoCalendar } from "./seguimiento";
 import { EliminarContacto } from "./eliminar-contacto";
+import { DetallesLead } from "./detalles-lead";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -35,24 +36,46 @@ export default async function FichaClientePage({
 
   const { data: perfil } = await supabase
     .from("perfiles")
-    .select("empresa_id, empresas ( crm_modo )")
+    .select("empresa_id, empresas ( crm_modo, modulos_activos )")
     .eq("id", user.id)
     .single();
 
   // La relación empresa_id -> empresas.id es uno-a-uno; Supabase la tipa
   // como arreglo por falta de tipos generados, pero en tiempo de ejecución
   // es un objeto (mismo caso que getPerfilActual() en lib/empresa.ts).
-  const crmModo = (perfil?.empresas as unknown as { crm_modo: string } | null)?.crm_modo ?? "ventas";
+  const empresaInfo = perfil?.empresas as unknown as {
+    crm_modo: string;
+    modulos_activos: string[];
+  } | null;
+  const crmModo = empresaInfo?.crm_modo ?? "ventas";
 
   const { data: contacto } = await supabase
     .from("crm_contactos")
     .select(
-      "id, nombre, telefono, email, etapa_id, campos_etapa, empresa_cliente:atributos->>empresa",
+      "id, nombre, telefono, email, etapa_id, campos_etapa, empresa_cliente:atributos->>empresa, valor_estimado, prioridad, productos_interes, responsable_id, created_at, responsable:responsable_id ( nombre )",
     )
     .eq("id", id)
     .single();
 
   if (!contacto) notFound();
+
+  const { data: responsables } =
+    crmModo === "leads" && perfil?.empresa_id
+      ? await supabase
+          .from("crm_responsables")
+          .select("id, nombre")
+          .eq("empresa_id", perfil.empresa_id)
+          .order("nombre")
+      : { data: [] };
+
+  const { data: itemsInventario } =
+    crmModo === "leads" && perfil?.empresa_id && empresaInfo?.modulos_activos?.includes("inventario")
+      ? await supabase
+          .from("inventario_items")
+          .select("id, nombre")
+          .eq("empresa_id", perfil.empresa_id)
+          .order("nombre")
+      : { data: null };
 
   // La calificación ya no se pone a mano — se calcula sola según el
   // historial de compras (ver vista_calificacion_clientes).
@@ -212,6 +235,21 @@ export default async function FichaClientePage({
           {crmModo === "leads" && <EliminarContacto contactoId={contacto.id} />}
         </div>
       </div>
+
+      {crmModo === "leads" && (
+        <DetallesLead
+          contactoId={contacto.id}
+          valorEstimado={contacto.valor_estimado}
+          prioridad={contacto.prioridad}
+          fechaLead={contacto.created_at}
+          productosInteres={contacto.productos_interes ?? []}
+          itemsDisponibles={
+            itemsInventario ? itemsInventario.map((item) => ({ value: item.id, label: item.nombre })) : null
+          }
+          responsableNombre={(contacto.responsable as unknown as { nombre: string } | null)?.nombre ?? null}
+          responsables={responsables ?? []}
+        />
+      )}
     </div>
   );
 

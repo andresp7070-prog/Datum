@@ -18,7 +18,7 @@ export default async function LeadsDatumPage() {
 
   const { data: leads, error } = await supabase
     .from("datum_leads")
-    .select("id, nombre, empresa, telefono, email, etapa_id, valor_venta")
+    .select("id, nombre, empresa, telefono, email, etapa_id, valor_venta, prioridad")
     .order("nombre");
 
   // La calificación ya no se pone a mano — se calcula sola según el valor

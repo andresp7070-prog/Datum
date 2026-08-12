@@ -8,6 +8,7 @@ import { Estrellas } from "@/app/(app)/crm/estrellas";
 import { CamposAdicionales } from "./campos-adicionales";
 import { SeguimientoCalendar } from "./seguimiento";
 import { EliminarLead } from "./eliminar-lead";
+import { DetallesLead } from "./detalles-lead";
 
 export default async function FichaLeadPage({
   params,
@@ -28,11 +29,18 @@ export default async function FichaLeadPage({
 
   const { data: lead } = await supabase
     .from("datum_leads")
-    .select("id, nombre, empresa, telefono, email, etapa_id, valor_venta, notas, campos_etapa")
+    .select(
+      "id, nombre, empresa, telefono, email, etapa_id, valor_venta, notas, campos_etapa, valor_estimado, prioridad, modulos_interes, responsable_id, created_at, responsable:responsable_id ( nombre )",
+    )
     .eq("id", id)
     .single();
 
   if (!lead) notFound();
+
+  const { data: responsables } = await supabase
+    .from("datum_responsables")
+    .select("id, nombre")
+    .order("nombre");
 
   // La calificación ya no se pone a mano — se calcula sola según el valor
   // de venta que generó el lead (ver vista_calificacion_leads_datum).
@@ -165,6 +173,16 @@ export default async function FichaLeadPage({
             <EliminarLead leadId={lead.id} />
           </div>
         </div>
+
+        <DetallesLead
+          leadId={lead.id}
+          valorEstimado={lead.valor_estimado}
+          prioridad={lead.prioridad}
+          fechaLead={lead.created_at}
+          modulosInteres={lead.modulos_interes ?? []}
+          responsableNombre={(lead.responsable as unknown as { nombre: string } | null)?.nombre ?? null}
+          responsables={responsables ?? []}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

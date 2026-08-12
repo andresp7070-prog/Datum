@@ -46,7 +46,9 @@ export default async function CrmPage() {
 
   const { data: contactos } = await supabase
     .from("crm_contactos")
-    .select("id, nombre, telefono, email, etapa_id, empresa_cliente:atributos->>empresa")
+    .select(
+      "id, nombre, telefono, email, etapa_id, prioridad, empresa_cliente:atributos->>empresa",
+    )
     .eq("empresa_id", perfil.empresa_id)
     .order("nombre");
 
@@ -71,6 +73,7 @@ export default async function CrmPage() {
       contactos={contactosConCalificacion}
       etapas={etapas ?? []}
       mostrarConfigEtapas={esCrmDeLeads}
+      mostrarPrioridad={esCrmDeLeads}
     />
   );
 }

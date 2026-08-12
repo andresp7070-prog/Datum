@@ -167,8 +167,8 @@ export default async function FichaClientePage({
     eventosCalendar = eventos ?? [];
   }
 
-  return (
-    <div className="max-w-3xl space-y-6">
+  const banners = (
+    <>
       {creado === "1" && (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
           Cliente creado correctamente.
@@ -184,33 +184,42 @@ export default async function FichaClientePage({
           No se pudo conectar con Google Calendar. Intenta de nuevo.
         </p>
       )}
+    </>
+  );
 
-      <div className="rounded-xl border border-gray-200 p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">{contacto.nombre}</h1>
-            {contacto.empresa_cliente && (
-              <p className="text-sm text-gray-500">{contacto.empresa_cliente}</p>
+  const encabezado = (
+    <div className="rounded-xl border border-gray-200 p-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">{contacto.nombre}</h1>
+          {contacto.empresa_cliente && (
+            <p className="text-sm text-gray-500">{contacto.empresa_cliente}</p>
+          )}
+          <p className="mt-1 text-sm text-gray-500">
+            {contacto.telefono ?? "Sin teléfono"} · {contacto.email ?? "Sin correo"}
+          </p>
+          <div className="mt-2">
+            <Estrellas valor={calificacionData?.calificacion_automatica ?? null} />
+            {calificacionData && (
+              <p className="mt-1 text-xs text-gray-400">
+                Calculada sola según cuánto compra vs. el promedio de tus demás clientes.
+              </p>
             )}
-            <p className="mt-1 text-sm text-gray-500">
-              {contacto.telefono ?? "Sin teléfono"} · {contacto.email ?? "Sin correo"}
-            </p>
-            <div className="mt-2">
-              <Estrellas valor={calificacionData?.calificacion_automatica ?? null} />
-              {calificacionData && (
-                <p className="mt-1 text-xs text-gray-400">
-                  Calculada sola según cuánto compra vs. el promedio de tus demás clientes.
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <CambiarEtapa contactoId={contacto.id} etapas={etapas ?? []} etapaActualId={contacto.etapa_id} />
-            {crmModo === "leads" && <EliminarContacto contactoId={contacto.id} />}
           </div>
         </div>
+        <div className="flex flex-col items-end gap-2">
+          <CambiarEtapa contactoId={contacto.id} etapas={etapas ?? []} etapaActualId={contacto.etapa_id} />
+          {crmModo === "leads" && <EliminarContacto contactoId={contacto.id} />}
+        </div>
       </div>
+    </div>
+  );
 
+  // Datos del cliente: perfil de compra, cupones, historial de compras y
+  // campos personalizados — lo mismo de siempre, solo que en modo 'leads'
+  // se acomoda en la columna izquierda en vez de quedar todo apilado.
+  const datosCliente = (
+    <>
       {perfilCompra && (
         <div className="rounded-xl border border-gray-200 p-4">
           <h2 className="mb-4 text-sm font-semibold text-gray-900">Perfil de compra</h2>
@@ -304,10 +313,7 @@ export default async function FichaClientePage({
         {compras && compras.length > 0 ? (
           <ul className="divide-y divide-gray-200">
             {compras.map((venta) => (
-              <li
-                key={venta.venta_id}
-                className="flex items-center justify-between py-2 text-sm"
-              >
+              <li key={venta.venta_id} className="flex items-center justify-between py-2 text-sm">
                 <span className="text-gray-500">
                   {new Date(venta.fecha).toLocaleString("es-CO")}
                 </span>
@@ -332,73 +338,99 @@ export default async function FichaClientePage({
         contactoId={contacto.id}
         campos={todosLosCampos}
         valores={
-          (contacto.campos_etapa as Record<string, string | boolean | { nombre: string; url: string } | null>) ?? {}
+          (contacto.campos_etapa as Record<
+            string,
+            string | boolean | { nombre: string; url: string } | null
+          >) ?? {}
         }
       />
+    </>
+  );
 
-      {crmModo === "leads" && (
-        <SeguimientoCalendar
-          contactoId={contacto.id}
-          nombreContacto={contacto.nombre}
-          emailContacto={contacto.email}
-          conectado={googleConectado}
-          eventos={eventosCalendar}
-          rutaConexion={`/crm/${contacto.id}`}
-        />
-      )}
-
-      <div className="rounded-xl border border-gray-200 p-4">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">Interacciones</h2>
-        {interacciones && interacciones.length > 0 ? (
-          <ul className="mb-4 divide-y divide-gray-200">
-            {interacciones.map((interaccion) => (
-              <li key={interaccion.id} className="py-2 text-sm">
-                <p className="text-gray-500">
-                  {new Date(interaccion.fecha).toLocaleDateString("es-CO")} ·{" "}
-                  {etiquetaTipoInteraccion[interaccion.tipo ?? "otro"] ?? interaccion.tipo}
-                </p>
-                <p className="text-gray-900">{interaccion.nota}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mb-4 text-sm text-gray-400">Sin interacciones registradas todavía.</p>
-        )}
-
-        <NuevaInteraccionForm contactoId={contacto.id} />
-      </div>
-
-      {crmModo === "leads" && (
+  if (crmModo !== "leads") {
+    return (
+      <div className="max-w-3xl space-y-6">
+        {banners}
+        {encabezado}
+        {datosCliente}
         <div className="rounded-xl border border-gray-200 p-4">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
-          {historial && historial.length > 0 ? (
-            <ul className="divide-y divide-gray-200">
-              {historial.map((item) => {
-                const nombreQuien = (item.perfiles as unknown as { nombre: string | null } | null)
-                  ?.nombre;
-                return (
-                  <li key={item.id} className="py-2 text-sm">
-                    <p className="text-gray-500">
-                      {new Date(item.created_at).toLocaleString("es-CO", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                      {nombreQuien ? ` · ${nombreQuien}` : ""}
-                    </p>
-                    <p className="text-gray-900">
-                      <span className="font-medium">{item.campo}:</span>{" "}
-                      {item.valor_anterior ? `${item.valor_anterior} → ` : ""}
-                      {item.valor_nuevo ?? "(vacío)"}
-                    </p>
-                  </li>
-                );
-              })}
+          <h2 className="mb-4 text-sm font-semibold text-gray-900">Interacciones</h2>
+          {interacciones && interacciones.length > 0 ? (
+            <ul className="mb-4 divide-y divide-gray-200">
+              {interacciones.map((interaccion) => (
+                <li key={interaccion.id} className="py-2 text-sm">
+                  <p className="text-gray-500">
+                    {new Date(interaccion.fecha).toLocaleDateString("es-CO")} ·{" "}
+                    {etiquetaTipoInteraccion[interaccion.tipo ?? "otro"] ?? interaccion.tipo}
+                  </p>
+                  <p className="text-gray-900">{interaccion.nota}</p>
+                </li>
+              ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-400">Sin cambios registrados todavía.</p>
+            <p className="mb-4 text-sm text-gray-400">Sin interacciones registradas todavía.</p>
           )}
+
+          <NuevaInteraccionForm contactoId={contacto.id} />
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl space-y-6">
+      {banners}
+      {encabezado}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">{datosCliente}</div>
+
+        <div className="space-y-6">
+          <SeguimientoCalendar
+            contactoId={contacto.id}
+            nombreContacto={contacto.nombre}
+            emailContacto={contacto.email}
+            conectado={googleConectado}
+            eventos={eventosCalendar}
+            rutaConexion={`/crm/${contacto.id}`}
+          />
+
+          <div className="rounded-xl border border-gray-200 p-4">
+            <h2 className="mb-4 text-sm font-semibold text-gray-900">Agregar interacción</h2>
+            <NuevaInteraccionForm contactoId={contacto.id} />
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4">
+            <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
+            {historial && historial.length > 0 ? (
+              <ul className="divide-y divide-gray-200">
+                {historial.map((item) => {
+                  const nombreQuien = (item.perfiles as unknown as { nombre: string | null } | null)
+                    ?.nombre;
+                  return (
+                    <li key={item.id} className="py-2 text-sm">
+                      <p className="text-gray-500">
+                        {new Date(item.created_at).toLocaleString("es-CO", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                        {nombreQuien ? ` · ${nombreQuien}` : ""}
+                      </p>
+                      <p className="text-gray-900">
+                        <span className="font-medium">{item.campo}:</span>{" "}
+                        {item.valor_anterior ? `${item.valor_anterior} → ` : ""}
+                        {item.valor_nuevo ?? "(vacío)"}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-400">Sin cambios registrados todavía.</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

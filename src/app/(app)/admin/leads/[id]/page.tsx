@@ -9,13 +9,6 @@ import { CamposAdicionales } from "./campos-adicionales";
 import { SeguimientoCalendar } from "./seguimiento";
 import { EliminarLead } from "./eliminar-lead";
 
-const etiquetaTipoInteraccion: Record<string, string> = {
-  llamada: "Llamada",
-  email: "Correo",
-  reunion: "Reunión",
-  otro: "Otro",
-};
-
 export default async function FichaLeadPage({
   params,
   searchParams,
@@ -81,12 +74,6 @@ export default async function FichaLeadPage({
     ...(camposDefinidos ?? []),
   ];
 
-  const { data: interacciones } = await supabase
-    .from("datum_crm_interacciones")
-    .select("*")
-    .eq("lead_id", id)
-    .order("fecha", { ascending: false });
-
   const { data: historial } = await supabase
     .from("datum_crm_historial_lead")
     .select("id, campo, valor_anterior, valor_nuevo, created_at, perfiles ( nombre )")
@@ -118,7 +105,7 @@ export default async function FichaLeadPage({
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-5xl space-y-6">
       <Link href="/admin/leads" className="text-sm text-gray-500 hover:text-gray-700">
         ← Volver a Leads
       </Link>
@@ -180,71 +167,65 @@ export default async function FichaLeadPage({
         </div>
       </div>
 
-      <CamposAdicionales
-        leadId={lead.id}
-        campos={todosLosCampos}
-        valores={
-          (lead.campos_etapa as Record<string, string | boolean | { nombre: string; url: string } | null>) ?? {}
-        }
-      />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          <CamposAdicionales
+            leadId={lead.id}
+            campos={todosLosCampos}
+            valores={
+              (lead.campos_etapa as Record<
+                string,
+                string | boolean | { nombre: string; url: string } | null
+              >) ?? {}
+            }
+          />
+        </div>
 
-      <SeguimientoCalendar
-        leadId={lead.id}
-        nombreLead={lead.nombre}
-        emailLead={lead.email}
-        conectado={googleConectado}
-        eventos={eventosCalendar}
-        rutaConexion={`/admin/leads/${lead.id}`}
-      />
+        <div className="space-y-6">
+          <SeguimientoCalendar
+            leadId={lead.id}
+            nombreLead={lead.nombre}
+            emailLead={lead.email}
+            conectado={googleConectado}
+            eventos={eventosCalendar}
+            rutaConexion={`/admin/leads/${lead.id}`}
+          />
 
-      <div className="rounded-xl border border-gray-200 p-4">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">Interacciones</h2>
-        {interacciones && interacciones.length > 0 ? (
-          <ul className="mb-4 divide-y divide-gray-200">
-            {interacciones.map((interaccion) => (
-              <li key={interaccion.id} className="py-2 text-sm">
-                <p className="text-gray-500">
-                  {new Date(interaccion.fecha).toLocaleDateString("es-CO")} ·{" "}
-                  {etiquetaTipoInteraccion[interaccion.tipo ?? "otro"] ?? interaccion.tipo}
-                </p>
-                <p className="text-gray-900">{interaccion.nota}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mb-4 text-sm text-gray-400">Sin interacciones registradas todavía.</p>
-        )}
+          <div className="rounded-xl border border-gray-200 p-4">
+            <h2 className="mb-4 text-sm font-semibold text-gray-900">Agregar interacción</h2>
+            <NuevaInteraccionForm leadId={lead.id} />
+          </div>
 
-        <NuevaInteraccionForm leadId={lead.id} />
-      </div>
-
-      <div className="rounded-xl border border-gray-200 p-4">
-        <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
-        {historial && historial.length > 0 ? (
-          <ul className="divide-y divide-gray-200">
-            {historial.map((item) => {
-              const nombreQuien = (item.perfiles as unknown as { nombre: string | null } | null)?.nombre;
-              return (
-                <li key={item.id} className="py-2 text-sm">
-                  <p className="text-gray-500">
-                    {new Date(item.created_at).toLocaleString("es-CO", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                    {nombreQuien ? ` · ${nombreQuien}` : ""}
-                  </p>
-                  <p className="text-gray-900">
-                    <span className="font-medium">{item.campo}:</span>{" "}
-                    {item.valor_anterior ? `${item.valor_anterior} → ` : ""}
-                    {item.valor_nuevo ?? "(vacío)"}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="text-sm text-gray-400">Sin cambios registrados todavía.</p>
-        )}
+          <div className="rounded-xl border border-gray-200 p-4">
+            <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
+            {historial && historial.length > 0 ? (
+              <ul className="divide-y divide-gray-200">
+                {historial.map((item) => {
+                  const nombreQuien = (item.perfiles as unknown as { nombre: string | null } | null)
+                    ?.nombre;
+                  return (
+                    <li key={item.id} className="py-2 text-sm">
+                      <p className="text-gray-500">
+                        {new Date(item.created_at).toLocaleString("es-CO", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                        {nombreQuien ? ` · ${nombreQuien}` : ""}
+                      </p>
+                      <p className="text-gray-900">
+                        <span className="font-medium">{item.campo}:</span>{" "}
+                        {item.valor_anterior ? `${item.valor_anterior} → ` : ""}
+                        {item.valor_nuevo ?? "(vacío)"}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-400">Sin cambios registrados todavía.</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

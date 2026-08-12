@@ -181,6 +181,30 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
           >
             Agregar lead
           </Link>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setSobrePapelera(true);
+            }}
+            onDragLeave={() => setSobrePapelera(false)}
+            onDrop={soltarEnPapelera}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+              arrastrandoId
+                ? sobrePapelera
+                  ? "border-red-500 bg-red-50 text-red-600"
+                  : "border-gray-400 bg-gray-50 text-gray-500"
+                : "border-transparent text-gray-300"
+            }`}
+            title="Arrastra un lead aquí para borrarlo"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -235,29 +259,6 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
               </div>
             );
           })}
-        </div>
-      )}
-
-      {arrastrandoId && (
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setSobrePapelera(true);
-          }}
-          onDragLeave={() => setSobrePapelera(false)}
-          onDrop={soltarEnPapelera}
-          className={`fixed bottom-6 right-6 z-40 flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed text-2xl shadow-lg transition-colors ${
-            sobrePapelera ? "border-red-500 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-400"
-          }`}
-          title="Soltar aquí para borrar"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12"
-            />
-          </svg>
         </div>
       )}
 

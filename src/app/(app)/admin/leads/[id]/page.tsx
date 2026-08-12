@@ -241,7 +241,7 @@ export default async function FichaLeadPage({
           <div className="rounded-xl border border-gray-200 p-4">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial</h2>
             {historial && historial.length > 0 ? (
-              <ul className="divide-y divide-gray-200">
+              <ul className="max-h-[32rem] divide-y divide-gray-200 overflow-y-auto pr-1">
                 {historial.map((item) => {
                   const nombreQuien = (item.perfiles as unknown as { nombre: string | null } | null)
                     ?.nombre;

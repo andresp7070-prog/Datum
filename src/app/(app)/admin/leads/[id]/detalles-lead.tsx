@@ -92,60 +92,66 @@ export function DetallesLead({
   }
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-gray-100 pt-3 text-xs">
-      <div className="flex items-center gap-1.5">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.8}
-          className="h-3.5 w-3.5 text-gray-400"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 3v18M17 7.5c0-1.93-2.24-3.5-5-3.5s-5 1.57-5 3.5 2.24 3.5 5 3.5 5 1.57 5 3.5-2.24 3.5-5 3.5-5-1.57-5-3.5"
+    <div className="rounded-xl border border-gray-200 p-4">
+      <h2 className="mb-4 text-sm font-semibold text-gray-900">Detalles del lead</h2>
+      <div className="space-y-3 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-400">Valor estimado</span>
+          <div className="flex items-center gap-1.5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              className="h-3.5 w-3.5 text-gray-400"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 3v18M17 7.5c0-1.93-2.24-3.5-5-3.5s-5 1.57-5 3.5 2.24 3.5 5 3.5 5 1.57 5 3.5-2.24 3.5-5 3.5-5-1.57-5-3.5"
+              />
+            </svg>
+            <input
+              value={valorTexto}
+              onChange={(e) => setValorTexto(e.target.value.replace(/[^\d]/g, ""))}
+              onBlur={guardarValor}
+              disabled={guardandoValor}
+              placeholder="Sin definir"
+              className="w-28 rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none disabled:opacity-50"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-400">Prioridad</span>
+          <PrioridadSelector valor={prioridad} onChange={cambiarPrioridad} deshabilitado={guardandoPrioridad} />
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-400">Fecha de lead</span>
+          <span className="text-gray-700">{new Date(fechaLead).toLocaleDateString("es-CO")}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-400">Módulos de interés</span>
+          <MultiSelector
+            opciones={serviciosDisponibles ?? MODULOS_DATUM}
+            seleccionados={modulosInteres}
+            onChange={cambiarModulos}
+            deshabilitado={guardandoModulos}
           />
-        </svg>
-        <input
-          value={valorTexto}
-          onChange={(e) => setValorTexto(e.target.value.replace(/[^\d]/g, ""))}
-          onBlur={guardarValor}
-          disabled={guardandoValor}
-          placeholder="Valor estimado"
-          className="w-28 rounded-lg border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none disabled:opacity-50"
-        />
-      </div>
+        </div>
 
-      <div className="flex items-center gap-1.5">
-        <span className="text-gray-400">Prioridad</span>
-        <PrioridadSelector valor={prioridad} onChange={cambiarPrioridad} deshabilitado={guardandoPrioridad} />
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <span className="text-gray-400">Fecha de lead</span>
-        <span className="text-gray-700">{new Date(fechaLead).toLocaleDateString("es-CO")}</span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <span className="text-gray-400">Módulos de interés</span>
-        <MultiSelector
-          opciones={serviciosDisponibles ?? MODULOS_DATUM}
-          seleccionados={modulosInteres}
-          onChange={cambiarModulos}
-          deshabilitado={guardandoModulos}
-        />
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <span className="text-gray-400">Responsable</span>
-        <ResponsableSelector
-          responsables={responsables}
-          nombreActual={responsableNombre}
-          guardando={guardandoResponsable}
-          onSeleccionar={cambiarResponsable}
-          onCrear={crearYAsignarResponsable}
-        />
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-400">Responsable</span>
+          <ResponsableSelector
+            responsables={responsables}
+            nombreActual={responsableNombre}
+            guardando={guardandoResponsable}
+            onSeleccionar={cambiarResponsable}
+            onCrear={crearYAsignarResponsable}
+          />
+        </div>
       </div>
     </div>
   );

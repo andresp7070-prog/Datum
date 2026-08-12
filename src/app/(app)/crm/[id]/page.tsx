@@ -235,7 +235,14 @@ export default async function FichaClientePage({
           {crmModo === "leads" && <EliminarContacto contactoId={contacto.id} />}
         </div>
       </div>
+    </div>
+  );
 
+  // Datos del cliente: perfil de compra, cupones, historial de compras y
+  // campos personalizados — lo mismo de siempre, solo que en modo 'leads'
+  // se acomoda en la columna izquierda en vez de quedar todo apilado.
+  const datosCliente = (
+    <>
       {crmModo === "leads" && (
         <DetallesLead
           contactoId={contacto.id}
@@ -250,14 +257,7 @@ export default async function FichaClientePage({
           responsables={responsables ?? []}
         />
       )}
-    </div>
-  );
 
-  // Datos del cliente: perfil de compra, cupones, historial de compras y
-  // campos personalizados — lo mismo de siempre, solo que en modo 'leads'
-  // se acomoda en la columna izquierda en vez de quedar todo apilado.
-  const datosCliente = (
-    <>
       {perfilCompra && (
         <div className="rounded-xl border border-gray-200 p-4">
           <h2 className="mb-4 text-sm font-semibold text-gray-900">Perfil de compra</h2>

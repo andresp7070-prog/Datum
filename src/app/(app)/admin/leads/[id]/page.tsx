@@ -194,25 +194,24 @@ export default async function FichaLeadPage({
             <EliminarLead leadId={lead.id} />
           </div>
         </div>
-
-        <DetallesLead
-          leadId={lead.id}
-          valorEstimado={lead.valor_estimado}
-          prioridad={lead.prioridad}
-          fechaLead={lead.created_at}
-          modulosInteres={lead.modulos_interes ?? []}
-          serviciosDisponibles={
-            serviciosDisponibles
-              ? serviciosDisponibles.map((item) => ({ value: item.id, label: item.nombre }))
-              : null
-          }
-          responsableNombre={(lead.responsable as unknown as { nombre: string } | null)?.nombre ?? null}
-          responsables={responsables ?? []}
-        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
+          <DetallesLead
+            leadId={lead.id}
+            valorEstimado={lead.valor_estimado}
+            prioridad={lead.prioridad}
+            fechaLead={lead.created_at}
+            modulosInteres={lead.modulos_interes ?? []}
+            serviciosDisponibles={
+              serviciosDisponibles
+                ? serviciosDisponibles.map((item) => ({ value: item.id, label: item.nombre }))
+                : null
+            }
+            responsableNombre={(lead.responsable as unknown as { nombre: string } | null)?.nombre ?? null}
+            responsables={responsables ?? []}
+          />
           <CamposAdicionales
             leadId={lead.id}
             campos={todosLosCampos}

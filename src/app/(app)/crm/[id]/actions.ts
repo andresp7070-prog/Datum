@@ -34,13 +34,14 @@ export async function cambiarEtapa(
     const { data: etapas } = await supabase.from("crm_etapas").select("id, nombre").in("id", idsEtapas);
     const nombreEtapa = (id: string | null) => etapas?.find((e) => e.id === id)?.nombre ?? null;
 
-    await supabase.from("crm_historial_contacto").insert({
+    const { error: errorHistorial } = await supabase.from("crm_historial_contacto").insert({
       contacto_id: contactoId,
       perfil_id: user?.id ?? null,
       campo: "Etapa",
       valor_anterior: nombreEtapa(contactoActual.etapa_id),
       valor_nuevo: nombreEtapa(etapaId),
     });
+    if (errorHistorial) return { error: errorHistorial.message };
   }
 
   return { error: null };

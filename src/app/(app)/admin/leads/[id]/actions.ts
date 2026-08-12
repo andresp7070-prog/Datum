@@ -57,7 +57,12 @@ export async function cambiarEtapaLead(
     });
   }
 
-  if (historial.length > 0) await supabase.from("datum_crm_historial_lead").insert(historial);
+  if (historial.length > 0) {
+    const { error: errorHistorial } = await supabase
+      .from("datum_crm_historial_lead")
+      .insert(historial);
+    if (errorHistorial) return { error: errorHistorial.message };
+  }
 
   return { error: null };
 }

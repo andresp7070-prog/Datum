@@ -22,11 +22,13 @@ export function CambiarEtapa({
   const [etapa, setEtapa] = useState(etapaActualId ?? "");
   const [guardando, setGuardando] = useState(false);
   const [etapaPendiente, setEtapaPendiente] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function aplicarCambio(valor: string, valorVenta?: number) {
     setEtapa(valor);
     setGuardando(true);
-    await cambiarEtapaLead(leadId, valor, valorVenta);
+    const resultado = await cambiarEtapaLead(leadId, valor, valorVenta);
+    setError(resultado.error);
     setGuardando(false);
     router.refresh();
   }
@@ -54,6 +56,7 @@ export function CambiarEtapa({
           </option>
         ))}
       </select>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
 
       {etapaPendiente && (
         <ValorVentaModal

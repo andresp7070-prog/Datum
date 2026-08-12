@@ -739,24 +739,6 @@ async function ContenidoInsights({
                 )}
               </div>
 
-              <div className="rounded-xl border-2 border-gray-200 p-4 md:col-span-3">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-xs font-medium text-gray-700">
-                    {mostrarPorAnio ? "Rendimiento por año" : "Rendimiento por mes"}
-                  </h3>
-                  {hayComparacion && <VariacionBadge actual={totalVentasActual} anterior={totalVentasAnterior} />}
-                </div>
-                {(mostrarPorAnio ? barrasRendimientoAnio : barrasRendimientoMes).length === 0 ? (
-                  <p className="text-sm text-gray-400">Aún no hay datos suficientes.</p>
-                ) : (
-                  <GraficoBarrasAgrupadas
-                    datos={mostrarPorAnio ? barrasRendimientoAnio : barrasRendimientoMes}
-                    leyendaA="Ventas"
-                    leyendaB="Utilidad"
-                  />
-                )}
-              </div>
-
               <div className="flex flex-col items-center justify-center rounded-xl border-2 border-gray-200 bg-gray-50 p-4 text-center">
                 <h3 className="text-xs font-medium text-gray-700">Ticket medio</h3>
                 <p className="mt-2 text-4xl font-semibold tabular-nums text-gray-900 sm:text-5xl">
@@ -784,6 +766,24 @@ async function ContenidoInsights({
                       formato="numero"
                     />
                   </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border-2 border-gray-200 p-4 md:col-span-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-xs font-medium text-gray-700">
+                    {mostrarPorAnio ? "Rendimiento por año" : "Rendimiento por mes"}
+                  </h3>
+                  {hayComparacion && <VariacionBadge actual={totalVentasActual} anterior={totalVentasAnterior} />}
+                </div>
+                {(mostrarPorAnio ? barrasRendimientoAnio : barrasRendimientoMes).length === 0 ? (
+                  <p className="text-sm text-gray-400">Aún no hay datos suficientes.</p>
+                ) : (
+                  <GraficoBarrasAgrupadas
+                    datos={mostrarPorAnio ? barrasRendimientoAnio : barrasRendimientoMes}
+                    leyendaA="Ventas"
+                    leyendaB="Utilidad"
+                  />
                 )}
               </div>
 

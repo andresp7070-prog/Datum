@@ -7,6 +7,7 @@ import { NuevaInteraccionForm } from "./nueva-interaccion-form";
 import { Estrellas } from "@/app/(app)/crm/estrellas";
 import { CamposAdicionales } from "./campos-adicionales";
 import { SeguimientoCalendar } from "./seguimiento";
+import { EliminarLead } from "./eliminar-lead";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -167,12 +168,15 @@ export default async function FichaLeadPage({
               )}
             </div>
           </div>
-          <CambiarEtapa
-            leadId={lead.id}
-            etapas={etapas ?? []}
-            etapaActualId={lead.etapa_id}
-            tieneValorVenta={lead.valor_venta != null}
-          />
+          <div className="flex flex-col items-end gap-2">
+            <CambiarEtapa
+              leadId={lead.id}
+              etapas={etapas ?? []}
+              etapaActualId={lead.etapa_id}
+              tieneValorVenta={lead.valor_venta != null}
+            />
+            <EliminarLead leadId={lead.id} />
+          </div>
         </div>
       </div>
 

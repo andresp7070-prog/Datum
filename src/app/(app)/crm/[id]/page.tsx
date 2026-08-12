@@ -6,6 +6,7 @@ import { NuevaInteraccionForm } from "./nueva-interaccion-form";
 import { Estrellas } from "../estrellas";
 import { CamposAdicionales } from "./campos-adicionales";
 import { SeguimientoCalendar } from "./seguimiento";
+import { EliminarContacto } from "./eliminar-contacto";
 
 const etiquetaTipoInteraccion: Record<string, string> = {
   llamada: "Llamada",
@@ -200,7 +201,10 @@ export default async function FichaClientePage({
               )}
             </div>
           </div>
-          <CambiarEtapa contactoId={contacto.id} etapas={etapas ?? []} etapaActualId={contacto.etapa_id} />
+          <div className="flex flex-col items-end gap-2">
+            <CambiarEtapa contactoId={contacto.id} etapas={etapas ?? []} etapaActualId={contacto.etapa_id} />
+            <EliminarContacto contactoId={contacto.id} />
+          </div>
         </div>
       </div>
 

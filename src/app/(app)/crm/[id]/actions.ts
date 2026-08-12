@@ -139,6 +139,15 @@ export async function agendarSeguimiento(input: {
   });
 
   if (error) return { error: error.message };
+
+  await supabase.from("crm_historial_contacto").insert({
+    contacto_id: input.contactoId,
+    perfil_id: user.id,
+    campo: "Seguimiento",
+    valor_anterior: null,
+    valor_nuevo: `${input.titulo.trim()} — ${inicio.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}`,
+  });
+
   return { error: null };
 }
 
@@ -151,7 +160,7 @@ export async function cancelarSeguimiento(eventoId: string): Promise<{ error: st
 
   const { data: evento } = await supabase
     .from("crm_eventos_calendar")
-    .select("google_event_id")
+    .select("contacto_id, google_event_id, titulo, fecha")
     .eq("id", eventoId)
     .single();
 
@@ -162,6 +171,17 @@ export async function cancelarSeguimiento(eventoId: string): Promise<{ error: st
 
   const { error } = await supabase.from("crm_eventos_calendar").delete().eq("id", eventoId);
   if (error) return { error: error.message };
+
+  if (evento) {
+    await supabase.from("crm_historial_contacto").insert({
+      contacto_id: evento.contacto_id,
+      perfil_id: user.id,
+      campo: "Seguimiento",
+      valor_anterior: `${evento.titulo} — ${new Date(evento.fecha).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}`,
+      valor_nuevo: "Cancelado",
+    });
+  }
+
   return { error: null };
 }
 
@@ -172,6 +192,10 @@ export async function agregarInteraccion(input: {
   nota: string;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { error } = await supabase.from("crm_interacciones").insert({
     contacto_id: input.contactoId,
     fecha: input.fecha,
@@ -179,6 +203,55 @@ export async function agregarInteraccion(input: {
     nota: input.nota,
   });
 
+  if (error) return { error: error.message };
+
+  await supabase.from("crm_historial_contacto").insert({
+    contacto_id: input.contactoId,
+    perfil_id: user?.id ?? null,
+    campo: "Interacción",
+    valor_anterior: null,
+    valor_nuevo: `${input.tipo}: ${input.nota}`,
+  });
+
+  return { error: null };
+}
+
+// Nunca se puede borrar un contacto que ya tiene ventas, apartados,
+// devoluciones o cupones reales — perder ese historial financiero sería
+// mucho peor que no poder borrar un contacto. Solo se puede borrar un
+// contacto que sigue siendo, de verdad, un lead sin convertir.
+export async function borrarContacto(contactoId: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+
+  const [{ count: ventas }, { count: apartados }, { count: devoluciones }, { count: cupones }] =
+    await Promise.all([
+      supabase.from("ventas").select("id", { count: "exact", head: true }).eq("contacto_id", contactoId),
+      supabase.from("apartados").select("id", { count: "exact", head: true }).eq("contacto_id", contactoId),
+      supabase.from("devoluciones").select("id", { count: "exact", head: true }).eq("contacto_id", contactoId),
+      supabase.from("cupones").select("id", { count: "exact", head: true }).eq("contacto_id", contactoId),
+    ]);
+
+  if ((ventas ?? 0) > 0 || (apartados ?? 0) > 0 || (devoluciones ?? 0) > 0 || (cupones ?? 0) > 0) {
+    return {
+      error:
+        "No puedes borrar este cliente: ya tiene ventas, apartados, devoluciones o cupones registrados.",
+    };
+  }
+
+  const { data: eventos } = await supabase
+    .from("crm_eventos_calendar")
+    .select("google_event_id, perfil_id")
+    .eq("contacto_id", contactoId);
+
+  for (const evento of eventos ?? []) {
+    await eliminarEventoCalendar(evento.perfil_id, evento.google_event_id);
+  }
+
+  await supabase.from("crm_eventos_calendar").delete().eq("contacto_id", contactoId);
+  await supabase.from("crm_interacciones").delete().eq("contacto_id", contactoId);
+  await supabase.from("crm_historial_contacto").delete().eq("contacto_id", contactoId);
+
+  const { error } = await supabase.from("crm_contactos").delete().eq("id", contactoId);
   if (error) return { error: error.message };
   return { error: null };
 }

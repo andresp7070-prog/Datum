@@ -5,8 +5,9 @@ import Link from "next/link";
 import { sinTildes } from "@/lib/texto";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { Estrellas } from "@/app/(app)/crm/estrellas";
-import { cambiarEtapaLead } from "./[id]/actions";
+import { cambiarEtapaLead, borrarLead } from "./[id]/actions";
 import { ValorVentaModal } from "./valor-venta-modal";
+import { BorrarLeadModal } from "./borrar-lead-modal";
 
 type Lead = {
   id: string;
@@ -65,6 +66,11 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
   const [dropPendiente, setDropPendiente] = useState<{ leadId: string; etapaId: string } | null>(
     null,
   );
+  const [sobrePapelera, setSobrePapelera] = useState(false);
+  const [leadPendienteBorrar, setLeadPendienteBorrar] = useState<{ id: string; nombre: string } | null>(
+    null,
+  );
+  const [borrando, setBorrando] = useState(false);
 
   const q = sinTildes(busqueda.trim());
   const filtrados = leads.filter((lead) => {
@@ -117,6 +123,29 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
     }
 
     await aplicarCambioEtapa(leadId, etapaId);
+  }
+
+  function soltarEnPapelera() {
+    setSobrePapelera(false);
+    if (!arrastrandoId) return;
+    const lead = leads.find((l) => l.id === arrastrandoId);
+    setArrastrandoId(null);
+    if (!lead) return;
+    setLeadPendienteBorrar({ id: lead.id, nombre: lead.nombre });
+  }
+
+  async function confirmarBorrado() {
+    if (!leadPendienteBorrar) return;
+    setBorrando(true);
+    const resultado = await borrarLead(leadPendienteBorrar.id);
+    setBorrando(false);
+    if (resultado.error) {
+      setError(resultado.error);
+      setLeadPendienteBorrar(null);
+      return;
+    }
+    setLeads((prev) => prev.filter((l) => l.id !== leadPendienteBorrar.id));
+    setLeadPendienteBorrar(null);
   }
 
   return (
@@ -207,6 +236,38 @@ export function DirectorioLeads({ leads: leadsIniciales, etapas }: { leads: Lead
             );
           })}
         </div>
+      )}
+
+      {arrastrandoId && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setSobrePapelera(true);
+          }}
+          onDragLeave={() => setSobrePapelera(false)}
+          onDrop={soltarEnPapelera}
+          className={`fixed bottom-6 right-6 z-40 flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed text-2xl shadow-lg transition-colors ${
+            sobrePapelera ? "border-red-500 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-400"
+          }`}
+          title="Soltar aquí para borrar"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12"
+            />
+          </svg>
+        </div>
+      )}
+
+      {leadPendienteBorrar && (
+        <BorrarLeadModal
+          nombreLead={leadPendienteBorrar.nombre}
+          borrando={borrando}
+          onConfirm={confirmarBorrado}
+          onCancel={() => setLeadPendienteBorrar(null)}
+        />
       )}
 
       {dropPendiente && (

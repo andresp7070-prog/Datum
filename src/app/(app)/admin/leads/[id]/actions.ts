@@ -158,6 +158,15 @@ export async function agendarSeguimientoLead(input: {
   });
 
   if (error) return { error: error.message };
+
+  await supabase.from("datum_crm_historial_lead").insert({
+    lead_id: input.leadId,
+    perfil_id: user.id,
+    campo: "Seguimiento",
+    valor_anterior: null,
+    valor_nuevo: `${input.titulo.trim()} — ${inicio.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}`,
+  });
+
   return { error: null };
 }
 
@@ -171,7 +180,7 @@ export async function cancelarSeguimientoLead(eventoId: string): Promise<{ error
 
   const { data: evento } = await supabase
     .from("datum_crm_eventos_calendar")
-    .select("google_event_id")
+    .select("lead_id, google_event_id, titulo, fecha")
     .eq("id", eventoId)
     .single();
 
@@ -182,6 +191,17 @@ export async function cancelarSeguimientoLead(eventoId: string): Promise<{ error
 
   const { error } = await supabase.from("datum_crm_eventos_calendar").delete().eq("id", eventoId);
   if (error) return { error: error.message };
+
+  if (evento) {
+    await supabase.from("datum_crm_historial_lead").insert({
+      lead_id: evento.lead_id,
+      perfil_id: user.id,
+      campo: "Seguimiento",
+      valor_anterior: `${evento.titulo} — ${new Date(evento.fecha).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}`,
+      valor_nuevo: "Cancelado",
+    });
+  }
+
   return { error: null };
 }
 
@@ -193,6 +213,10 @@ export async function agregarInteraccionLead(input: {
 }): Promise<{ error: string | null }> {
   await requerirAdmin();
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { error } = await supabase.from("datum_crm_interacciones").insert({
     lead_id: input.leadId,
     fecha: input.fecha,
@@ -200,6 +224,41 @@ export async function agregarInteraccionLead(input: {
     nota: input.nota,
   });
 
+  if (error) return { error: error.message };
+
+  await supabase.from("datum_crm_historial_lead").insert({
+    lead_id: input.leadId,
+    perfil_id: user?.id ?? null,
+    campo: "Interacción",
+    valor_anterior: null,
+    valor_nuevo: `${input.tipo}: ${input.nota}`,
+  });
+
+  return { error: null };
+}
+
+// datum_leads no tiene ninguna tabla financiera enlazada (a diferencia de
+// crm_contactos con ventas/apartados/devoluciones/cupones) — Datum no le
+// vende inventario a sus propios leads, así que borrar uno siempre es
+// seguro. Solo hay que limpiar sus tablas hijas primero.
+export async function borrarLead(leadId: string): Promise<{ error: string | null }> {
+  await requerirAdmin();
+  const supabase = await createClient();
+
+  const { data: eventos } = await supabase
+    .from("datum_crm_eventos_calendar")
+    .select("google_event_id, perfil_id")
+    .eq("lead_id", leadId);
+
+  for (const evento of eventos ?? []) {
+    await eliminarEventoCalendar(evento.perfil_id, evento.google_event_id);
+  }
+
+  await supabase.from("datum_crm_eventos_calendar").delete().eq("lead_id", leadId);
+  await supabase.from("datum_crm_interacciones").delete().eq("lead_id", leadId);
+  await supabase.from("datum_crm_historial_lead").delete().eq("lead_id", leadId);
+
+  const { error } = await supabase.from("datum_leads").delete().eq("id", leadId);
   if (error) return { error: error.message };
   return { error: null };
 }

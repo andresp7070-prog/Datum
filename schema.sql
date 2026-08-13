@@ -3696,3 +3696,75 @@ stable
 as $$
   select pg_database_size(current_database());
 $$;
+
+-- ============================================================
+-- ÍNDICES — agregado 2026-08-13, sin esto la app se sentía lenta en
+-- general. Cada política de Row Level Security compara empresa_id contra
+-- mi_empresa_id() en CADA consulta; sin un índice ahí, Postgres tenía que
+-- recorrer la tabla completa fila por fila cada vez, en cada pantalla, y
+-- empeora solo a medida que entran más datos. `if not exists` porque esto
+-- se corre sobre una base de datos que ya existe, no desde cero.
+--
+-- Cambio puramente aditivo: no toca datos ni cambia ningún comportamiento,
+-- solo le da a Postgres un atajo para buscar. No incluye búsqueda de texto
+-- (buscar_clientes() usa ilike '%...%', que un índice normal no acelera —
+-- si el buscador de clientes se siente lento más adelante, ahí sí hace
+-- falta un índice de trigramas aparte, no antes de que sea un problema real).
+-- ============================================================
+
+-- empresa_id — la columna que revisa Row Level Security en cada consulta.
+-- Ventas, movimientos financieros y nómina se filtran casi siempre por
+-- empresa Y por fecha juntos, así que ahí el índice va compuesto en vez de
+-- solo en empresa_id (puntos_venta, crm_etapas e inventario_items ya
+-- quedan cubiertos por un unique existente que empieza en empresa_id, así
+-- que no hace falta repetirlo).
+create index if not exists ventas_empresa_fecha_idx on ventas (empresa_id, fecha);
+create index if not exists finanzas_movimientos_empresa_fecha_idx on finanzas_movimientos (empresa_id, fecha);
+create index if not exists nomina_periodos_empresa_fecha_pago_idx on nomina_periodos (empresa_id, fecha_pago);
+
+create index if not exists perfiles_empresa_id_idx on perfiles (empresa_id);
+create index if not exists diagnosticos_empresa_id_idx on diagnosticos (empresa_id);
+create index if not exists suscripciones_empresa_id_idx on suscripciones (empresa_id);
+create index if not exists crm_responsables_empresa_id_idx on crm_responsables (empresa_id);
+create index if not exists crm_contactos_empresa_id_idx on crm_contactos (empresa_id);
+create index if not exists crm_campos_generales_empresa_id_idx on crm_campos_generales (empresa_id);
+create index if not exists proveedores_empresa_id_idx on proveedores (empresa_id);
+create index if not exists apartados_empresa_id_idx on apartados (empresa_id);
+create index if not exists pasivos_empresa_id_idx on pasivos (empresa_id);
+create index if not exists promociones_empresa_id_idx on promociones (empresa_id);
+create index if not exists devoluciones_empresa_id_idx on devoluciones (empresa_id);
+create index if not exists cupones_empresa_id_idx on cupones (empresa_id);
+create index if not exists empleados_empresa_id_idx on empleados (empresa_id);
+create index if not exists insights_resumen_ia_empresa_id_idx on insights_resumen_ia (empresa_id);
+
+-- Llaves foráneas que se consultan constantemente (el detalle de una venta,
+-- el historial de compras/interacciones de un cliente, etc.) — sin índice,
+-- cada join o "traer todo lo de este padre" también recorre la tabla entera.
+create index if not exists ventas_contacto_id_idx on ventas (contacto_id);
+create index if not exists ventas_items_venta_id_idx on ventas_items (venta_id);
+create index if not exists ventas_items_item_id_idx on ventas_items (item_id);
+create index if not exists crm_interacciones_contacto_id_idx on crm_interacciones (contacto_id);
+create index if not exists crm_etapa_campos_etapa_id_idx on crm_etapa_campos (etapa_id);
+create index if not exists inventario_movimientos_item_id_idx on inventario_movimientos (item_id);
+create index if not exists inventario_lotes_item_id_idx on inventario_lotes (item_id);
+create index if not exists apartados_contacto_id_idx on apartados (contacto_id);
+create index if not exists apartados_items_apartado_id_idx on apartados_items (apartado_id);
+create index if not exists apartados_abonos_apartado_id_idx on apartados_abonos (apartado_id);
+create index if not exists finanzas_movimientos_pasivo_id_idx on finanzas_movimientos (pasivo_id);
+create index if not exists promocion_items_promocion_id_idx on promocion_items (promocion_id);
+create index if not exists devoluciones_venta_id_idx on devoluciones (venta_id);
+create index if not exists devoluciones_contacto_id_idx on devoluciones (contacto_id);
+create index if not exists devoluciones_items_devolucion_id_idx on devoluciones_items (devolucion_id);
+create index if not exists cupones_contacto_id_idx on cupones (contacto_id);
+create index if not exists nomina_detalles_empleado_id_idx on nomina_detalles (empleado_id);
+create index if not exists nomina_vacaciones_empleado_id_idx on nomina_vacaciones (empleado_id);
+create index if not exists crm_eventos_calendar_contacto_id_idx on crm_eventos_calendar (contacto_id);
+create index if not exists crm_historial_contacto_contacto_id_idx on crm_historial_contacto (contacto_id);
+
+-- Mismo criterio, del lado del CRM propio de Datum (datum_leads y compañía).
+create index if not exists datum_leads_etapa_id_idx on datum_leads (etapa_id);
+create index if not exists datum_crm_interacciones_lead_id_idx on datum_crm_interacciones (lead_id);
+create index if not exists datum_crm_etapa_campos_etapa_id_idx on datum_crm_etapa_campos (etapa_id);
+create index if not exists datum_crm_eventos_calendar_lead_id_idx on datum_crm_eventos_calendar (lead_id);
+create index if not exists datum_crm_historial_lead_lead_id_idx on datum_crm_historial_lead (lead_id);
+create index if not exists datum_movimientos_pasivo_id_idx on datum_movimientos (pasivo_id);

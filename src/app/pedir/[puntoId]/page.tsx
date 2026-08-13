@@ -22,19 +22,14 @@ export default async function KioskoPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: perfil } = await supabase
-    .from("perfiles")
-    .select("empresa_id")
-    .eq("id", user.id)
-    .single();
+  // Ninguna depende de la otra — una necesita el usuario, la otra el id de
+  // la ruta.
+  const [{ data: perfil }, { data: punto }] = await Promise.all([
+    supabase.from("perfiles").select("empresa_id").eq("id", user.id).single(),
+    supabase.from("puntos_venta").select("id, nombre, empresa_id").eq("id", puntoId).single(),
+  ]);
 
   if (!perfil?.empresa_id) redirect("/resumen");
-
-  const { data: punto } = await supabase
-    .from("puntos_venta")
-    .select("id, nombre, empresa_id")
-    .eq("id", puntoId)
-    .single();
 
   // El punto tiene que pertenecer a la misma empresa del usuario logueado —
   // si no, cualquiera con sesión en otra empresa podría pedir a nombre de

@@ -27,22 +27,24 @@ export default async function PeriodoNominaPage({ params }: { params: Promise<{ 
     );
   }
 
-  const { data: periodo } = await supabase
-    .from("nomina_periodos")
-    .select("id, fecha_inicio, fecha_fin, fecha_pago, estado")
-    .eq("id", id)
-    .eq("empresa_id", perfil.empresa_id)
-    .single();
+  // Ninguna depende de la otra — ambas solo necesitan el id de la ruta.
+  const [{ data: periodo }, { data: detallesData }] = await Promise.all([
+    supabase
+      .from("nomina_periodos")
+      .select("id, fecha_inicio, fecha_fin, fecha_pago, estado")
+      .eq("id", id)
+      .eq("empresa_id", perfil.empresa_id)
+      .single(),
+    supabase
+      .from("nomina_detalles")
+      .select(
+        "id, salario_base, auxilio_transporte, deduccion_salud, deduccion_pension, total_devengado, total_deducido, neto_pagado, total_aportes_patronales, provision_cesantias, provision_intereses_cesantias, provision_prima, provision_vacaciones, empleados ( nombre, cargo )",
+      )
+      .eq("periodo_id", id)
+      .order("id"),
+  ]);
 
   if (!periodo) notFound();
-
-  const { data: detallesData } = await supabase
-    .from("nomina_detalles")
-    .select(
-      "id, salario_base, auxilio_transporte, deduccion_salud, deduccion_pension, total_devengado, total_deducido, neto_pagado, total_aportes_patronales, provision_cesantias, provision_intereses_cesantias, provision_prima, provision_vacaciones, empleados ( nombre, cargo )",
-    )
-    .eq("periodo_id", id)
-    .order("id");
 
   type DetalleRaw = {
     id: string;

@@ -65,24 +65,26 @@ export default async function DevolucionesPage() {
     );
   }
 
-  const { data } = await supabase
-    .from("devoluciones")
-    .select(
-      "id, tipo, motivo, fecha, estado, resolucion, monto_reembolso, contacto_id, ventas ( numero_venta, cliente_nombre ), devoluciones_items ( id, cantidad, estado_producto, nombre_libre, inventario_items ( nombre ) )",
-    )
-    .eq("empresa_id", perfil.empresa_id)
-    .order("fecha", { ascending: false });
+  // Ninguna depende de la otra — ambas solo necesitan empresa_id.
+  const [{ data }, { data: catalogo }] = await Promise.all([
+    supabase
+      .from("devoluciones")
+      .select(
+        "id, tipo, motivo, fecha, estado, resolucion, monto_reembolso, contacto_id, ventas ( numero_venta, cliente_nombre ), devoluciones_items ( id, cantidad, estado_producto, nombre_libre, inventario_items ( nombre ) )",
+      )
+      .eq("empresa_id", perfil.empresa_id)
+      .order("fecha", { ascending: false }),
+    supabase
+      .from("inventario_items")
+      .select("id, nombre, cantidad, precio_venta")
+      .eq("empresa_id", perfil.empresa_id)
+      .eq("tipo", "producto")
+      .order("nombre"),
+  ]);
 
   const devoluciones = ((data ?? []) as unknown as Devolucion[]).sort(
     (a, b) => ordenEstado[a.estado] - ordenEstado[b.estado],
   );
-
-  const { data: catalogo } = await supabase
-    .from("inventario_items")
-    .select("id, nombre, cantidad, precio_venta")
-    .eq("empresa_id", perfil.empresa_id)
-    .eq("tipo", "producto")
-    .order("nombre");
 
   function formatoMoneda(valor: number) {
     return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });

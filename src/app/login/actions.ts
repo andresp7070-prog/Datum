@@ -16,5 +16,12 @@ export async function login(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(mensajeErrorAuth(error))}`);
   }
 
+  // Una cuenta de usuario es de una sola persona a la vez — cualquier login
+  // nuevo cierra cualquier otra sesión abierta de este mismo usuario, en
+  // cualquier otro dispositivo. scope: "others" es parte del propio
+  // Supabase Auth (no una función exclusiva de la plataforma): revoca los
+  // demás refresh tokens de este usuario sin tocar la sesión recién creada.
+  await supabase.auth.signOut({ scope: "others" });
+
   redirect("/");
 }

@@ -335,15 +335,21 @@ async function ContenidoInsights({
   const tieneNomina = modulosActivos.includes("nomina");
   const sinModulosParaGraficas = !tieneVentas && !tieneInventario && !tieneCrmVentas && !tieneNomina;
 
-  // Horario real del negocio — para no mostrar comparaciones ni horas que no
+  // Ninguna de las tres depende de las otras — todas solo necesitan
+  // empresaId, así que salen juntas en vez de una detrás de otra.
+  // Horario real del negocio: para no mostrar comparaciones ni horas que no
   // le aplican (festivos si nunca abre esos días, horas fuera de atención).
   // Sin configurar (null / true por defecto), el comportamiento es
-  // exactamente el de siempre: se asume que aplica todo.
-  const { data: empresaHorario } = await supabase
-    .from("empresas")
-    .select("hora_apertura, hora_cierre, atiende_festivos")
-    .eq("id", empresaId)
-    .single();
+  // exactamente el de siempre: se asume que aplica todo. El punto de venta
+  // se elige desde el selector de la barra lateral (una sola vez para toda
+  // la sesión), no con un filtro propio de esta página — así queda
+  // consistente con Ventas, Inventario y P y G.
+  const [{ data: empresaHorario }, { puntoSeleccionado: puntoVentaFiltro }, { data: productosData }] =
+    await Promise.all([
+      supabase.from("empresas").select("hora_apertura, hora_cierre, atiende_festivos").eq("id", empresaId).single(),
+      obtenerContextoPunto(supabase, empresaId, perfil.punto_venta_id),
+      supabase.from("inventario_items").select("id, nombre").eq("empresa_id", empresaId).order("nombre"),
+    ]);
 
   const horaApertura = empresaHorario?.hora_apertura
     ? Number(empresaHorario.hora_apertura.slice(0, 2))
@@ -352,21 +358,6 @@ async function ContenidoInsights({
     ? Number(empresaHorario.hora_cierre.slice(0, 2))
     : null;
   const atiendeFestivos = empresaHorario?.atiende_festivos ?? true;
-
-  // El punto de venta se elige desde el selector de la barra lateral (una
-  // sola vez para toda la sesión), no con un filtro propio de esta página —
-  // así queda consistente con Ventas, Inventario y P y G.
-  const { puntoSeleccionado: puntoVentaFiltro } = await obtenerContextoPunto(
-    supabase,
-    empresaId,
-    perfil.punto_venta_id,
-  );
-
-  const { data: productosData } = await supabase
-    .from("inventario_items")
-    .select("id, nombre")
-    .eq("empresa_id", empresaId)
-    .order("nombre");
 
   const productos = (productosData ?? []) as { id: string; nombre: string }[];
 

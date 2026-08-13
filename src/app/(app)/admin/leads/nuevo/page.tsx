@@ -7,17 +7,11 @@ export default async function NuevoLeadPage() {
 
   const supabase = await createClient();
 
-  const { data: camposGenerales } = await supabase
-    .from("datum_crm_campos_generales")
-    .select("id, nombre, tipo, opciones")
-    .order("orden");
-
-  const { data: primeraEtapa } = await supabase
-    .from("datum_crm_etapas")
-    .select("id")
-    .order("orden")
-    .limit(1)
-    .maybeSingle();
+  // Ninguna depende de la otra.
+  const [{ data: camposGenerales }, { data: primeraEtapa }] = await Promise.all([
+    supabase.from("datum_crm_campos_generales").select("id, nombre, tipo, opciones").order("orden"),
+    supabase.from("datum_crm_etapas").select("id").order("orden").limit(1).maybeSingle(),
+  ]);
 
   const { data: camposPrimeraEtapa } = primeraEtapa
     ? await supabase

@@ -58,25 +58,26 @@ export default async function PromocionDetallePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data } = await supabase
-    .from("promociones")
-    .select(
-      "id, nombre, codigo, tipo_promocion, valor, fecha_inicio, fecha_fin, activo, aplica_a_categoria, productos:promocion_items ( item:inventario_items ( nombre ) ), regalo:inventario_items!promociones_item_regalo_id_fkey ( nombre )",
-    )
-    .eq("id", id)
-    .single();
+  // Ninguna depende de la otra — ambas solo necesitan el id de la ruta.
+  const [{ data }, { data: efectividadData }] = await Promise.all([
+    supabase
+      .from("promociones")
+      .select(
+        "id, nombre, codigo, tipo_promocion, valor, fecha_inicio, fecha_fin, activo, aplica_a_categoria, productos:promocion_items ( item:inventario_items ( nombre ) ), regalo:inventario_items!promociones_item_regalo_id_fkey ( nombre )",
+      )
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("vista_efectividad_promociones")
+      .select(
+        "ventas_con_este_descuento, ingresos_de_esas_ventas, ticket_promedio, unidades_con_descuento, descuento_total_otorgado, ventas_totales_del_periodo",
+      )
+      .eq("promocion_id", id)
+      .single(),
+  ]);
 
   if (!data) notFound();
   const promocion = data as unknown as Promocion;
-
-  const { data: efectividadData } = await supabase
-    .from("vista_efectividad_promociones")
-    .select(
-      "ventas_con_este_descuento, ingresos_de_esas_ventas, ticket_promedio, unidades_con_descuento, descuento_total_otorgado, ventas_totales_del_periodo",
-    )
-    .eq("promocion_id", id)
-    .single();
-
   const efectividad = efectividadData as Efectividad | null;
   const estado = estadoPromocion(promocion);
 

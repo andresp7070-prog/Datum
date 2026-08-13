@@ -25,17 +25,11 @@ export default async function FotosInventarioPage() {
     );
   }
 
-  const { puntosVenta, puntoSeleccionado } = await obtenerContextoPunto(
-    supabase,
-    perfil.empresa_id,
-    perfil.punto_venta_id,
-  );
-
-  const { data: items } = await supabase
-    .from("inventario_items")
-    .select("id, nombre, punto_venta_id, foto_path")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("nombre");
+  // Ninguna depende de la otra — ambas solo necesitan perfil.
+  const [{ puntosVenta, puntoSeleccionado }, { data: items }] = await Promise.all([
+    obtenerContextoPunto(supabase, perfil.empresa_id, perfil.punto_venta_id),
+    supabase.from("inventario_items").select("id, nombre, punto_venta_id, foto_path").eq("empresa_id", perfil.empresa_id).order("nombre"),
+  ]);
 
   return (
     <div>

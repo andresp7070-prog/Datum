@@ -6,10 +6,14 @@ export default async function EtapasLeadsDatumPage() {
   await requerirAdmin();
   const supabase = await createClient();
 
-  const { data: etapas } = await supabase
-    .from("datum_crm_etapas")
-    .select("id, nombre, orden, es_cierre, dias_inactividad, etapa_destino_inactividad_id")
-    .order("orden");
+  // camposGenerales no depende de etapas — sale al mismo tiempo.
+  const [{ data: etapas }, { data: camposGenerales }] = await Promise.all([
+    supabase
+      .from("datum_crm_etapas")
+      .select("id, nombre, orden, es_cierre, dias_inactividad, etapa_destino_inactividad_id")
+      .order("orden"),
+    supabase.from("datum_crm_campos_generales").select("id, nombre, tipo, opciones, requerido").order("orden"),
+  ]);
 
   const etapaIds = (etapas ?? []).map((e) => e.id);
 
@@ -21,11 +25,6 @@ export default async function EtapasLeadsDatumPage() {
           .in("etapa_id", etapaIds)
           .order("orden")
       : { data: [] };
-
-  const { data: camposGenerales } = await supabase
-    .from("datum_crm_campos_generales")
-    .select("id, nombre, tipo, opciones, requerido")
-    .order("orden");
 
   return (
     <EtapasForm etapas={etapas ?? []} campos={campos ?? []} camposGenerales={camposGenerales ?? []} />

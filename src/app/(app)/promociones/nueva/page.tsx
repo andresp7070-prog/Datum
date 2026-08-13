@@ -24,17 +24,11 @@ export default async function NuevaPromocionPage() {
     );
   }
 
-  const { data: items } = await supabase
-    .from("inventario_items")
-    .select("id, nombre, categoria, punto_venta_id")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("nombre");
-
-  const { puntosVenta, puntoSeleccionado } = await obtenerContextoPunto(
-    supabase,
-    perfil.empresa_id,
-    null,
-  );
+  // Ninguna depende de la otra — ambas solo necesitan empresa_id.
+  const [{ data: items }, { puntosVenta, puntoSeleccionado }] = await Promise.all([
+    supabase.from("inventario_items").select("id, nombre, categoria, punto_venta_id").eq("empresa_id", perfil.empresa_id).order("nombre"),
+    obtenerContextoPunto(supabase, perfil.empresa_id, null),
+  ]);
 
   return (
     <NuevaPromocionForm

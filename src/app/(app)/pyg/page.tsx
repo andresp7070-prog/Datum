@@ -122,7 +122,17 @@ export default async function PygPage({
 
   if (puntoSeleccionado) finanzasQuery = finanzasQuery.eq("punto_venta_id", puntoSeleccionado);
 
-  const [{ data: itemsData }, { data: finanzasData }] = await Promise.all([itemsQuery, finanzasQuery]);
+  // pasivosData no depende del rango de fechas ni del punto — sale con las
+  // otras dos.
+  const [{ data: itemsData }, { data: finanzasData }, { data: pasivosData }] = await Promise.all([
+    itemsQuery,
+    finanzasQuery,
+    supabase
+      .from("pasivos")
+      .select("id, descripcion, tipo, monto_total, monto_pagado, fecha_vencimiento, estado")
+      .eq("empresa_id", perfil.empresa_id)
+      .order("fecha_vencimiento", { ascending: true, nullsFirst: false }),
+  ]);
 
   let ingresos_por_ventas = 0;
   let costo_de_ventas = 0;
@@ -161,12 +171,6 @@ export default async function PygPage({
     gastos_operacionales,
     utilidad_neta: utilidad_bruta + otros_ingresos - gastos_operacionales,
   };
-
-  const { data: pasivosData } = await supabase
-    .from("pasivos")
-    .select("id, descripcion, tipo, monto_total, monto_pagado, fecha_vencimiento, estado")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
 
   const pasivos = (pasivosData ?? []) as Pasivo[];
   const totalPendiente = pasivos

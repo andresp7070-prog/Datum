@@ -34,11 +34,45 @@ export default async function FichaClientePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: perfil } = await supabase
-    .from("perfiles")
-    .select("empresa_id, empresas ( crm_modo, modulos_activos )")
-    .eq("id", user.id)
-    .single();
+  // Primera tanda: nada de esto depende de nada más que el usuario o el id
+  // de la ruta, así que salen todas al mismo tiempo en vez de una detrás de
+  // otra — antes eran 7 viajes seguidos a la base de datos, ahora es 1.
+  const [
+    { data: perfil },
+    { data: contacto },
+    { data: calificacionData },
+    { data: perfilCompra },
+    { data: compras },
+    { data: interacciones },
+    { data: cupones },
+  ] = await Promise.all([
+    supabase
+      .from("perfiles")
+      .select("empresa_id, empresas ( crm_modo, modulos_activos )")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("crm_contactos")
+      .select(
+        "id, nombre, telefono, email, etapa_id, campos_etapa, empresa_cliente:atributos->>empresa, valor_estimado, prioridad, productos_interes, responsable_id, created_at, responsable:responsable_id ( nombre )",
+      )
+      .eq("id", id)
+      .single(),
+    // La calificación ya no se pone a mano — se calcula sola según el
+    // historial de compras (ver vista_calificacion_clientes).
+    supabase.from("vista_calificacion_clientes").select("calificacion_automatica").eq("contacto_id", id).maybeSingle(),
+    supabase.from("vista_perfil_cliente").select("*").eq("contacto_id", id).maybeSingle(),
+    supabase.from("vista_resumen_ventas").select("*").eq("contacto_id", id).order("fecha", { ascending: false }),
+    supabase.from("crm_interacciones").select("*").eq("contacto_id", id).order("fecha", { ascending: false }),
+    supabase
+      .from("cupones")
+      .select("id, monto, monto_usado, fecha_vencimiento, estado")
+      .eq("contacto_id", id)
+      .eq("estado", "activo")
+      .order("fecha_vencimiento", { ascending: true, nullsFirst: false }),
+  ]);
+
+  if (!contacto) notFound();
 
   // La relación empresa_id -> empresas.id es uno-a-uno; Supabase la tipa
   // como arreglo por falta de tipos generados, pero en tiempo de ejecución
@@ -49,49 +83,61 @@ export default async function FichaClientePage({
   } | null;
   const crmModo = empresaInfo?.crm_modo ?? "ventas";
 
-  const { data: contacto } = await supabase
-    .from("crm_contactos")
-    .select(
-      "id, nombre, telefono, email, etapa_id, campos_etapa, empresa_cliente:atributos->>empresa, valor_estimado, prioridad, productos_interes, responsable_id, created_at, responsable:responsable_id ( nombre )",
-    )
-    .eq("id", id)
-    .single();
-
-  if (!contacto) notFound();
-
-  const { data: responsables } =
+  // Segunda tanda: depende de crmModo/empresa_id, que ya se conocen apenas
+  // resuelve la primera tanda — también en paralelo entre sí.
+  const [
+    { data: responsables },
+    { data: itemsInventario },
+    { data: etapas },
+    { data: camposGenerales },
+    { data: historial },
+    { data: integracion },
+    { data: eventos },
+  ] = await Promise.all([
     crmModo === "leads" && perfil?.empresa_id
-      ? await supabase
-          .from("crm_responsables")
-          .select("id, nombre")
-          .eq("empresa_id", perfil.empresa_id)
-          .order("nombre")
-      : { data: [] };
-
-  const { data: itemsInventario } =
+      ? supabase.from("crm_responsables").select("id, nombre").eq("empresa_id", perfil.empresa_id).order("nombre")
+      : Promise.resolve({ data: [] as { id: string; nombre: string }[] }),
     crmModo === "leads" && perfil?.empresa_id && empresaInfo?.modulos_activos?.includes("inventario")
-      ? await supabase
-          .from("inventario_items")
-          .select("id, nombre")
+      ? supabase.from("inventario_items").select("id, nombre").eq("empresa_id", perfil.empresa_id).order("nombre")
+      : Promise.resolve({ data: null as { id: string; nombre: string }[] | null }),
+    perfil?.empresa_id
+      ? supabase.from("crm_etapas").select("id, nombre, orden").eq("empresa_id", perfil.empresa_id).order("orden")
+      : Promise.resolve({ data: [] as { id: string; nombre: string; orden: number }[] }),
+    // Los campos generales aplican a todo contacto sin importar la etapa —
+    // se muestran siempre, junto con los que sí dependen de la etapa.
+    perfil?.empresa_id
+      ? supabase
+          .from("crm_campos_generales")
+          .select("id, nombre, tipo, opciones, requerido")
           .eq("empresa_id", perfil.empresa_id)
-          .order("nombre")
-      : { data: null };
+          .order("orden")
+      : Promise.resolve({ data: [] }),
+    crmModo === "leads"
+      ? supabase
+          .from("crm_historial_contacto")
+          .select("id, campo, valor_anterior, valor_nuevo, created_at, perfiles ( nombre )")
+          .eq("contacto_id", id)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    // Solo se pide si la empresa tiene el CRM en modo 'leads' — en modo
+    // 'ventas' ni siquiera se consulta, mismo criterio que "Configurar
+    // etapas" y las reglas de inactividad.
+    crmModo === "leads"
+      ? supabase.from("integraciones_google").select("perfil_id").eq("perfil_id", user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    crmModo === "leads"
+      ? supabase
+          .from("crm_eventos_calendar")
+          .select("id, fecha, nota, link, meet_link")
+          .eq("contacto_id", id)
+          .order("fecha", { ascending: true })
+      : Promise.resolve({
+          data: [] as { id: string; fecha: string; nota: string | null; link: string | null; meet_link: string | null }[],
+        }),
+  ]);
 
-  // La calificación ya no se pone a mano — se calcula sola según el
-  // historial de compras (ver vista_calificacion_clientes).
-  const { data: calificacionData } = await supabase
-    .from("vista_calificacion_clientes")
-    .select("calificacion_automatica")
-    .eq("contacto_id", id)
-    .maybeSingle();
-
-  const { data: etapas } = perfil?.empresa_id
-    ? await supabase
-        .from("crm_etapas")
-        .select("id, nombre, orden")
-        .eq("empresa_id", perfil.empresa_id)
-        .order("orden")
-    : { data: [] };
+  const googleConectado = Boolean(integracion);
+  const eventosCalendar = eventos ?? [];
 
   // Se muestran los campos de la etapa actual del contacto y de todas las
   // anteriores — así no se pierde de vista lo que ya se pidió en el camino
@@ -110,85 +156,14 @@ export default async function FichaClientePage({
           .order("orden")
       : { data: [] };
 
-  // Los campos generales aplican a todo contacto sin importar la etapa —
-  // se muestran siempre, junto con los que sí dependen de la etapa.
-  const { data: camposGenerales } = perfil?.empresa_id
-    ? await supabase
-        .from("crm_campos_generales")
-        .select("id, nombre, tipo, opciones, requerido")
-        .eq("empresa_id", perfil.empresa_id)
-        .order("orden")
-    : { data: [] };
-
   const todosLosCampos = [
     ...(camposGenerales ?? []).map((c) => ({ ...c, etapa_id: null })),
     ...(camposDefinidos ?? []),
   ];
 
-  const { data: perfilCompra } = await supabase
-    .from("vista_perfil_cliente")
-    .select("*")
-    .eq("contacto_id", id)
-    .maybeSingle();
-
-  const { data: compras } = await supabase
-    .from("vista_resumen_ventas")
-    .select("*")
-    .eq("contacto_id", id)
-    .order("fecha", { ascending: false });
-
-  const { data: interacciones } = await supabase
-    .from("crm_interacciones")
-    .select("*")
-    .eq("contacto_id", id)
-    .order("fecha", { ascending: false });
-
-  const { data: historial } =
-    crmModo === "leads"
-      ? await supabase
-          .from("crm_historial_contacto")
-          .select("id, campo, valor_anterior, valor_nuevo, created_at, perfiles ( nombre )")
-          .eq("contacto_id", id)
-          .order("created_at", { ascending: false })
-      : { data: [] };
-
-  const { data: cupones } = await supabase
-    .from("cupones")
-    .select("id, monto, monto_usado, fecha_vencimiento, estado")
-    .eq("contacto_id", id)
-    .eq("estado", "activo")
-    .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
-
   const diasPromedio = perfilCompra?.dias_promedio_entre_compras
     ? Math.ceil(Number(perfilCompra.dias_promedio_entre_compras))
     : null;
-
-  // Solo se pide si la empresa tiene el CRM en modo 'leads' — en modo
-  // 'ventas' ni siquiera se consulta, mismo criterio que "Configurar
-  // etapas" y las reglas de inactividad.
-  let googleConectado = false;
-  let eventosCalendar: {
-    id: string;
-    fecha: string;
-    nota: string | null;
-    link: string | null;
-    meet_link: string | null;
-  }[] = [];
-  if (crmModo === "leads") {
-    const { data: integracion } = await supabase
-      .from("integraciones_google")
-      .select("perfil_id")
-      .eq("perfil_id", user.id)
-      .maybeSingle();
-    googleConectado = Boolean(integracion);
-
-    const { data: eventos } = await supabase
-      .from("crm_eventos_calendar")
-      .select("id, fecha, nota, link, meet_link")
-      .eq("contacto_id", id)
-      .order("fecha", { ascending: true });
-    eventosCalendar = eventos ?? [];
-  }
 
   const banners = (
     <>

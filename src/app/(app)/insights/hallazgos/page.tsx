@@ -111,11 +111,15 @@ export default async function HallazgosInsightsPage() {
   // VENTAS
   // ---------------------------------------------------------------
   if (modulosActivos.includes("ventas")) {
-    const { data: ventasPorDiaData } = await supabase
-      .from("vista_ventas_por_dia")
-      .select("dia_semana, es_festivo, total_vendido")
-      .eq("empresa_id", empresaId)
-      .gte("dia", sumarDiasIso(hoy, -DIAS_ANALISIS_VENTAS));
+    // Ninguna depende de la otra — ambas solo necesitan empresaId.
+    const [{ data: ventasPorDiaData }, { data: categoriaData }] = await Promise.all([
+      supabase
+        .from("vista_ventas_por_dia")
+        .select("dia_semana, es_festivo, total_vendido")
+        .eq("empresa_id", empresaId)
+        .gte("dia", sumarDiasIso(hoy, -DIAS_ANALISIS_VENTAS)),
+      supabase.from("vista_utilidad_por_categoria").select("categoria, ingresos").eq("empresa_id", empresaId),
+    ]);
 
     const filas = (ventasPorDiaData ?? []) as { dia_semana: string; es_festivo: boolean; total_vendido: number }[];
 
@@ -180,11 +184,6 @@ export default async function HallazgosInsightsPage() {
       }
     }
 
-    const { data: categoriaData } = await supabase
-      .from("vista_utilidad_por_categoria")
-      .select("categoria, ingresos")
-      .eq("empresa_id", empresaId);
-
     const gruposCategoria: GrupoAnalizado[] = ((categoriaData ?? []) as { categoria: string | null; ingresos: number }[])
       .filter((c) => c.categoria && c.ingresos > 0)
       .map((c) => ({ etiqueta: c.categoria as string, valor: c.ingresos }));
@@ -211,19 +210,18 @@ export default async function HallazgosInsightsPage() {
   // INVENTARIO
   // ---------------------------------------------------------------
   if (modulosActivos.includes("inventario")) {
-    const { data: itemsData } = await supabase
-      .from("inventario_items")
-      .select("id, nombre, cantidad, precio_venta")
-      .eq("empresa_id", empresaId)
-      .eq("tipo", "producto");
+    // Ninguna depende de la otra — ambas solo necesitan empresaId.
+    const [{ data: itemsData }, { data: utilidadProductoData }] = await Promise.all([
+      supabase
+        .from("inventario_items")
+        .select("id, nombre, cantidad, precio_venta")
+        .eq("empresa_id", empresaId)
+        .eq("tipo", "producto"),
+      supabase.from("vista_utilidad_por_producto").select("item_id, nombre, ingresos, margen_porcentaje").eq("empresa_id", empresaId),
+    ]);
 
     const items = (itemsData ?? []) as { id: string; nombre: string; cantidad: number; precio_venta: number | null }[];
     const itemIds = items.map((i) => i.id);
-
-    const { data: utilidadProductoData } = await supabase
-      .from("vista_utilidad_por_producto")
-      .select("item_id, nombre, ingresos, margen_porcentaje")
-      .eq("empresa_id", empresaId);
 
     const utilidadProducto = (utilidadProductoData ?? []) as {
       item_id: string;
@@ -411,12 +409,30 @@ export default async function HallazgosInsightsPage() {
   // P Y G
   // ---------------------------------------------------------------
   if (modulosActivos.includes("pyg")) {
-    const { data: porMesData } = await supabase
-      .from("vista_estado_resultados")
-      .select("mes, utilidad_neta")
-      .eq("empresa_id", empresaId)
-      .order("mes", { ascending: false })
-      .limit(12);
+    // Ninguna de las tres depende de las otras — todas solo necesitan
+    // empresaId (y su propio rango de fechas), así que salen juntas.
+    const [{ data: porMesData }, { data: gastosData }, { data: pasivosData }] = await Promise.all([
+      supabase
+        .from("vista_estado_resultados")
+        .select("mes, utilidad_neta")
+        .eq("empresa_id", empresaId)
+        .order("mes", { ascending: false })
+        .limit(12),
+      supabase
+        .from("finanzas_movimientos")
+        .select("categoria, monto")
+        .eq("empresa_id", empresaId)
+        .eq("tipo", "gasto")
+        .gte("fecha", sumarDiasIso(hoy, -DIAS_ANALISIS_GASTOS)),
+      supabase
+        .from("pasivos")
+        .select("descripcion, monto_total, monto_pagado, fecha_vencimiento")
+        .eq("empresa_id", empresaId)
+        .eq("estado", "pendiente")
+        .not("fecha_vencimiento", "is", null)
+        .lte("fecha_vencimiento", sumarDiasIso(hoy, 15))
+        .gte("fecha_vencimiento", hoy),
+    ]);
 
     const porMes = (porMesData ?? []) as { mes: string; utilidad_neta: number }[];
     if (porMes.length >= 3) {
@@ -445,13 +461,6 @@ export default async function HallazgosInsightsPage() {
       }
     }
 
-    const { data: gastosData } = await supabase
-      .from("finanzas_movimientos")
-      .select("categoria, monto")
-      .eq("empresa_id", empresaId)
-      .eq("tipo", "gasto")
-      .gte("fecha", sumarDiasIso(hoy, -DIAS_ANALISIS_GASTOS));
-
     const gastosPorCategoria = new Map<string, number>();
     for (const g of (gastosData ?? []) as { categoria: string | null; monto: number }[]) {
       const categoria = g.categoria || "Sin categoría";
@@ -477,15 +486,6 @@ export default async function HallazgosInsightsPage() {
         detalle: `El gasto en "${top.etiqueta}" es ${top.z > 0 ? "inusualmente alto" : "inusualmente bajo"} frente a las demás categorías (${formatoMonedaCorta(top.valor)} en los últimos ${DIAS_ANALISIS_GASTOS} días).`,
       });
     }
-
-    const { data: pasivosData } = await supabase
-      .from("pasivos")
-      .select("descripcion, monto_total, monto_pagado, fecha_vencimiento")
-      .eq("empresa_id", empresaId)
-      .eq("estado", "pendiente")
-      .not("fecha_vencimiento", "is", null)
-      .lte("fecha_vencimiento", sumarDiasIso(hoy, 15))
-      .gte("fecha_vencimiento", hoy);
 
     for (const d of (pasivosData ?? []) as {
       descripcion: string;

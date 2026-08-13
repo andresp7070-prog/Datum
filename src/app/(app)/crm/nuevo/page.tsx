@@ -22,23 +22,25 @@ export default async function NuevoClientePage() {
   // del embudo) son siempre obligatorios — así cada contacto nace con esa
   // información ya completa, en vez de quedar a medias hasta que alguien
   // la llene después en la ficha.
-  const { data: camposGenerales } = perfil?.empresa_id
-    ? await supabase
-        .from("crm_campos_generales")
-        .select("id, nombre, tipo, opciones")
-        .eq("empresa_id", perfil.empresa_id)
-        .order("orden")
-    : { data: [] };
-
-  const { data: primeraEtapa } = perfil?.empresa_id
-    ? await supabase
-        .from("crm_etapas")
-        .select("id")
-        .eq("empresa_id", perfil.empresa_id)
-        .order("orden")
-        .limit(1)
-        .maybeSingle()
-    : { data: null };
+  // Ninguna de las dos depende de la otra — ambas solo necesitan empresa_id.
+  const [{ data: camposGenerales }, { data: primeraEtapa }] = await Promise.all([
+    perfil?.empresa_id
+      ? supabase
+          .from("crm_campos_generales")
+          .select("id, nombre, tipo, opciones")
+          .eq("empresa_id", perfil.empresa_id)
+          .order("orden")
+      : Promise.resolve({ data: [] }),
+    perfil?.empresa_id
+      ? supabase
+          .from("crm_etapas")
+          .select("id")
+          .eq("empresa_id", perfil.empresa_id)
+          .order("orden")
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   const { data: camposPrimeraEtapa } = primeraEtapa
     ? await supabase

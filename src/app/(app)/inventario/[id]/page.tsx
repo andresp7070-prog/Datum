@@ -42,35 +42,51 @@ export default async function FichaProductoPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: perfil } = await supabase
-    .from("perfiles")
-    .select("empresa_id")
-    .eq("id", user.id)
-    .single();
-
-  const { data: item } = await supabase
-    .from("inventario_items")
-    .select(
-      "id, nombre, sku, categoria, unidad, cantidad, costo, precio_venta, es_insumo, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad, proveedor:proveedores ( nombre, frecuencia_pago, dia_semana_pago, dias_personalizado )",
-    )
-    .eq("id", id)
-    .single();
+  // Ninguna de las tres depende de las otras — todas solo necesitan el
+  // usuario o el id de la ruta, así que salen juntas en vez de una detrás
+  // de otra.
+  const [{ data: perfil }, { data: item }, { data: recetaData }] = await Promise.all([
+    supabase.from("perfiles").select("empresa_id").eq("id", user.id).single(),
+    supabase
+      .from("inventario_items")
+      .select(
+        "id, nombre, sku, categoria, unidad, cantidad, costo, precio_venta, es_insumo, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad, proveedor:proveedores ( nombre, frecuencia_pago, dia_semana_pago, dias_personalizado )",
+      )
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("inventario_receta")
+      .select(
+        "cantidad_insumo, inventario_items!inventario_receta_item_insumo_id_fkey ( nombre, unidad, cantidad )",
+      )
+      .eq("item_resultante_id", id),
+  ]);
 
   if (!item) notFound();
   if (!perfil?.empresa_id) notFound();
 
   const proveedor = Array.isArray(item.proveedor) ? item.proveedor[0] : item.proveedor;
+  const receta = (recetaData ?? []) as unknown as RecetaFila[];
 
-  const fotoUrl = await firmarFotoUrl(supabase, item.foto_path);
+  const maxProducible = calcularMaxProducible(
+    receta.map((fila) => ({
+      cantidadInsumo: fila.cantidad_insumo,
+      stockInsumo: fila.inventario_items?.cantidad ?? 0,
+    })),
+  );
+
+  // fotoUrl y el historial de ventas dependen de item (foto_path / es_insumo),
+  // pero no entre sí — salen juntas también.
+  const [fotoUrl, { data: ventasItem }] = await Promise.all([
+    firmarFotoUrl(supabase, item.foto_path),
+    item.es_insumo
+      ? Promise.resolve({ data: null })
+      : supabase.from("ventas_items").select("venta_id, ventas!inner(fecha)").eq("item_id", id),
+  ]);
 
   let totalVentas = 0;
   let promedioDias: number | null = null;
   if (!item.es_insumo) {
-    const { data: ventasItem } = await supabase
-      .from("ventas_items")
-      .select("venta_id, ventas!inner(fecha)")
-      .eq("item_id", id);
-
     const fechasPorVenta = new Map<string, number>();
     for (const fila of (ventasItem ?? []) as unknown as VentaItemFila[]) {
       const venta = Array.isArray(fila.ventas) ? fila.ventas[0] : fila.ventas;
@@ -81,22 +97,6 @@ export default async function FichaProductoPage({
     totalVentas = fechasPorVenta.size;
     promedioDias = promedioDiasEntreVentas(Array.from(fechasPorVenta.values()));
   }
-
-  const { data } = await supabase
-    .from("inventario_receta")
-    .select(
-      "cantidad_insumo, inventario_items!inventario_receta_item_insumo_id_fkey ( nombre, unidad, cantidad )",
-    )
-    .eq("item_resultante_id", id);
-
-  const receta = (data ?? []) as unknown as RecetaFila[];
-
-  const maxProducible = calcularMaxProducible(
-    receta.map((fila) => ({
-      cantidadInsumo: fila.cantidad_insumo,
-      stockInsumo: fila.inventario_items?.cantidad ?? 0,
-    })),
-  );
 
   return (
     <div className="max-w-2xl space-y-6">

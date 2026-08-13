@@ -31,11 +31,19 @@ export default async function EtapasCrmPage() {
   const empresa = perfil.empresas as unknown as { crm_modo: string } | null;
   if (empresa?.crm_modo !== "leads") redirect("/crm");
 
-  const { data: etapas } = await supabase
-    .from("crm_etapas")
-    .select("id, nombre, orden, es_cierre, dias_inactividad, etapa_destino_inactividad_id")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("orden");
+  // camposGenerales no depende de etapas — sale al mismo tiempo.
+  const [{ data: etapas }, { data: camposGenerales }] = await Promise.all([
+    supabase
+      .from("crm_etapas")
+      .select("id, nombre, orden, es_cierre, dias_inactividad, etapa_destino_inactividad_id")
+      .eq("empresa_id", perfil.empresa_id)
+      .order("orden"),
+    supabase
+      .from("crm_campos_generales")
+      .select("id, nombre, tipo, opciones, requerido")
+      .eq("empresa_id", perfil.empresa_id)
+      .order("orden"),
+  ]);
 
   const etapaIds = (etapas ?? []).map((e) => e.id);
 
@@ -47,12 +55,6 @@ export default async function EtapasCrmPage() {
           .in("etapa_id", etapaIds)
           .order("orden")
       : { data: [] };
-
-  const { data: camposGenerales } = await supabase
-    .from("crm_campos_generales")
-    .select("id, nombre, tipo, opciones, requerido")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("orden");
 
   return (
     <EtapasForm etapas={etapas ?? []} campos={campos ?? []} camposGenerales={camposGenerales ?? []} />

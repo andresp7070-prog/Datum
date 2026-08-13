@@ -34,25 +34,20 @@ export default async function RecetaPage({
     );
   }
 
-  const { data: item } = await supabase
-    .from("inventario_items")
-    .select("id, nombre")
-    .eq("id", id)
-    .single();
+  // Ninguna depende de otra — todas solo necesitan el id de la ruta o
+  // empresa_id, ya conocido.
+  const [{ data: item }, { data: otrosItems }, { data: recetaData }] = await Promise.all([
+    supabase.from("inventario_items").select("id, nombre").eq("id", id).single(),
+    supabase
+      .from("inventario_items")
+      .select("id, nombre, unidad")
+      .eq("empresa_id", perfil.empresa_id)
+      .neq("id", id)
+      .order("nombre"),
+    supabase.from("inventario_receta").select("item_insumo_id, cantidad_insumo").eq("item_resultante_id", id),
+  ]);
 
   if (!item) notFound();
-
-  const { data: otrosItems } = await supabase
-    .from("inventario_items")
-    .select("id, nombre, unidad")
-    .eq("empresa_id", perfil.empresa_id)
-    .neq("id", id)
-    .order("nombre");
-
-  const { data: recetaData } = await supabase
-    .from("inventario_receta")
-    .select("item_insumo_id, cantidad_insumo")
-    .eq("item_resultante_id", id);
 
   const receta = (recetaData ?? []) as RecetaFila[];
 

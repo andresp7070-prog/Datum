@@ -146,6 +146,14 @@ Landing y plataforma viven en el mismo despliegue de Vercel, deliberadamente —
   - La activación de módulos (`empresas.modulos_activos`) es siempre una acción manual mía, nunca automática a partir del diagnóstico. El diagnóstico recomienda; yo decido qué se activa según lo que el cliente realmente compró.
   - Lo mismo con `empresas.pagina_entrada`: define en qué módulo aterriza esa empresa al iniciar sesión, y también lo fijo yo durante el diagnóstico, nunca el cliente. Un negocio de venta directa (como Aseo Total) entra en `ventas`; un negocio que cotiza o negocia antes de vender entraría en `crm`. El cliente del negocio no debería tener que entender ni elegir esta distinción — para él simplemente "así abre la aplicación".
 
+### `/resumen` — foto rápida del negocio (ampliado 2026-08-14)
+No es Panel de control (eso es análisis a fondo, con filtros) — es lo primero que ve alguien al entrar: qué necesita saber HOY, sin tener que ir a buscarlo. Cada tarjeta solo aparece si la empresa tiene el módulo correspondiente activo.
+- **Ventas** (si `'ventas'` activo): "Ventas de hoy" (con variación % vs. el promedio de días anteriores) y "Ventas de este mes" — dos tarjetas aparte, ambas del mismo arreglo de ventas ya cargado, sin consulta extra.
+- **Utilidad neta del mes** (si `'pyg'` activo).
+- **Deudas por vencer** (si `'pyg'` activo y hay al menos una deuda pendiente): ya no es solo el total pendiente — muestra hasta 3 deudas ordenadas por la más próxima a vencer, con su descripción, cuántos días faltan (o hace cuántos venció, en rojo) y el monto que falta pagar. Las deudas sin fecha de vencimiento registrada no entran en esa lista, pero sí cuentan en el total.
+- **Inventario por agotarse** (si `'inventario'` activo): ya no es solo "está en cero" — cruza el catálogo con `vista_velocidad_ventas` (misma fórmula que `/inventario/proyecciones`) para avisar también de productos que a este ritmo se agotan en 7 días o menos, aunque todavía no lleguen a cero. Los ya agotados siempre aparecen primero, luego por días restantes ascendente.
+- **Promociones activas** (si `'promociones'` activo) — sin cambios.
+
 ## Cómo se registra una venta (el flujo más importante del producto)
 
 Todo pasa en una sola pantalla, con un solo botón de guardar — nunca en pasos separados. Quien atiende no debe ir primero a "CRM", luego a "Ventas", luego a "Inventario": todo sale de un formulario de "Agregar venta".

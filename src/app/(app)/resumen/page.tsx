@@ -423,29 +423,6 @@ export default async function ResumenPage() {
         </div>
       )}
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Accesos directos</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/ventas/nueva"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
-          >
-            Agregar venta
-          </Link>
-          <Link
-            href="/crm/nuevo"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Agregar cliente
-          </Link>
-          <Link
-            href="/inventario/nuevo"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Agregar producto
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }

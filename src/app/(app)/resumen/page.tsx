@@ -208,12 +208,38 @@ export default async function ResumenPage() {
     });
 
   // ---- Promociones activas ----
+  // Se pide aparte (no en el Promise.all de arriba) porque depende de saber
+  // primero cuáles promociones están activas — vista_efectividad_promociones
+  // trae cuántas ventas ha generado cada una hasta ahora.
   const promocionesActivas = (promocionesData ?? []) as {
     id: string;
     nombre: string;
     tipo_promocion: string;
     fecha_fin: string;
   }[];
+
+  const idsPromocionesActivas = promocionesActivas.map((p) => p.id);
+  const { data: efectividadData } =
+    idsPromocionesActivas.length > 0
+      ? await supabase
+          .from("vista_efectividad_promociones")
+          .select("promocion_id, ventas_con_este_descuento")
+          .in("promocion_id", idsPromocionesActivas)
+      : { data: [] };
+
+  const ventasPorPromocion = new Map(
+    (efectividadData ?? []).map((e) => [e.promocion_id, e.ventas_con_este_descuento]),
+  );
+
+  const hoyDate = new Date(`${hoy}T00:00:00`);
+  const promocionesConDetalle = promocionesActivas.map((promo) => ({
+    ...promo,
+    ventasGeneradas: ventasPorPromocion.get(promo.id) ?? 0,
+    diasRestantes: Math.max(
+      0,
+      Math.ceil((new Date(`${promo.fecha_fin}T00:00:00`).getTime() - hoyDate.getTime()) / (1000 * 60 * 60 * 24)),
+    ),
+  }));
 
   const logoUrl = await firmarFotoUrl(supabase, empresa?.logo_path ?? null, "empresas-logos");
 
@@ -373,18 +399,22 @@ export default async function ResumenPage() {
               Ver promociones
             </Link>
           </div>
-          {promocionesActivas.length === 0 ? (
+          {promocionesConDetalle.length === 0 ? (
             <p className="text-sm text-gray-400">Ninguna promoción activa en este momento.</p>
           ) : (
             <ul className="divide-y divide-gray-100 text-sm">
-              {promocionesActivas.map((promo) => (
-                <li key={promo.id} className="flex justify-between py-1.5">
-                  <span className="text-gray-700">{promo.nombre}</span>
-                  <span className="text-gray-400">
-                    Hasta {new Date(`${promo.fecha_fin}T00:00:00`).toLocaleDateString("es-CO", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+              {promocionesConDetalle.map((promo) => (
+                <li key={promo.id} className="flex items-center justify-between py-1.5">
+                  <div>
+                    <p className="text-gray-700">{promo.nombre}</p>
+                    <p className="text-xs text-gray-400">
+                      {promo.diasRestantes === 0
+                        ? "Último día"
+                        : `Queda${promo.diasRestantes === 1 ? "" : "n"} ${promo.diasRestantes} día${promo.diasRestantes === 1 ? "" : "s"}`}
+                    </p>
+                  </div>
+                  <span className="text-gray-500">
+                    {promo.ventasGeneradas} venta{promo.ventasGeneradas === 1 ? "" : "s"}
                   </span>
                 </li>
               ))}

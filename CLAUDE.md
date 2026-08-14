@@ -152,7 +152,8 @@ No es Panel de control (eso es análisis a fondo, con filtros) — es lo primero
 - **Utilidad neta del mes** (si `'pyg'` activo).
 - **Deudas por vencer** (si `'pyg'` activo y hay al menos una deuda pendiente): ya no es solo el total pendiente — muestra hasta 3 deudas ordenadas por la más próxima a vencer, con su descripción, cuántos días faltan (o hace cuántos venció, en rojo) y el monto que falta pagar. Las deudas sin fecha de vencimiento registrada no entran en esa lista, pero sí cuentan en el total.
 - **Inventario por agotarse** (si `'inventario'` activo): ya no es solo "está en cero" — cruza el catálogo con `vista_velocidad_ventas` (misma fórmula que `/inventario/proyecciones`) para avisar también de productos que a este ritmo se agotan en 7 días o menos, aunque todavía no lleguen a cero. Los ya agotados siempre aparecen primero, luego por días restantes ascendente.
-- **Promociones activas** (si `'promociones'` activo) — sin cambios.
+- **Promociones activas** (si `'promociones'` activo): por cada promoción vigente muestra cuál es, cuántos días le quedan (contra `fecha_fin`) y cuántas ventas ha generado hasta ahora (`vista_efectividad_promociones.ventas_con_este_descuento`).
+- **CRM y Nómina no tienen tarjeta acá, a propósito** — ni en modo `'ventas'` ni en modo `'leads'` del CRM. Confirmado explícitamente: el Resumen se queda en Ventas, P y G, Inventario y Promociones.
 
 ## Cómo se registra una venta (el flujo más importante del producto)
 

@@ -16,7 +16,6 @@ import {
 } from "./graficos";
 import { FiltroFecha } from "./filtro-fecha";
 import { VariacionBadge } from "./variacion";
-import { InsightsTabs } from "./insights-tabs";
 import { SeccionCrmVentas } from "./seccion-crm-ventas";
 import { SeccionNomina } from "./seccion-nomina";
 
@@ -698,8 +697,6 @@ async function ContenidoInsights({
         <h1 className="text-lg font-semibold text-gray-900">Panel de control</h1>
         <p className="mt-1 text-sm text-gray-500">Cómo va tu negocio, con datos reales.</p>
       </div>
-
-      <InsightsTabs />
 
       <FiltroFecha
         periodoActual={periodo}

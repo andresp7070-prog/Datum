@@ -15,7 +15,7 @@ export function PuntoSelector({
 
   return (
     <div className="px-3 py-2">
-      <label className="mb-1 block text-xs font-medium text-gray-400">Punto de venta</label>
+      <label className="mb-1 block text-xs font-medium text-[#9496b8]">Punto de venta</label>
       <select
         value={seleccionado ?? ""}
         disabled={isPending}

@@ -21,13 +21,21 @@ type Item = {
   fotoUrl: string | null;
 };
 
-type Orden = "cantidad-asc" | "cantidad-desc" | "dias-asc" | "dias-desc";
+type Orden =
+  | "cantidad-asc"
+  | "cantidad-desc"
+  | "dias-asc"
+  | "dias-desc"
+  | "costo-asc"
+  | "costo-desc";
 
 const opcionesOrden: { value: Orden; label: string }[] = [
   { value: "cantidad-asc", label: "Cantidad: menor a mayor" },
   { value: "cantidad-desc", label: "Cantidad: mayor a menor" },
   { value: "dias-asc", label: "Se acaba antes" },
   { value: "dias-desc", label: "Se acaba después" },
+  { value: "costo-asc", label: "Costo: menor a mayor" },
+  { value: "costo-desc", label: "Costo: mayor a menor" },
 ];
 
 function formatoMoneda(valor: number | null) {
@@ -64,9 +72,20 @@ export function DirectorioInventario({
         if (b.diasRestantes === null) return -1;
         return a.diasRestantes - b.diasRestantes;
       }
-      if (a.diasRestantes === null) return 1;
-      if (b.diasRestantes === null) return -1;
-      return b.diasRestantes - a.diasRestantes;
+      if (orden === "dias-desc") {
+        if (a.diasRestantes === null) return 1;
+        if (b.diasRestantes === null) return -1;
+        return b.diasRestantes - a.diasRestantes;
+      }
+      // Sin costo registrado (null) siempre va al final, sin importar la dirección
+      if (orden === "costo-asc") {
+        if (a.costo === null) return 1;
+        if (b.costo === null) return -1;
+        return a.costo - b.costo;
+      }
+      if (a.costo === null) return 1;
+      if (b.costo === null) return -1;
+      return b.costo - a.costo;
     });
 
   const filasCsv = filtrados.map((item) => ({

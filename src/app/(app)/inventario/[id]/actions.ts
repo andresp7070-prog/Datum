@@ -130,6 +130,8 @@ export async function registrarDotacion(input: {
   itemId: string;
   cantidad: number;
   nota: string;
+  empleadoId: string;
+  fecha: string;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const {
@@ -141,6 +143,8 @@ export async function registrarDotacion(input: {
     p_item_id: input.itemId,
     p_cantidad: input.cantidad,
     p_nota: input.nota || null,
+    p_empleado_id: input.empleadoId,
+    p_fecha: input.fecha,
   });
 
   if (error) return { error: error.message };

@@ -3768,3 +3768,74 @@ create index if not exists datum_crm_etapa_campos_etapa_id_idx on datum_crm_etap
 create index if not exists datum_crm_eventos_calendar_lead_id_idx on datum_crm_eventos_calendar (lead_id);
 create index if not exists datum_crm_historial_lead_lead_id_idx on datum_crm_historial_lead (lead_id);
 create index if not exists datum_movimientos_pasivo_id_idx on datum_movimientos (pasivo_id);
+
+-- ============================================================
+-- DOTACIÓN: vincular con empleado — agregado 2026-08-15. Antes "a quién se
+-- le dio" era una nota de texto libre; ahora se elige de la lista real de
+-- empleados (tabla `empleados`, la misma que usa Nómina) y la fecha de
+-- entrega queda registrada explícitamente en vez de asumir siempre "hoy".
+-- empleado_id es nullable a propósito: las dotaciones registradas antes de
+-- este cambio se quedan sin ese dato, sin que se rompa nada.
+-- ============================================================
+alter table inventario_movimientos add column if not exists empleado_id uuid references empleados(id);
+create index if not exists inventario_movimientos_empleado_id_idx on inventario_movimientos (empleado_id);
+
+create or replace function registrar_dotacion(
+  p_item_id uuid,
+  p_cantidad numeric,
+  p_nota text default null,
+  p_empleado_id uuid default null,
+  p_fecha date default current_date
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+  v_nombre text;
+  v_stock numeric(12,2);
+  v_costo_consumido numeric(12,2);
+  v_empleado_nombre text;
+begin
+  select empresa_id, nombre, cantidad into v_empresa_id, v_nombre, v_stock
+  from inventario_items where id = p_item_id;
+
+  if v_empresa_id is null then
+    raise exception 'Producto no encontrado';
+  end if;
+  if p_cantidad <= 0 then
+    raise exception 'La cantidad debe ser mayor a cero';
+  end if;
+  if v_stock < p_cantidad then
+    raise exception 'No hay suficiente stock de "%": quedan % y se intentó entregar %.',
+      v_nombre, v_stock, p_cantidad;
+  end if;
+
+  if p_empleado_id is not null then
+    select nombre into v_empleado_nombre
+    from empleados where id = p_empleado_id and empresa_id = v_empresa_id;
+    if v_empleado_nombre is null then
+      raise exception 'Empleado no encontrado';
+    end if;
+  end if;
+
+  v_costo_consumido := consumir_lotes_fifo(p_item_id, p_cantidad);
+
+  insert into inventario_movimientos (item_id, tipo, motivo, cantidad, fecha, nota, empleado_id)
+  values (p_item_id, 'salida', 'dotacion', p_cantidad, p_fecha, p_nota, p_empleado_id);
+
+  update inventario_items set cantidad = cantidad - p_cantidad where id = p_item_id;
+
+  insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+  values (
+    v_empresa_id, 'gasto', 'dotación a empleados',
+    p_cantidad * coalesce(v_costo_consumido, 0),
+    p_fecha,
+    coalesce(
+      case when v_empleado_nombre is not null then 'Dotación de "' || v_nombre || '" a ' || v_empleado_nombre end,
+      p_nota,
+      'Dotación de "' || v_nombre || '" a empleado'
+    )
+  );
+end;
+$$;

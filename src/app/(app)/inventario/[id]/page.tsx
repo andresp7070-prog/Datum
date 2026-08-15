@@ -19,6 +19,22 @@ type VentaItemFila = {
   ventas: { fecha: string } | { fecha: string }[] | null;
 };
 
+type DotacionFila = {
+  id: string;
+  cantidad: number;
+  fecha: string;
+  nota: string | null;
+  empleados: { nombre: string } | { nombre: string }[] | null;
+};
+
+function formatoFecha(valor: string) {
+  return new Date(`${valor}T00:00:00`).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function formatoMoneda(valor: number | null) {
   if (valor === null) return "—";
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
@@ -75,14 +91,31 @@ export default async function FichaProductoPage({
     })),
   );
 
-  // fotoUrl y el historial de ventas dependen de item (foto_path / es_insumo),
-  // pero no entre sí — salen juntas también.
-  const [fotoUrl, { data: ventasItem }] = await Promise.all([
-    firmarFotoUrl(supabase, item.foto_path),
-    item.es_insumo
-      ? Promise.resolve({ data: null })
-      : supabase.from("ventas_items").select("venta_id, ventas!inner(fecha)").eq("item_id", id),
-  ]);
+  // fotoUrl, el historial de ventas, los empleados (para el selector de
+  // dotación) y el historial de dotaciones no dependen entre sí — salen
+  // todos juntos también.
+  const [fotoUrl, { data: ventasItem }, { data: empleadosData }, { data: dotacionesData }] =
+    await Promise.all([
+      firmarFotoUrl(supabase, item.foto_path),
+      item.es_insumo
+        ? Promise.resolve({ data: null })
+        : supabase.from("ventas_items").select("venta_id, ventas!inner(fecha)").eq("item_id", id),
+      supabase
+        .from("empleados")
+        .select("id, nombre")
+        .eq("empresa_id", perfil.empresa_id)
+        .eq("activo", true)
+        .order("nombre"),
+      supabase
+        .from("inventario_movimientos")
+        .select("id, cantidad, fecha, nota, empleados(nombre)")
+        .eq("item_id", id)
+        .eq("motivo", "dotacion")
+        .order("fecha", { ascending: false }),
+    ]);
+
+  const empleados = empleadosData ?? [];
+  const dotaciones = (dotacionesData ?? []) as unknown as DotacionFila[];
 
   let totalVentas = 0;
   let promedioDias: number | null = null;
@@ -178,6 +211,7 @@ export default async function FichaProductoPage({
             itemId={item.id}
             cantidadActual={item.cantidad}
             unidad={etiquetaUnidad(item.unidad)}
+            empleados={empleados}
           />
         </div>
       </div>
@@ -201,6 +235,33 @@ export default async function FichaProductoPage({
           </ul>
         )}
       </div>
+
+      {dotaciones.length > 0 && (
+        <div className="rounded-xl border border-gray-200 p-4">
+          <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial de dotaciones</h2>
+          <ul className="divide-y divide-gray-200">
+            {dotaciones.map((dotacion) => {
+              const empleado = Array.isArray(dotacion.empleados)
+                ? dotacion.empleados[0]
+                : dotacion.empleados;
+              return (
+                <li key={dotacion.id} className="flex items-start justify-between gap-4 py-2 text-sm">
+                  <div>
+                    <p className="text-gray-900">
+                      {dotacion.cantidad} {etiquetaUnidad(item.unidad)} a{" "}
+                      {empleado?.nombre ?? "empleado sin registrar"}
+                    </p>
+                    {dotacion.nota && <p className="text-xs text-gray-400">{dotacion.nota}</p>}
+                  </div>
+                  <span className="whitespace-nowrap text-xs text-gray-400">
+                    {formatoFecha(dotacion.fecha)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

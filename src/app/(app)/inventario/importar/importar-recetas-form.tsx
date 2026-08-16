@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parsearCsv } from "@/lib/csv";
 import { sinTildes, numeroDesdeTexto } from "@/lib/texto";
+import { etiquetaUnidad } from "@/lib/unidades";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { cargarRecetasIniciales, type FilaRecetaImportacion } from "./actions";
 
@@ -11,6 +12,7 @@ const COLUMNAS_ESPERADAS = ["producto", "insumo", "cantidad"];
 
 type FilaPreview = FilaRecetaImportacion & {
   cantidadOriginal: string;
+  unidadInsumo: string | null;
   errores: string[];
 };
 
@@ -18,9 +20,19 @@ function normalizarEncabezado(valor: string) {
   return sinTildes(valor.trim());
 }
 
-export function ImportarRecetasForm({ puntoVentaId = null }: { puntoVentaId?: string | null }) {
+export function ImportarRecetasForm({
+  puntoVentaId = null,
+  items = [],
+}: {
+  puntoVentaId?: string | null;
+  items?: { nombre: string; unidad: string }[];
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  // Mismo criterio de coincidencia (sin tildes, sin mayúsculas) que usa
+  // cargar_recetas_iniciales() del lado del servidor — esto es solo para
+  // mostrar la unidad como ayuda visual, no decide qué se importa.
+  const unidadPorNombre = new Map(items.map((item) => [sinTildes(item.nombre), item.unidad]));
 
   const [filas, setFilas] = useState<FilaPreview[]>([]);
   const [errorArchivo, setErrorArchivo] = useState<string | null>(null);
@@ -72,6 +84,7 @@ export function ImportarRecetasForm({ puntoVentaId = null }: { puntoVentaId?: st
         const insumo = (fila[indice.insumo] ?? "").trim();
         const cantidadOriginal = (fila[indice.cantidad] ?? "").trim();
         const cantidadNumero = numeroDesdeTexto(cantidadOriginal);
+        const unidadInsumo = insumo ? (unidadPorNombre.get(sinTildes(insumo)) ?? null) : null;
 
         const errores: string[] = [];
         if (!producto) errores.push("Falta el nombre del producto");
@@ -85,6 +98,7 @@ export function ImportarRecetasForm({ puntoVentaId = null }: { puntoVentaId?: st
           insumo,
           cantidad: cantidadNumero,
           cantidadOriginal,
+          unidadInsumo,
           errores,
         };
       });
@@ -232,7 +246,10 @@ export function ImportarRecetasForm({ puntoVentaId = null }: { puntoVentaId?: st
                   <tr key={i} className={fila.errores.length > 0 ? "bg-amber-50" : undefined}>
                     <td className="px-3 py-2 text-gray-900">{fila.producto || "—"}</td>
                     <td className="px-3 py-2 text-gray-500">{fila.insumo || "—"}</td>
-                    <td className="px-3 py-2 text-gray-500">{fila.cantidadOriginal || "—"}</td>
+                    <td className="px-3 py-2 text-gray-500">
+                      {fila.cantidadOriginal || "—"}
+                      {fila.unidadInsumo && ` ${etiquetaUnidad(fila.unidadInsumo)}`}
+                    </td>
                     <td className="px-3 py-2 text-amber-600">
                       {fila.errores.length > 0 ? fila.errores.join(" / ") : "—"}
                     </td>

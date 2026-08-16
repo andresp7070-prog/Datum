@@ -203,7 +203,7 @@ export function ImportarInventarioForm({
   return (
     <div className="max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Importar inventario</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Paso 1 — Importar productos</h1>
         <DescargarCsv
           filas={[
             {

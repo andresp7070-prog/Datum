@@ -1210,6 +1210,91 @@ begin
 end;
 $$;
 
+-- Carga masiva de recetas — agregado 2026-08-15, para cuando una empresa
+-- arma su inventario desde cero y tiene varios productos compuestos (ej.
+-- un restaurante con varios platos, cada uno con sus insumos): evita
+-- configurar receta por receta a mano en "Configurar receta". Se corre
+-- DESPUÉS de cargar_inventario_inicial() — busca el producto y cada
+-- insumo por nombre dentro del inventario que ya existe, no crea ningún
+-- producto nuevo, solo los conecta. Por cada producto que aparece en el
+-- archivo, reemplaza su receta completa la primera vez que se lo
+-- encuentra (mismo criterio que "Configurar receta" a mano) — así el
+-- archivo queda como única fuente de verdad para esos productos, sin
+-- mezclar filas viejas con las nuevas. Devuelve cuántas líneas se
+-- conectaron y el detalle de las que no se pudieron (producto o insumo
+-- no encontrado, etc.), para que la pantalla se lo muestre a la persona.
+create or replace function cargar_recetas_iniciales(
+  p_empresa_id uuid,
+  p_recetas jsonb,  -- [{"producto":"...","insumo":"...","cantidad":1.5}, ...]
+  p_punto_venta_id uuid default null
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_fila jsonb;
+  v_producto_nombre text;
+  v_insumo_nombre text;
+  v_cantidad numeric;
+  v_producto_id uuid;
+  v_insumo_id uuid;
+  v_productos_reseteados uuid[] := '{}';
+  v_creadas int := 0;
+  v_errores text[] := '{}';
+begin
+  for v_fila in select * from jsonb_array_elements(p_recetas)
+  loop
+    v_producto_nombre := trim(v_fila->>'producto');
+    v_insumo_nombre := trim(v_fila->>'insumo');
+    v_cantidad := nullif(v_fila->>'cantidad', '')::numeric;
+
+    select id into v_producto_id
+    from inventario_items
+    where empresa_id = p_empresa_id
+      and punto_venta_id is not distinct from p_punto_venta_id
+      and lower(unaccent(nombre)) = lower(unaccent(v_producto_nombre))
+    limit 1;
+
+    select id into v_insumo_id
+    from inventario_items
+    where empresa_id = p_empresa_id
+      and punto_venta_id is not distinct from p_punto_venta_id
+      and lower(unaccent(nombre)) = lower(unaccent(v_insumo_nombre))
+    limit 1;
+
+    if v_producto_id is null then
+      v_errores := array_append(v_errores, 'Producto "' || v_producto_nombre || '" no existe en el inventario');
+      continue;
+    end if;
+    if v_insumo_id is null then
+      v_errores := array_append(v_errores, 'Insumo "' || v_insumo_nombre || '" no existe en el inventario');
+      continue;
+    end if;
+    if v_producto_id = v_insumo_id then
+      v_errores := array_append(v_errores, '"' || v_producto_nombre || '" no puede ser insumo de sí mismo');
+      continue;
+    end if;
+    if v_cantidad is null or v_cantidad <= 0 then
+      v_errores := array_append(v_errores, 'Cantidad inválida para "' || v_producto_nombre || '" / "' || v_insumo_nombre || '"');
+      continue;
+    end if;
+
+    if not (v_producto_id = any(v_productos_reseteados)) then
+      delete from inventario_receta where item_resultante_id = v_producto_id;
+      v_productos_reseteados := array_append(v_productos_reseteados, v_producto_id);
+    end if;
+
+    insert into inventario_receta (item_resultante_id, item_insumo_id, cantidad_insumo)
+    values (v_producto_id, v_insumo_id, v_cantidad)
+    on conflict (item_resultante_id, item_insumo_id) do update set cantidad_insumo = excluded.cantidad_insumo;
+
+    v_creadas := v_creadas + 1;
+  end loop;
+
+  return jsonb_build_object('creadas', v_creadas, 'errores', v_errores);
+end;
+$$;
+
 -- ------------------------------------------------------------
 -- 8.5. APARTADOS — desarrollo a la medida de Manantial (empresas.permite_apartados)
 -- Venta parcial: el cliente paga un abono, la prenda se separa del

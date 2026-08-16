@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { InventarioTabs } from "../inventario-tabs";
 import { ImportarInventarioForm } from "./importar-form";
+import { ImportarRecetasForm } from "./importar-recetas-form";
 
 export default async function ImportarInventarioPage() {
   const supabase = await createClient();
@@ -44,6 +45,8 @@ export default async function ImportarInventarioPage() {
         puntoInicial={puntoSeleccionado}
         tipoNegocio={tipoNegocio}
       />
+      <hr className="my-8 max-w-2xl border-gray-200" />
+      <ImportarRecetasForm puntoVentaId={puntoSeleccionado} />
     </div>
   );
 }

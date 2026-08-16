@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parsearCsv } from "@/lib/csv";
-import { sinTildes } from "@/lib/texto";
+import { sinTildes, numeroDesdeTexto } from "@/lib/texto";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { cargarRecetasIniciales, type FilaRecetaImportacion } from "./actions";
 
@@ -71,7 +71,7 @@ export function ImportarRecetasForm({ puntoVentaId = null }: { puntoVentaId?: st
         const producto = (fila[indice.producto] ?? "").trim();
         const insumo = (fila[indice.insumo] ?? "").trim();
         const cantidadOriginal = (fila[indice.cantidad] ?? "").trim();
-        const cantidadNumero = Number(cantidadOriginal);
+        const cantidadNumero = numeroDesdeTexto(cantidadOriginal);
 
         const errores: string[] = [];
         if (!producto) errores.push("Falta el nombre del producto");

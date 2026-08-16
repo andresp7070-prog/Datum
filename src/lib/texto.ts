@@ -10,3 +10,12 @@ export function primeraMayuscula(texto: string) {
   if (!t) return t;
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
+
+// Los precios y cantidades en un CSV a veces vienen con coma como separador
+// de miles (ej. "10,000", tal como Excel los exporta) — los pesos
+// colombianos casi nunca llevan decimales, así que una coma siempre se lee
+// como separador de miles, nunca como separador decimal. Sin esto,
+// Number("10,000") da NaN y la importación lo marca como error.
+export function numeroDesdeTexto(texto: string): number {
+  return Number(texto.replace(/,/g, ""));
+}

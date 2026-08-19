@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import "./landing.css";
 import { EcosistemaDemo } from "./ecosistema-demo";
 
@@ -54,6 +54,14 @@ export function Landing() {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const needleRef = useRef<SVGGElement>(null);
+  const scrollyRef = useRef<HTMLDivElement>(null);
+  const esferaRef = useRef<HTMLDivElement>(null);
+  const orbitaRef = useRef<HTMLDivElement>(null);
+  const compasWrapRef = useRef<HTMLDivElement>(null);
+  const compasZoomRef = useRef<HTMLDivElement>(null);
+  const h1Ref = useRef<HTMLHeadingElement>(null);
+  const progresoScrollRef = useRef<HTMLDivElement>(null);
+  const heroTextoRef = useRef<HTMLDivElement>(null);
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
@@ -100,45 +108,247 @@ export function Landing() {
     els.forEach((el) => el.classList.add("in"));
   }, []);
 
-  // La brújula del hero sigue el cursor. Ángulo acumulado (sin normalizar a
-  // -180/180) para que nunca dé un giro completo raro al cruzar por detrás
-  // del centro — siempre gira por el camino más corto.
+  // Todo el comportamiento del hero: la brújula sigue el cursor con física
+  // de resorte real (no un simple promedio), la esfera de puntos (CSS 3D,
+  // sin WebGL) con pulsos eléctricos dorados viajando entre nodos, el
+  // paralaje del cursor, el scroll con inercia (rueda del mouse) + la
+  // barra de progreso arriba de toda la página, y el momento central:
+  // justo antes de que el scroll entregue el paso a #ecosistema, la aguja
+  // suelta el cursor un instante y apunta derecho hacia arriba — encontró
+  // su norte — con el mismo resorte, así que llega con un rebote natural.
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const needle = needleRef.current;
-    const heroEl = heroRef.current;
-    if (!needle || !heroEl || reduceMotion) return;
-
-    let ticking = false;
-    let lastX = 0;
-    let lastY = 0;
-    let currentRotation = 0;
+    const scrolly = scrollyRef.current;
+    const esfera = esferaRef.current;
+    const orbita = orbitaRef.current;
+    const compasWrap = compasWrapRef.current;
+    const compasZoom = compasZoomRef.current;
+    const h1 = h1Ref.current;
+    const progresoScrollEl = progresoScrollRef.current;
+    const heroTexto = heroTextoRef.current;
+    if (!needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 || !progresoScrollEl || !heroTexto) {
+      return;
+    }
 
     function shortestDelta(d: number) {
       return ((d % 360) + 540) % 360 - 180;
     }
 
-    function updateNeedle() {
-      const rect = heroEl!.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const target = Math.atan2(lastY - cy, lastX - cx) * (180 / Math.PI) + 90;
-      currentRotation += shortestDelta(target - currentRotation);
-      needle!.style.transform = `rotate(${currentRotation}deg)`;
-      ticking = false;
+    // ---- esfera de puntos (Fibonacci sphere) con líneas a los 3 vecinos
+    // más próximos de cada nodo, y pulsos que viajan por esas líneas. ----
+    type Punto3 = { x: number; y: number; z: number };
+    const N = 72;
+    const RADIO = 200;
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const puntos: Punto3[] = [];
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (i / (N - 1)) * 2;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const theta = golden * i;
+      puntos.push({ x: Math.cos(theta) * r * RADIO, y: y * RADIO, z: Math.sin(theta) * r * RADIO });
+      const div = document.createElement("div");
+      div.className = "punto";
+      div.style.transform = `translate3d(${puntos[i].x.toFixed(1)}px,${puntos[i].y.toFixed(1)}px,${puntos[i].z.toFixed(1)}px)`;
+      esfera.appendChild(div);
+    }
+    function distancia3(a: Punto3, b: Punto3) {
+      const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+      return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    const paresLista: { a: Punto3; b: Punto3 }[] = [];
+    function agregarLinea(a: Punto3, b: Punto3) {
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      const largo = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (largo < 0.01) return;
+      const rotY = (-Math.atan2(dz, dx) * 180) / Math.PI;
+      const rotZ = (Math.asin(dy / largo) * 180) / Math.PI;
+      const linea = document.createElement("div");
+      linea.className = "linea";
+      linea.style.width = `${largo.toFixed(1)}px`;
+      linea.style.transform = `translate3d(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px,${a.z.toFixed(1)}px) rotateY(${rotY.toFixed(2)}deg) rotateZ(${rotZ.toFixed(2)}deg)`;
+      esfera!.insertBefore(linea, esfera!.firstChild);
+      paresLista.push({ a, b });
+    }
+    for (let j = 0; j < puntos.length; j++) {
+      const distancias = puntos
+        .map((p, k) => ({ k, d: k === j ? Infinity : distancia3(puntos[j], p) }))
+        .sort((a, b) => a.d - b.d);
+      for (let m = 0; m < 3; m++) agregarLinea(puntos[j], puntos[distancias[m].k]);
     }
 
-    function onMouseMove(e: MouseEvent) {
-      lastX = e.clientX;
-      lastY = e.clientY;
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(updateNeedle);
+    type Pulso = { el: HTMLDivElement; activo: boolean; inicioT: number; duracion: number; par: { a: Punto3; b: Punto3 } | null; espera: number };
+    const pulsos: Pulso[] = [];
+    if (!reduceMotion && paresLista.length) {
+      for (let pi = 0; pi < 9; pi++) {
+        const el = document.createElement("div");
+        el.className = "pulso";
+        esfera.appendChild(el);
+        pulsos.push({ el, activo: false, inicioT: 0, duracion: 0.5, par: null, espera: Math.random() * 1.4 });
+      }
+    }
+    function actualizarPulsos(t: number) {
+      for (const p of pulsos) {
+        if (!p.activo) {
+          p.espera -= 0.016;
+          if (p.espera <= 0) {
+            p.par = paresLista[(Math.random() * paresLista.length) | 0];
+            p.duracion = 0.55 + Math.random() * 0.5;
+            p.inicioT = t;
+            p.activo = true;
+          }
+          continue;
+        }
+        const frac = (t - p.inicioT) / p.duracion;
+        if (frac >= 1) {
+          p.activo = false;
+          p.espera = 0.25 + Math.random() * 1.6;
+          p.el.style.opacity = "0";
+          continue;
+        }
+        const { a, b } = p.par!;
+        const x = a.x + (b.x - a.x) * frac;
+        const y = a.y + (b.y - a.y) * frac;
+        const z = a.z + (b.z - a.z) * frac;
+        const brillo = Math.sin(Math.min(1, frac) * Math.PI);
+        p.el.style.opacity = String(brillo);
+        p.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,${z.toFixed(1)}px)`;
       }
     }
 
-    window.addEventListener("mousemove", onMouseMove);
-    return () => window.removeEventListener("mousemove", onMouseMove);
+    // ---- aguja: apunta hacia el cursor, tomando como centro la posición
+    // real en pantalla del compás. ----
+    let targetDeg = 0, currentDeg = 0, velDeg = 0, lastX = 0, lastY = 0;
+    let mouseNX = 0, mouseNY = 0, smNX = 0, smNY = 0;
+    function onMouseMove(e: MouseEvent) {
+      lastX = e.clientX;
+      lastY = e.clientY;
+      const rect = compasWrap!.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      targetDeg = (Math.atan2(lastY - cy, lastX - cx) * 180) / Math.PI + 90;
+      mouseNX = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseNY = (e.clientY / window.innerHeight) * 2 - 1;
+    }
+    if (!reduceMotion) window.addEventListener("mousemove", onMouseMove);
+
+    // ---- scroll con inercia (rueda) + barra de progreso. El táctil queda
+    // nativo a propósito. El teclado, arrastrar la barra de scroll, o
+    // cualquier salto de scroll que no venga de nuestro propio scrollTo
+    // (por ejemplo un enlace #ancla) resincronizan el objetivo en vez de
+    // pelear contra ese scroll — si no, cualquier scroll que no fuera con
+    // la rueda quedaba "atrapado" siempre volviendo a donde iba la rueda. ----
+    let scrollObjetivo = window.scrollY;
+    let scrollActualSuave = window.scrollY;
+    let ultimoScrollFueNuestro = false;
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      scrollObjetivo = Math.min(maxScroll, Math.max(0, scrollObjetivo + e.deltaY));
+    }
+    if (!reduceMotion) window.addEventListener("wheel", onWheel, { passive: false });
+
+    function trapecio(p: number, s0: number, s1: number, b0: number | null, b1: number | null) {
+      if (p <= s0 || (b1 !== null && p >= b1)) return 0;
+      if (p < s1) return (p - s0) / (s1 - s0);
+      if (b0 === null || p <= b0) return 1;
+      return 1 - (p - b0) / (b1! - b0);
+    }
+
+    let progreso = 0;
+    function medirProgreso() {
+      const rect = scrolly!.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      progreso = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
+    }
+    let tickingScroll = false;
+    function onScroll() {
+      if (!reduceMotion && !ultimoScrollFueNuestro) {
+        scrollObjetivo = window.scrollY;
+        scrollActualSuave = window.scrollY;
+      }
+      if (!tickingScroll) {
+        tickingScroll = true;
+        requestAnimationFrame(() => {
+          medirProgreso();
+          tickingScroll = false;
+        });
+      }
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    medirProgreso();
+
+    let raf = 0;
+    const inicio = performance.now();
+    let ultimoT = 0;
+    let tituloActivado = false;
+    function animar() {
+      raf = requestAnimationFrame(animar);
+      const t = (performance.now() - inicio) / 1000;
+      const dt = Math.min(0.05, Math.max(0, t - ultimoT));
+      ultimoT = t;
+
+      if (!reduceMotion) {
+        scrollActualSuave += (scrollObjetivo - scrollActualSuave) * 0.11;
+        if (Math.abs(scrollObjetivo - scrollActualSuave) > 0.4) {
+          ultimoScrollFueNuestro = true;
+          window.scrollTo(0, scrollActualSuave);
+          requestAnimationFrame(() => { ultimoScrollFueNuestro = false; });
+        }
+      }
+      const maxScrollBarra = document.documentElement.scrollHeight - window.innerHeight;
+      const fraccionScroll = maxScrollBarra > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScrollBarra)) : 0;
+      progresoScrollEl!.style.width = `${fraccionScroll * 100}%`;
+
+      const introCruda = reduceMotion ? 1 : Math.min(1, t / 1.1);
+      const introEase = 1 - Math.pow(1 - introCruda, 3);
+      if (!tituloActivado && introEase > 0.04) {
+        h1!.classList.add("in");
+        tituloActivado = true;
+      }
+
+      smNX += (mouseNX - smNX) * 0.06;
+      smNY += (mouseNY - smNY) * 0.06;
+
+      const entradaEscala = 0.6 + 0.4 * introEase;
+      compasWrap!.style.opacity = String(introEase);
+      compasWrap!.style.transform = `translate(calc(-50% + ${(smNX * 9).toFixed(1)}px), calc(-50% + ${(smNY * 7).toFixed(1)}px)) scale(${entradaEscala})`;
+
+      const zoomIn = trapecio(progreso, 0, 0.28, null, null);
+      const salida = Math.max(0, Math.min(1, (progreso - 0.35) / 0.35));
+      compasZoom!.style.opacity = String(introEase * (1 - salida));
+      heroTexto!.style.opacity = String(introEase * (1 - salida));
+      heroTexto!.style.transform = `translateY(${salida * -14}px)`;
+
+      const giroBase = reduceMotion ? 0 : t * 11;
+      const giroExtra = zoomIn * 55;
+      const escalaEsfera = 1 + zoomIn * 0.65 - salida * 0.4;
+      esfera!.style.transform = `scale(${escalaEsfera}) rotateY(${giroBase + giroExtra}deg) rotateX(6deg)`;
+      orbita!.style.opacity = String(introEase * (1 - salida * 0.85));
+      orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15 - zoomIn * 10).toFixed(1)}px)`;
+      actualizarPulsos(t);
+
+      const enfoqueNorte = trapecio(progreso, 0.14, 0.2, 0.26, 0.34);
+      const targetUsado = enfoqueNorte > 0.5 ? 0 : targetDeg;
+      if (reduceMotion) {
+        currentDeg = targetUsado;
+      } else {
+        const delta = shortestDelta(targetUsado - currentDeg);
+        const RIGIDEZ = 210, AMORTIGUACION = 18;
+        const aceleracion = delta * RIGIDEZ - velDeg * AMORTIGUACION;
+        velDeg += aceleracion * dt;
+        currentDeg += velDeg * dt;
+      }
+      needle!.style.transform = `rotate(${currentDeg}deg)`;
+    }
+    animar();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   if (vistaMovil) {
@@ -156,6 +366,7 @@ export function Landing() {
 
   return (
     <div ref={rootRef}>
+      <div className="progreso-scroll" ref={progresoScrollRef} aria-hidden="true" />
       <button
         type="button"
         ref={viewportToggleRef}
@@ -220,40 +431,60 @@ export function Landing() {
         </div>
       </nav>
 
-      <header className="hero" id="hero" ref={heroRef}>
-        <svg className="hero-motif" viewBox="0 0 200 200" fill="none" aria-hidden="true">
-          <path
-            className="ring"
-            d="M100 175 A75 75 0 1 1 151.34 154.68"
-            stroke="currentColor"
-            strokeWidth="0.8"
-            strokeLinecap="round"
-          />
-          <g className="needle" ref={needleRef}>
-            <path className="head-left" d="M100 42 L100 100 L79 100 Z" fill="currentColor" stroke="none" />
-            <path className="head-right" d="M100 42 L121 100 L100 100 Z" fill="currentColor" stroke="none" />
-            <line className="head-ridge" x1="100" y1="42" x2="100" y2="100" stroke="currentColor" strokeWidth="0.6" />
-            <path className="tail" d="M79 100 L100 158 L121 100" stroke="currentColor" strokeWidth="0.5" />
-            <line className="tail-ridge" x1="100" y1="100" x2="100" y2="158" stroke="currentColor" strokeWidth="0.5" />
-          </g>
-        </svg>
-        <h1>Todo lo que necesita tu empresa en un solo lugar</h1>
-        <p className="lede">
-          Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
-          crecimiento de tu empresa.
-        </p>
-        <a className="more" href="#ecosistema" aria-label="Ver más abajo">
-          <svg viewBox="0 0 12 12" fill="none">
-            <path
-              d="M6 2v8M2.5 7 6 10.5 9.5 7"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </a>
-      </header>
+      <div className="hero-scrolly" ref={scrollyRef}>
+        <header className="hero" id="hero" ref={heroRef}>
+          <div className="hero-fantasma" aria-hidden="true">Datum</div>
+          <div className="hero-orbita" ref={orbitaRef}>
+            <div className="hero-esfera" ref={esferaRef} />
+          </div>
+
+          <div className="hero-compas-wrap" ref={compasWrapRef}>
+            <div className="hero-compas-zoom" ref={compasZoomRef}>
+              <svg className="hero-motif" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+                <path
+                  className="ring"
+                  d="M100 175 A75 75 0 1 1 151.34 154.68"
+                  stroke="currentColor"
+                  strokeWidth="1.1"
+                  strokeLinecap="round"
+                />
+                <g className="needle" ref={needleRef}>
+                  <path className="head-left" d="M100 42 L100 100 L79 100 Z" fill="currentColor" stroke="none" />
+                  <path className="head-right" d="M100 42 L121 100 L100 100 Z" fill="currentColor" stroke="none" />
+                  <line className="head-ridge" x1="100" y1="42" x2="100" y2="100" stroke="currentColor" strokeWidth="0.6" />
+                  <path className="tail" d="M79 100 L100 158 L121 100" stroke="currentColor" strokeWidth="0.5" />
+                  <line className="tail-ridge" x1="100" y1="100" x2="100" y2="158" stroke="currentColor" strokeWidth="0.5" />
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <div className="hero-texto" ref={heroTextoRef}>
+            <h1 ref={h1Ref}>
+              {"Todo lo que necesita tu empresa en un solo lugar".split(" ").map((palabra, i) => (
+                <span key={i} className="palabra" style={{ "--i": i } as CSSProperties}>
+                  {palabra}
+                </span>
+              ))}
+            </h1>
+            <p className="lede">
+              Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
+              crecimiento de tu empresa.
+            </p>
+            <a className="more" href="#ecosistema" aria-label="Ver más abajo">
+              <svg viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M6 2v8M2.5 7 6 10.5 9.5 7"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </a>
+          </div>
+        </header>
+      </div>
 
       <section className="chapter chapter-oscuro reveal" id="ecosistema">
         <div className="wrap">

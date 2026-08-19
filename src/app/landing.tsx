@@ -359,7 +359,13 @@ export function Landing() {
       const giroExtra = zoomIn * 55;
       const escalaEsfera = 1 + zoomIn * 0.65 - salida * 0.4;
       esfera!.style.transform = `scale(${escalaEsfera}) rotateY(${giroBase + giroExtra}deg) rotateX(6deg)`;
-      orbita!.style.opacity = String(introEase * (1 - salida * 0.85));
+      // Antes se quedaba con un piso de opacidad 0.15 aunque saliera=1 — esa
+      // esfera del hero, todavía animándose sola, se alcanzaba a ver
+      // deslizándose fuera de pantalla justo cuando la esfera de tránsito
+      // ya había arrancado en el mismo punto, y las dos juntas un instante
+      // se sentían "duplicadas". Ahora sí llega a opacidad 0 de verdad, y
+      // para cuando arranca la de tránsito, la del hero ya es invisible.
+      orbita!.style.opacity = String(introEase * (1 - salida));
       orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15 - zoomIn * 10).toFixed(1)}px)`;
       actualizarPulsos(t);
 

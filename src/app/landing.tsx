@@ -241,19 +241,31 @@ export function Landing() {
     }
     if (!reduceMotion) window.addEventListener("mousemove", onMouseMove);
 
-    // ---- scroll con inercia (rueda) + barra de progreso. El táctil queda
-    // nativo a propósito. El teclado, arrastrar la barra de scroll, o
-    // cualquier salto de scroll que no venga de nuestro propio scrollTo
-    // (por ejemplo un enlace #ancla) resincronizan el objetivo en vez de
-    // pelear contra ese scroll — si no, cualquier scroll que no fuera con
-    // la rueda quedaba "atrapado" siempre volviendo a donde iba la rueda. ----
+    // ---- scroll con inercia (rueda), pero SOLO mientras el hero sigue fijo
+    // en pantalla — es lo que necesita el recorrido de la brújula. Ya
+    // pasado el hero, la rueda vuelve a mover la página de forma nativa
+    // (instantánea, sin inercia); si no, el "retraso" de la inercia se
+    // sentía en toda la página, no solo en el hero. El táctil queda nativo
+    // a propósito. El teclado, arrastrar la barra de scroll, o cualquier
+    // salto de scroll que no venga de nuestro propio scrollTo (por ejemplo
+    // un enlace #ancla) resincronizan el objetivo en vez de pelear contra
+    // ese scroll — si no, cualquier scroll que no fuera con la rueda
+    // quedaba "atrapado" siempre volviendo a donde iba la rueda. Se
+    // reconoce un scroll como "propio" comparando el valor real contra el
+    // último que escribimos nosotros mismos, no con una bandera de tiempo
+    // — una bandera que se limpia "un frame después" corre el riesgo de
+    // limpiarse antes de que el navegador entregue el evento 'scroll' de
+    // esa misma escritura, y ahí el resync empieza a pelear consigo mismo
+    // (justo el "scroll muy retrasado" que se sentía). ----
     let scrollObjetivo = window.scrollY;
     let scrollActualSuave = window.scrollY;
-    let ultimoScrollFueNuestro = false;
+    let ultimoValorPropio = window.scrollY;
     function onWheel(e: WheelEvent) {
+      const limiteHero = scrolly!.offsetTop + scrolly!.offsetHeight - window.innerHeight;
+      if (window.scrollY >= limiteHero) return;
       e.preventDefault();
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      scrollObjetivo = Math.min(maxScroll, Math.max(0, scrollObjetivo + e.deltaY * 1.4));
+      scrollObjetivo = Math.min(maxScroll, Math.max(0, scrollObjetivo + e.deltaY * 1.2));
     }
     if (!reduceMotion) window.addEventListener("wheel", onWheel, { passive: false });
 
@@ -272,7 +284,7 @@ export function Landing() {
     }
     let tickingScroll = false;
     function onScroll() {
-      if (!reduceMotion && !ultimoScrollFueNuestro) {
+      if (!reduceMotion && Math.abs(window.scrollY - ultimoValorPropio) > 1) {
         scrollObjetivo = window.scrollY;
         scrollActualSuave = window.scrollY;
       }
@@ -298,11 +310,15 @@ export function Landing() {
       ultimoT = t;
 
       if (!reduceMotion) {
-        scrollActualSuave += (scrollObjetivo - scrollActualSuave) * 0.22;
+        scrollActualSuave += (scrollObjetivo - scrollActualSuave) * 0.32;
         if (Math.abs(scrollObjetivo - scrollActualSuave) > 0.4) {
-          ultimoScrollFueNuestro = true;
-          window.scrollTo(0, scrollActualSuave);
-          requestAnimationFrame(() => { ultimoScrollFueNuestro = false; });
+          // behavior:"instant" es necesario — la propiedad global
+          // scroll-behavior:smooth (html) también aplica a scrollTo()
+          // llamado sin opciones, así que cada uno de estos frames disparaba
+          // su propia animación suave del navegador encima de la nuestra,
+          // apilándose una sobre otra y sintiéndose muy retrasado.
+          window.scrollTo({ top: scrollActualSuave, left: 0, behavior: "instant" });
+          ultimoValorPropio = scrollActualSuave;
         }
       }
       const maxScrollBarra = document.documentElement.scrollHeight - window.innerHeight;

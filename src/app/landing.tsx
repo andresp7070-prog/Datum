@@ -63,6 +63,8 @@ export function Landing() {
   const progresoScrollRef = useRef<HTMLDivElement>(null);
   const heroTextoRef = useRef<HTMLDivElement>(null);
   const ecoEsferaRef = useRef<HTMLDivElement>(null);
+  const esferaViajeraFondoRef = useRef<HTMLDivElement>(null);
+  const esferaViajeraRef = useRef<HTMLDivElement>(null);
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
@@ -129,7 +131,12 @@ export function Landing() {
     const progresoScrollEl = progresoScrollRef.current;
     const heroTexto = heroTextoRef.current;
     const ecoEsfera = ecoEsferaRef.current;
-    if (!needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 || !progresoScrollEl || !heroTexto || !ecoEsfera) {
+    const esferaViajeraFondo = esferaViajeraFondoRef.current;
+    const esferaViajera = esferaViajeraRef.current;
+    if (
+      !needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 ||
+      !progresoScrollEl || !heroTexto || !ecoEsfera || !esferaViajeraFondo || !esferaViajera
+    ) {
       return;
     }
 
@@ -185,6 +192,7 @@ export function Landing() {
     }
     const paresLista = crearEsferaPuntos(esfera, 72, 200);
     crearEsferaPuntos(ecoEsfera, 72, 200);
+    crearEsferaPuntos(esferaViajera, 72, 200);
 
     type Pulso = { el: HTMLDivElement; activo: boolean; inicioT: number; duracion: number; par: { a: Punto3; b: Punto3 } | null; espera: number };
     const pulsos: Pulso[] = [];
@@ -356,6 +364,34 @@ export function Landing() {
       orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15 - zoomIn * 10).toFixed(1)}px)`;
       actualizarPulsos(t);
 
+      // ---- esfera de tránsito: recoge el relevo justo donde el hero suelta
+      // el scroll fijo (el compás ya se desvaneció, pero la esfera del hero
+      // queda con la misma opacidad/escala con la que arranca ésta) y viaja
+      // en pantalla, con posición fija, hasta la esfera ambiente que ya
+      // vive detrás de la demo de módulos — así se siente una sola esfera
+      // que se desplaza, no dos que se cortan. El destino se mide en vivo
+      // (getBoundingClientRect) porque #ecosistema sigue subiendo con el
+      // scroll normal mientras dura el tránsito. ----
+      const limiteHero = scrolly!.offsetTop + scrolly!.offsetHeight - window.innerHeight;
+      const distanciaViaje = window.innerHeight * 0.75;
+      const crudoTransito = (window.scrollY - limiteHero) / distanciaViaje;
+      const enTransito = crudoTransito >= 0 && crudoTransito <= 1;
+      if (enTransito) {
+        const p2 = Math.max(0, Math.min(1, crudoTransito));
+        const inicioX = window.innerWidth * 0.26;
+        const inicioY = 64 + (window.innerHeight - 64) / 2;
+        const destino = ecoEsfera!.getBoundingClientRect();
+        const x = inicioX + (destino.left - inicioX) * p2;
+        const y = inicioY + (destino.top - inicioY) * p2;
+        const escalaInicio = 1 + zoomIn * 0.65 - 0.4; // misma fórmula de escalaEsfera con salida=1
+        const escala = escalaInicio + (2.4 - escalaInicio) * p2;
+        esferaViajeraFondo!.style.opacity = "0.15";
+        esferaViajeraFondo!.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+        esferaViajera!.style.transform = `scale(${escala.toFixed(2)}) rotateY(${(t * 20).toFixed(1)}deg) rotateX(8deg)`;
+      } else {
+        esferaViajeraFondo!.style.opacity = "0";
+      }
+
       const enfoqueNorte = trapecio(progreso, 0.14, 0.2, 0.26, 0.34);
       const targetUsado = enfoqueNorte > 0.5 ? 0 : targetDeg;
       if (reduceMotion) {
@@ -395,6 +431,9 @@ export function Landing() {
   return (
     <div ref={rootRef}>
       <div className="progreso-scroll" ref={progresoScrollRef} aria-hidden="true" />
+      <div className="esfera-viajera-fondo" ref={esferaViajeraFondoRef} aria-hidden="true">
+        <div className="esfera-viajera" ref={esferaViajeraRef} />
+      </div>
       <button
         type="button"
         ref={viewportToggleRef}

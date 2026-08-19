@@ -441,6 +441,27 @@
     .eco-esfera-fondo { display: none; }
   }
 
+  /* Esfera de tránsito — misma especie otra vez, pero position:fixed: es la
+     que realmente viaja en pantalla desde donde el hero la suelta hasta la
+     esfera ambiente de #ecosistema (ver el hook de React). Solo es visible
+     durante ese tramo; el resto del tiempo queda en opacidad 0. */
+  .esfera-viajera-fondo {
+    position: fixed; left: 0; top: 0; width: 1px; height: 1px;
+    perspective: 900px; opacity: 0; pointer-events: none; z-index: 1;
+  }
+  .esfera-viajera { position: relative; width: 1px; height: 1px; transform-style: preserve-3d; }
+  .esfera-viajera .punto {
+    position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+    border-radius: 50%; background: #e3a748; opacity: 0.8;
+  }
+  .esfera-viajera .linea {
+    position: absolute; top: 0; left: 0; height: 1px;
+    background: #ffffff; opacity: 0.16; transform-origin: 0 50%;
+  }
+  @media (max-width: 760px) {
+    .esfera-viajera-fondo { display: none; }
+  }
+
   /* --- Demo interactiva de módulos (recreación de la presentación comercial) --- */
   .demo-wrap {
     --ink: #14151f; --ink-soft: #5b5d6e; --ink-faint: #9092a3;

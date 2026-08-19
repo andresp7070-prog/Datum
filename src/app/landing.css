@@ -164,7 +164,7 @@
      visitante), así el hero combina con lo que sigue en vez de quedar
      como un bloque beige suelto entre dos navys, que es justo lo que
      decía el comentario viejo de acá que nunca se hizo realidad. */
-  .hero-scrolly { position: relative; height: 220vh; }
+  .hero-scrolly { position: relative; height: 165vh; }
   .hero {
     /* top/height cuentan los 64px del nav (que también es sticky) — sin
        esto, al quedar fijo el hero se pega detrás del nav en vez de justo
@@ -182,21 +182,10 @@
     color: var(--ink);
   }
 
-  /* Marca fantasma detrás de todo — le da escala al hero. Es el nombre de
-     la marca, no texto nuevo. Se posiciona antes que todo lo demás en el
-     DOM para quedar siempre detrás sin necesitar z-index propio. */
-  .hero-fantasma {
-    position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%);
-    font-family: var(--font-fraunces), Georgia, serif; font-weight: 600;
-    font-size: min(30vw, 420px); line-height: 1; letter-spacing: -0.02em;
-    color: transparent; -webkit-text-stroke: 1px rgba(243, 242, 238, 0.05);
-    white-space: nowrap; pointer-events: none; user-select: none;
-  }
-
   /* Esfera de puntos en CSS 3D real (perspective + preserve-3d) — sin
      WebGL ni librerías. Crece durante el scroll (ver el hook de React);
      el logo se queda siempre en su tamaño estándar, no ella. */
-  .hero-orbita { position: absolute; left: 16%; top: 50%; width: 1px; height: 1px; perspective: 900px; }
+  .hero-orbita { position: absolute; left: 26%; top: 50%; width: 1px; height: 1px; perspective: 900px; }
   .hero-esfera { position: relative; width: 1px; height: 1px; transform-style: preserve-3d; }
   .hero-esfera .punto {
     position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
@@ -218,7 +207,7 @@
      así nunca compiten por la misma propiedad transform. El tamaño no
      cambia con el scroll (a diferencia de la esfera, que sí crece). */
   .hero-compas-wrap {
-    position: absolute; left: 16%; top: 50%; transform: translate(-50%, -50%);
+    position: absolute; left: 26%; top: 50%; transform: translate(-50%, -50%);
     width: min(40vw, 420px); height: min(40vw, 420px);
     display: flex; align-items: center; justify-content: center;
   }
@@ -289,7 +278,7 @@
   @media (max-width: 760px) {
     .hero-scrolly { height: auto; }
     .hero { position: relative; height: auto; min-height: 92svh; padding: 120px 24px 80px; flex-direction: column; }
-    .hero-orbita, .hero-compas-wrap, .hero-fantasma { display: none; }
+    .hero-orbita, .hero-compas-wrap { display: none; }
     .hero-texto { margin: 0 auto; max-width: 480px; text-align: center; padding: 0; }
     .hero-texto h1 { text-align: center; }
     .hero .lede { margin-left: auto; margin-right: auto; text-align: center; }
@@ -402,7 +391,9 @@
   #precios.chapter-oscuro .plan-flag { color: #1a1b33; }
   #precios.chapter-oscuro .precios-cta:hover { color: #1a1b33; }
 
-  /* Ecosistema también en navy, para que combine con el hero y Precios. */
+  /* Ecosistema también en navy, para que combine con el hero y Precios.
+     overflow:hidden contiene la esfera ambiente de más abajo, que se
+     dibuja más grande que la sección para que se sienta como fondo. */
   #ecosistema.chapter-oscuro {
     background: #1a1b33;
     --ink: #f3f2ee;
@@ -412,6 +403,42 @@
     --line-strong: rgba(243, 242, 238, 0.4);
     --accent: #e3a748;
     color: var(--ink);
+    overflow: hidden;
+  }
+
+  /* Esfera ambiente detrás de la demo de módulos — la misma especie de
+     esfera del hero (mismo generador, mismos puntos dorados y líneas),
+     pero sin lógica de scroll: gira sola, despacio, en baja opacidad, para
+     dar la sensación de que la esfera del hero "aterrizó" acá cuando el
+     logo se desvaneció. Se genera una sola vez en el mismo hook de React
+     que arma la del hero. */
+  .eco-demo-stage { position: relative; }
+  .eco-demo-stage > .demo-wrap { position: relative; z-index: 1; }
+  .eco-esfera-fondo {
+    position: absolute; left: 50%; top: 50%; width: 1px; height: 1px;
+    perspective: 900px; opacity: 0.15; pointer-events: none; z-index: 0;
+  }
+  .eco-esfera {
+    position: relative; width: 1px; height: 1px; transform-style: preserve-3d;
+    animation: eco-giro 70s linear infinite;
+  }
+  .eco-esfera .punto {
+    position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+    border-radius: 50%; background: #e3a748; opacity: 0.8;
+  }
+  .eco-esfera .linea {
+    position: absolute; top: 0; left: 0; height: 1px;
+    background: #ffffff; opacity: 0.16; transform-origin: 0 50%;
+  }
+  @keyframes eco-giro {
+    from { transform: scale(2.4) rotateY(0deg) rotateX(8deg); }
+    to   { transform: scale(2.4) rotateY(360deg) rotateX(8deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .eco-esfera { animation: none; transform: scale(2.4) rotateX(8deg); }
+  }
+  @media (max-width: 760px) {
+    .eco-esfera-fondo { display: none; }
   }
 
   /* --- Demo interactiva de módulos (recreación de la presentación comercial) --- */

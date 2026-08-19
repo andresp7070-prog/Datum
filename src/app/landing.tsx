@@ -62,6 +62,7 @@ export function Landing() {
   const h1Ref = useRef<HTMLHeadingElement>(null);
   const progresoScrollRef = useRef<HTMLDivElement>(null);
   const heroTextoRef = useRef<HTMLDivElement>(null);
+  const ecoEsferaRef = useRef<HTMLDivElement>(null);
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
@@ -127,7 +128,8 @@ export function Landing() {
     const h1 = h1Ref.current;
     const progresoScrollEl = progresoScrollRef.current;
     const heroTexto = heroTextoRef.current;
-    if (!needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 || !progresoScrollEl || !heroTexto) {
+    const ecoEsfera = ecoEsferaRef.current;
+    if (!needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 || !progresoScrollEl || !heroTexto || !ecoEsfera) {
       return;
     }
 
@@ -136,46 +138,53 @@ export function Landing() {
     }
 
     // ---- esfera de puntos (Fibonacci sphere) con líneas a los 3 vecinos
-    // más próximos de cada nodo, y pulsos que viajan por esas líneas. ----
+    // más próximos de cada nodo. Se genera dos veces con la misma función:
+    // una para el hero (con pulsos, sigue el scroll) y otra, más adelante,
+    // como fondo ambiente detrás de la demo de módulos en #ecosistema (sin
+    // pulsos, gira sola) — así ambas son literalmente la misma especie de
+    // esfera, para que el paso de una a otra se sienta como una sola cosa. ----
     type Punto3 = { x: number; y: number; z: number };
-    const N = 72;
-    const RADIO = 200;
-    const golden = Math.PI * (3 - Math.sqrt(5));
-    const puntos: Punto3[] = [];
-    for (let i = 0; i < N; i++) {
-      const y = 1 - (i / (N - 1)) * 2;
-      const r = Math.sqrt(Math.max(0, 1 - y * y));
-      const theta = golden * i;
-      puntos.push({ x: Math.cos(theta) * r * RADIO, y: y * RADIO, z: Math.sin(theta) * r * RADIO });
-      const div = document.createElement("div");
-      div.className = "punto";
-      div.style.transform = `translate3d(${puntos[i].x.toFixed(1)}px,${puntos[i].y.toFixed(1)}px,${puntos[i].z.toFixed(1)}px)`;
-      esfera.appendChild(div);
-    }
     function distancia3(a: Punto3, b: Punto3) {
       const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
       return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
-    const paresLista: { a: Punto3; b: Punto3 }[] = [];
-    function agregarLinea(a: Punto3, b: Punto3) {
-      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
-      const largo = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (largo < 0.01) return;
-      const rotY = (-Math.atan2(dz, dx) * 180) / Math.PI;
-      const rotZ = (Math.asin(dy / largo) * 180) / Math.PI;
-      const linea = document.createElement("div");
-      linea.className = "linea";
-      linea.style.width = `${largo.toFixed(1)}px`;
-      linea.style.transform = `translate3d(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px,${a.z.toFixed(1)}px) rotateY(${rotY.toFixed(2)}deg) rotateZ(${rotZ.toFixed(2)}deg)`;
-      esfera!.insertBefore(linea, esfera!.firstChild);
-      paresLista.push({ a, b });
+    function crearEsferaPuntos(contenedor: HTMLElement, n: number, radio: number) {
+      const golden = Math.PI * (3 - Math.sqrt(5));
+      const puntos: Punto3[] = [];
+      for (let i = 0; i < n; i++) {
+        const y = 1 - (i / (n - 1)) * 2;
+        const r = Math.sqrt(Math.max(0, 1 - y * y));
+        const theta = golden * i;
+        puntos.push({ x: Math.cos(theta) * r * radio, y: y * radio, z: Math.sin(theta) * r * radio });
+        const div = document.createElement("div");
+        div.className = "punto";
+        div.style.transform = `translate3d(${puntos[i].x.toFixed(1)}px,${puntos[i].y.toFixed(1)}px,${puntos[i].z.toFixed(1)}px)`;
+        contenedor.appendChild(div);
+      }
+      const paresLista: { a: Punto3; b: Punto3 }[] = [];
+      function agregarLinea(a: Punto3, b: Punto3) {
+        const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+        const largo = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (largo < 0.01) return;
+        const rotY = (-Math.atan2(dz, dx) * 180) / Math.PI;
+        const rotZ = (Math.asin(dy / largo) * 180) / Math.PI;
+        const linea = document.createElement("div");
+        linea.className = "linea";
+        linea.style.width = `${largo.toFixed(1)}px`;
+        linea.style.transform = `translate3d(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px,${a.z.toFixed(1)}px) rotateY(${rotY.toFixed(2)}deg) rotateZ(${rotZ.toFixed(2)}deg)`;
+        contenedor.insertBefore(linea, contenedor.firstChild);
+        paresLista.push({ a, b });
+      }
+      for (let j = 0; j < puntos.length; j++) {
+        const distancias = puntos
+          .map((p, k) => ({ k, d: k === j ? Infinity : distancia3(puntos[j], p) }))
+          .sort((a, b) => a.d - b.d);
+        for (let m = 0; m < 3; m++) agregarLinea(puntos[j], puntos[distancias[m].k]);
+      }
+      return paresLista;
     }
-    for (let j = 0; j < puntos.length; j++) {
-      const distancias = puntos
-        .map((p, k) => ({ k, d: k === j ? Infinity : distancia3(puntos[j], p) }))
-        .sort((a, b) => a.d - b.d);
-      for (let m = 0; m < 3; m++) agregarLinea(puntos[j], puntos[distancias[m].k]);
-    }
+    const paresLista = crearEsferaPuntos(esfera, 72, 200);
+    crearEsferaPuntos(ecoEsfera, 72, 200);
 
     type Pulso = { el: HTMLDivElement; activo: boolean; inicioT: number; duracion: number; par: { a: Punto3; b: Punto3 } | null; espera: number };
     const pulsos: Pulso[] = [];
@@ -244,7 +253,7 @@ export function Landing() {
     function onWheel(e: WheelEvent) {
       e.preventDefault();
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      scrollObjetivo = Math.min(maxScroll, Math.max(0, scrollObjetivo + e.deltaY));
+      scrollObjetivo = Math.min(maxScroll, Math.max(0, scrollObjetivo + e.deltaY * 1.4));
     }
     if (!reduceMotion) window.addEventListener("wheel", onWheel, { passive: false });
 
@@ -289,7 +298,7 @@ export function Landing() {
       ultimoT = t;
 
       if (!reduceMotion) {
-        scrollActualSuave += (scrollObjetivo - scrollActualSuave) * 0.11;
+        scrollActualSuave += (scrollObjetivo - scrollActualSuave) * 0.22;
         if (Math.abs(scrollObjetivo - scrollActualSuave) > 0.4) {
           ultimoScrollFueNuestro = true;
           window.scrollTo(0, scrollActualSuave);
@@ -433,7 +442,6 @@ export function Landing() {
 
       <div className="hero-scrolly" ref={scrollyRef}>
         <header className="hero" id="hero" ref={heroRef}>
-          <div className="hero-fantasma" aria-hidden="true">Datum</div>
           <div className="hero-orbita" ref={orbitaRef}>
             <div className="hero-esfera" ref={esferaRef} />
           </div>
@@ -494,7 +502,12 @@ export function Landing() {
               Cada módulo está conectado e interactúa con los demás, toda la gestión a un solo clic.
             </p>
           </div>
-          <EcosistemaDemo />
+          <div className="eco-demo-stage">
+            <div className="eco-esfera-fondo" aria-hidden="true">
+              <div className="eco-esfera" ref={ecoEsferaRef} />
+            </div>
+            <EcosistemaDemo />
+          </div>
           <div className="chapter-cta">
             <a
               className="btn"

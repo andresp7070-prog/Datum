@@ -164,7 +164,7 @@
      visitante), así el hero combina con lo que sigue en vez de quedar
      como un bloque beige suelto entre dos navys, que es justo lo que
      decía el comentario viejo de acá que nunca se hizo realidad. */
-  .hero-scrolly { position: relative; height: 165vh; }
+  .hero-scrolly { position: relative; height: 148vh; }
   .hero {
     /* top/height cuentan los 64px del nav (que también es sticky) — sin
        esto, al quedar fijo el hero se pega detrás del nav en vez de justo

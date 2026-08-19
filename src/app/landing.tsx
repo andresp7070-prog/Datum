@@ -340,7 +340,10 @@ export function Landing() {
       compasWrap!.style.transform = `translate(calc(-50% + ${(smNX * 9).toFixed(1)}px), calc(-50% + ${(smNY * 7).toFixed(1)}px)) scale(${entradaEscala})`;
 
       const zoomIn = trapecio(progreso, 0, 0.28, null, null);
-      const salida = Math.max(0, Math.min(1, (progreso - 0.35) / 0.35));
+      // El desvanecido dura casi hasta el final del recorrido (en vez de
+      // terminar a la mitad y dejar un tramo de scroll "muerto", sin nada
+      // visible cambiando, antes de que aparezca #ecosistema).
+      const salida = Math.max(0, Math.min(1, (progreso - 0.35) / 0.58));
       compasZoom!.style.opacity = String(introEase * (1 - salida));
       heroTexto!.style.opacity = String(introEase * (1 - salida));
       heroTexto!.style.transform = `translateY(${salida * -14}px)`;

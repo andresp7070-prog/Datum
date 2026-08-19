@@ -391,9 +391,7 @@
   #precios.chapter-oscuro .plan-flag { color: #1a1b33; }
   #precios.chapter-oscuro .precios-cta:hover { color: #1a1b33; }
 
-  /* Ecosistema también en navy, para que combine con el hero y Precios.
-     overflow:hidden contiene la esfera ambiente de más abajo, que se
-     dibuja más grande que la sección para que se sienta como fondo. */
+  /* Ecosistema también en navy, para que combine con el hero y Precios. */
   #ecosistema.chapter-oscuro {
     background: #1a1b33;
     --ink: #f3f2ee;
@@ -403,48 +401,20 @@
     --line-strong: rgba(243, 242, 238, 0.4);
     --accent: #e3a748;
     color: var(--ink);
-    overflow: hidden;
   }
 
-  /* Esfera ambiente detrás de la demo de módulos — la misma especie de
-     esfera del hero (mismo generador, mismos puntos dorados y líneas),
-     pero sin lógica de scroll: gira sola, despacio, en baja opacidad, para
-     dar la sensación de que la esfera del hero "aterrizó" acá cuando el
-     logo se desvaneció. Se genera una sola vez en el mismo hook de React
-     que arma la del hero. */
   .eco-demo-stage { position: relative; }
   .eco-demo-stage > .demo-wrap { position: relative; z-index: 1; }
-  .eco-esfera-fondo {
-    position: absolute; left: 50%; top: 50%; width: 1px; height: 1px;
-    perspective: 900px; opacity: 0.15; pointer-events: none; z-index: 0;
-  }
-  .eco-esfera {
-    position: relative; width: 1px; height: 1px; transform-style: preserve-3d;
-    animation: eco-giro 70s linear infinite;
-  }
-  .eco-esfera .punto {
-    position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
-    border-radius: 50%; background: #e3a748; opacity: 0.8;
-  }
-  .eco-esfera .linea {
-    position: absolute; top: 0; left: 0; height: 1px;
-    background: #ffffff; opacity: 0.16; transform-origin: 0 50%;
-  }
-  @keyframes eco-giro {
-    from { transform: scale(2.4) rotateY(0deg) rotateX(8deg); }
-    to   { transform: scale(2.4) rotateY(360deg) rotateX(8deg); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .eco-esfera { animation: none; transform: scale(2.4) rotateX(8deg); }
-  }
-  @media (max-width: 760px) {
-    .eco-esfera-fondo { display: none; }
-  }
+  /* Ancla invisible: no dibuja nada, solo le da al hook de React un punto
+     real del DOM (getBoundingClientRect) para saber dónde debe terminar la
+     esfera de tránsito de más abajo — la única esfera ambiente que existe,
+     para que nunca se vean dos al tiempo. */
+  .eco-esfera-fondo { position: absolute; left: 50%; top: 50%; width: 1px; height: 1px; pointer-events: none; }
 
-  /* Esfera de tránsito — misma especie otra vez, pero position:fixed: es la
-     que realmente viaja en pantalla desde donde el hero la suelta hasta la
-     esfera ambiente de #ecosistema (ver el hook de React). Solo es visible
-     durante ese tramo; el resto del tiempo queda en opacidad 0. */
+  /* Esfera de tránsito — misma especie de la esfera del hero (mismo
+     generador, mismos puntos dorados y líneas), pero position:fixed: es la
+     que viaja en pantalla desde donde el hero la suelta hasta quedar
+     detrás de la demo de módulos, y se queda ahí (ver el hook de React). */
   .esfera-viajera-fondo {
     position: fixed; left: 0; top: 0; width: 1px; height: 1px;
     perspective: 900px; opacity: 0; pointer-events: none; z-index: 1;

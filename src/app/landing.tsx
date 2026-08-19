@@ -191,7 +191,6 @@ export function Landing() {
       return paresLista;
     }
     const paresLista = crearEsferaPuntos(esfera, 72, 200);
-    crearEsferaPuntos(ecoEsfera, 72, 200);
     crearEsferaPuntos(esferaViajera, 72, 200);
 
     type Pulso = { el: HTMLDivElement; activo: boolean; inicioT: number; duracion: number; par: { a: Punto3; b: Punto3 } | null; espera: number };
@@ -367,17 +366,19 @@ export function Landing() {
       // ---- esfera de tránsito: recoge el relevo justo donde el hero suelta
       // el scroll fijo (el compás ya se desvaneció, pero la esfera del hero
       // queda con la misma opacidad/escala con la que arranca ésta) y viaja
-      // en pantalla, con posición fija, hasta la esfera ambiente que ya
-      // vive detrás de la demo de módulos — así se siente una sola esfera
-      // que se desplaza, no dos que se cortan. El destino se mide en vivo
-      // (getBoundingClientRect) porque #ecosistema sigue subiendo con el
-      // scroll normal mientras dura el tránsito. ----
+      // en pantalla, con posición fija, hasta quedar detrás de la demo de
+      // módulos — es la ÚNICA esfera ambiente ahí, no hay una segunda
+      // esfera estática aparte (eso era lo que se veía "duplicado"): el
+      // ancla dentro de #ecosistema es solo un punto invisible para medir
+      // en vivo dónde debe quedar (getBoundingClientRect, porque esa
+      // sección sigue subiendo con el scroll normal). Una vez que llega,
+      // se queda seguida a ese punto (p2 satura en 1) y solo se apaga
+      // cuando la demo ya quedó bien arriba, fuera de pantalla. ----
       const limiteHero = scrolly!.offsetTop + scrolly!.offsetHeight - window.innerHeight;
       const distanciaViaje = window.innerHeight * 0.75;
       const crudoTransito = (window.scrollY - limiteHero) / distanciaViaje;
-      const enTransito = crudoTransito >= 0 && crudoTransito <= 1;
-      if (enTransito) {
-        const p2 = Math.max(0, Math.min(1, crudoTransito));
+      if (crudoTransito >= 0) {
+        const p2 = Math.min(1, crudoTransito);
         const inicioX = window.innerWidth * 0.26;
         const inicioY = 64 + (window.innerHeight - 64) / 2;
         const destino = ecoEsfera!.getBoundingClientRect();
@@ -385,7 +386,10 @@ export function Landing() {
         const y = inicioY + (destino.top - inicioY) * p2;
         const escalaInicio = 1 + zoomIn * 0.65 - 0.4; // misma fórmula de escalaEsfera con salida=1
         const escala = escalaInicio + (2.4 - escalaInicio) * p2;
-        esferaViajeraFondo!.style.opacity = "0.15";
+        // Se apaga sola una vez que el ancla ya quedó muy por encima del
+        // viewport (el usuario siguió bajando más allá de Ecosistema).
+        const salidaEco = Math.max(0, Math.min(1, (-destino.top - window.innerHeight * 0.4) / (window.innerHeight * 0.6)));
+        esferaViajeraFondo!.style.opacity = String(0.15 * (1 - salidaEco));
         esferaViajeraFondo!.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         esferaViajera!.style.transform = `scale(${escala.toFixed(2)}) rotateY(${(t * 20).toFixed(1)}deg) rotateX(8deg)`;
       } else {
@@ -561,9 +565,10 @@ export function Landing() {
             </p>
           </div>
           <div className="eco-demo-stage">
-            <div className="eco-esfera-fondo" aria-hidden="true">
-              <div className="eco-esfera" ref={ecoEsferaRef} />
-            </div>
+            {/* Ancla invisible: solo marca en el DOM dónde debe terminar la
+                esfera de tránsito (position:fixed, definida al inicio del
+                documento). No dibuja nada — la esfera visible es una sola. */}
+            <div className="eco-esfera-fondo" aria-hidden="true" ref={ecoEsferaRef} />
             <EcosistemaDemo />
           </div>
           <div className="chapter-cta">

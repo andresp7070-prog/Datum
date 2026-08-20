@@ -6,18 +6,35 @@ import { useEffect, useMemo, useState } from "react";
 // "Formulario de agendamiento". Toda la lógica de horarios/Google Calendar
 // vive del lado del servidor (src/lib/agendar.ts); acá solo se pinta lo que
 // esas dos rutas devuelven y se maneja el estado de la UI.
+//
+// Diseño: panel dividido (calendario de mes a la izquierda, horas del día
+// elegido a la derecha) — la opción que Andrés eligió de un set de 5
+// mockups, con el fondo navy que también pidió como referencia.
 
-type Fase = "cargando" | "sin-horarios" | "eligiendo" | "enviando" | "confirmado" | "error";
+type Fase =
+  | "cargando"
+  | "sin-horarios"
+  | "eligiendo"
+  | "enviando"
+  | "confirmado"
+  | "error";
 
-const FORMATO_DIA_CORTO = new Intl.DateTimeFormat("es-CO", { weekday: "short", timeZone: "America/Bogota" });
-const FORMATO_NUM = new Intl.DateTimeFormat("es-CO", { day: "numeric", timeZone: "America/Bogota" });
-const FORMATO_MES_CORTO = new Intl.DateTimeFormat("es-CO", { month: "short", timeZone: "America/Bogota" });
-// Formato corto propio para la pastilla de día: "21 ago" — el que trae
-// Intl junta día y mes con "de" ("21 de ago."), que no cabe bien en una
-// pastilla angosta.
-function formatoDiaNum(fecha: Date): string {
-  return `${FORMATO_NUM.format(fecha)} ${FORMATO_MES_CORTO.format(fecha).replace(".", "")}`;
-}
+const MESES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+const DOW_CORTO = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
+
 const FORMATO_DIA_LARGO = new Intl.DateTimeFormat("es-CO", {
   weekday: "long",
   day: "numeric",
@@ -33,8 +50,11 @@ const FORMATO_HORA = new Intl.DateTimeFormat("es-CO", {
 function claveDia(iso: string): string {
   // Agrupa por día calendario en hora de Bogotá, no en la del navegador —
   // la reunión siempre se agenda en hora Colombia.
-  const partes = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).formatToParts(new Date(iso));
-  const obtener = (tipo: string) => partes.find((p) => p.type === tipo)?.value ?? "";
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+  }).formatToParts(new Date(iso));
+  const obtener = (tipo: string) =>
+    partes.find((p) => p.type === tipo)?.value ?? "";
   return `${obtener("year")}-${obtener("month")}-${obtener("day")}`;
 }
 
@@ -42,12 +62,40 @@ function capitalizarPrimera(texto: string): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
-function horaBogota(iso: string): number {
-  return Number(
-    new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: "America/Bogota" }).format(
-      new Date(iso),
-    ),
-  );
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function claveCelda(anio: number, mes: number, dia: number): string {
+  return `${anio}-${pad2(mes + 1)}-${pad2(dia)}`;
+}
+
+function claveMes(anio: number, mes: number): string {
+  return `${anio}-${pad2(mes + 1)}`;
+}
+
+function celdasDelMes(anio: number, mes: number): (number | null)[] {
+  const primerDia = new Date(anio, mes, 1).getDay();
+  const totalDias = new Date(anio, mes + 1, 0).getDate();
+  const celdas: (number | null)[] = new Array(primerDia).fill(null);
+  for (let dia = 1; dia <= totalDias; dia++) celdas.push(dia);
+  return celdas;
+}
+
+function sumarMes(
+  m: { anio: number; mes: number },
+  delta: number,
+): { anio: number; mes: number } {
+  let mes = m.mes + delta;
+  let anio = m.anio;
+  if (mes < 0) {
+    mes = 11;
+    anio -= 1;
+  } else if (mes > 11) {
+    mes = 0;
+    anio += 1;
+  }
+  return { anio, mes };
 }
 
 export function AgendarWidget() {
@@ -56,6 +104,8 @@ export function AgendarWidget() {
   const [mensajeError, setMensajeError] = useState("");
   const [diaElegido, setDiaElegido] = useState<string | null>(null);
   const [horarioElegido, setHorarioElegido] = useState<string | null>(null);
+  const [mesActivo, setMesActivo] = useState({ anio: 2000, mes: 0 });
+  const [mostrarForm, setMostrarForm] = useState(false);
   const [enlaceEvento, setEnlaceEvento] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +119,10 @@ export function AgendarWidget() {
           return;
         }
         setFranjas(data.franjas);
-        setDiaElegido(claveDia(data.franjas[0]));
+        const primeraClave = claveDia(data.franjas[0]);
+        setDiaElegido(primeraClave);
+        const [anio, mes] = primeraClave.split("-").map(Number);
+        setMesActivo({ anio, mes: mes - 1 });
         setFase("eligiendo");
       })
       .catch(() => {
@@ -90,15 +143,41 @@ export function AgendarWidget() {
     return Array.from(mapa.entries());
   }, [franjas]);
 
+  const diasDisponibles = useMemo(
+    () => new Set(dias.map(([clave]) => clave)),
+    [dias],
+  );
+  const mesesDisponibles = useMemo(
+    () => new Set(dias.map(([clave]) => clave.slice(0, 7))),
+    [dias],
+  );
+  const celdas = useMemo(
+    () => celdasDelMes(mesActivo.anio, mesActivo.mes),
+    [mesActivo],
+  );
+
+  const mesAnterior = sumarMes(mesActivo, -1);
+  const mesSiguiente = sumarMes(mesActivo, 1);
+  const mesAnteriorHabilitado = mesesDisponibles.has(
+    claveMes(mesAnterior.anio, mesAnterior.mes),
+  );
+  const mesSiguienteHabilitado = mesesDisponibles.has(
+    claveMes(mesSiguiente.anio, mesSiguiente.mes),
+  );
+
   const horariosDelDia = useMemo(() => {
     if (!diaElegido) return [];
     return dias.find(([clave]) => clave === diaElegido)?.[1] ?? [];
   }, [dias, diaElegido]);
 
-  const manana = useMemo(() => horariosDelDia.filter((iso) => horaBogota(iso) < 12), [horariosDelDia]);
-  const tarde = useMemo(() => horariosDelDia.filter((iso) => horaBogota(iso) >= 12), [horariosDelDia]);
-
-  async function confirmar(datos: { nombre: string; correo: string; telefono: string; empresa: string; nota: string; trampa: string }) {
+  async function confirmar(datos: {
+    nombre: string;
+    correo: string;
+    telefono: string;
+    empresa: string;
+    nota: string;
+    trampa: string;
+  }) {
     if (!horarioElegido) return;
     setFase("enviando");
     setMensajeError("");
@@ -108,7 +187,8 @@ export function AgendarWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...datos, horarioISO: horarioElegido }),
       });
-      const data: { ok?: true; link?: string | null; error?: string } = await res.json();
+      const data: { ok?: true; link?: string | null; error?: string } =
+        await res.json();
       if (data.error) {
         setMensajeError(data.error);
         setFase("eligiendo");
@@ -143,10 +223,20 @@ export function AgendarWidget() {
   if (fase === "confirmado") {
     return (
       <div className="agendar-confirmado">
-        <p className="agendar-confirmado-titulo">¡Listo! Tu reunión quedó agendada.</p>
-        <p>Te llegará la invitación a tu correo, con el link para la videollamada.</p>
+        <p className="agendar-confirmado-titulo">
+          ¡Listo! Tu reunión quedó agendada.
+        </p>
+        <p>
+          Te llegará la invitación a tu correo, con el link para la
+          videollamada.
+        </p>
         {enlaceEvento && (
-          <a className="agendar-link-evento" href={enlaceEvento} target="_blank" rel="noreferrer">
+          <a
+            className="agendar-link-evento"
+            href={enlaceEvento}
+            target="_blank"
+            rel="noreferrer"
+          >
             Ver evento en Google Calendar
           </a>
         )}
@@ -156,70 +246,151 @@ export function AgendarWidget() {
 
   return (
     <div className="agendar-widget">
-      <p className="agendar-paso">1. Elige un día</p>
-      <div className="agendar-dias">
-        {dias.map(([clave, horas]) => (
-          <button
-            key={clave}
-            type="button"
-            className={"agendar-dia" + (clave === diaElegido ? " activo" : "")}
-            onClick={() => {
-              setDiaElegido(clave);
-              setHorarioElegido(null);
-            }}
-          >
-            <span className="agendar-dia-corto">{FORMATO_DIA_CORTO.format(new Date(horas[0]))}</span>
-            <span className="agendar-dia-num">{formatoDiaNum(new Date(horas[0]))}</span>
-          </button>
-        ))}
-      </div>
-
-      <p className="agendar-paso">2. Elige una hora <span className="agendar-nota-zona">(hora de Colombia)</span></p>
-      <div className="agendar-horas-lista">
-        {manana.length > 0 && (
-          <div className="agendar-horas-grupo">
-            <p className="agendar-horas-grupo-titulo">Mañana</p>
-            <div className="agendar-horas">
-              {manana.map((iso) => (
-                <button
-                  key={iso}
-                  type="button"
-                  className={"agendar-hora" + (iso === horarioElegido ? " activo" : "")}
-                  onClick={() => setHorarioElegido(iso)}
-                >
-                  {FORMATO_HORA.format(new Date(iso))}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {tarde.length > 0 && (
-          <div className="agendar-horas-grupo">
-            <p className="agendar-horas-grupo-titulo">Tarde</p>
-            <div className="agendar-horas">
-              {tarde.map((iso) => (
-                <button
-                  key={iso}
-                  type="button"
-                  className={"agendar-hora" + (iso === horarioElegido ? " activo" : "")}
-                  onClick={() => setHorarioElegido(iso)}
-                >
-                  {FORMATO_HORA.format(new Date(iso))}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {horarioElegido && (
-        <div className="agendar-paso3">
-          <p className="agendar-paso">3. Tus datos</p>
-          <p className="agendar-resumen">
-            {capitalizarPrimera(FORMATO_DIA_LARGO.format(new Date(horarioElegido)))} ·{" "}
-            {FORMATO_HORA.format(new Date(horarioElegido))}
+      {!mostrarForm && (
+        <>
+          <p className="agendar-paso">
+            Elige un día y una hora{" "}
+            <span className="agendar-nota-zona">(hora de Colombia)</span>
           </p>
-          <FormularioDatos disabled={fase === "enviando"} error={mensajeError} onConfirmar={confirmar} />
+          <div className="agendar-split">
+            <div className="agendar-cal">
+              <div className="agendar-cal-cab">
+                <button
+                  type="button"
+                  className="agendar-cal-nav"
+                  onClick={() => setMesActivo(mesAnterior)}
+                  disabled={!mesAnteriorHabilitado}
+                  aria-label="Mes anterior"
+                >
+                  ‹
+                </button>
+                <span className="agendar-cal-mes">
+                  {MESES[mesActivo.mes]} {mesActivo.anio}
+                </span>
+                <button
+                  type="button"
+                  className="agendar-cal-nav"
+                  onClick={() => setMesActivo(mesSiguiente)}
+                  disabled={!mesSiguienteHabilitado}
+                  aria-label="Mes siguiente"
+                >
+                  ›
+                </button>
+              </div>
+              <div className="agendar-cal-grid">
+                {DOW_CORTO.map((d) => (
+                  <span key={d} className="agendar-cal-dow">
+                    {d}
+                  </span>
+                ))}
+                {celdas.map((dia, i) => {
+                  if (dia === null)
+                    return (
+                      <span key={`v${i}`} className="agendar-cal-dia vacio" />
+                    );
+                  const clave = claveCelda(mesActivo.anio, mesActivo.mes, dia);
+                  const disponible = diasDisponibles.has(clave);
+                  return (
+                    <button
+                      key={clave}
+                      type="button"
+                      className={
+                        "agendar-cal-dia" +
+                        (disponible ? " disponible" : "") +
+                        (clave === diaElegido ? " activo" : "")
+                      }
+                      disabled={!disponible}
+                      onClick={() => {
+                        setDiaElegido(clave);
+                        setHorarioElegido(null);
+                      }}
+                    >
+                      {dia}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="agendar-horas-col">
+              {horariosDelDia.length > 0 && (
+                <p className="agendar-horas-fecha">
+                  {capitalizarPrimera(
+                    FORMATO_DIA_LARGO.format(new Date(horariosDelDia[0])),
+                  )}
+                </p>
+              )}
+              <div className="agendar-horas-lista">
+                {horariosDelDia.map((iso) => (
+                  <button
+                    key={iso}
+                    type="button"
+                    className={
+                      "agendar-hora" + (iso === horarioElegido ? " activo" : "")
+                    }
+                    onClick={() => setHorarioElegido(iso)}
+                  >
+                    {FORMATO_HORA.format(new Date(iso))}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="agendar-resumen-bar">
+            <p className="agendar-resumen-texto">
+              {horarioElegido ? (
+                <>
+                  Tu reunión sería el{" "}
+                  <strong>
+                    {capitalizarPrimera(
+                      FORMATO_DIA_LARGO.format(new Date(horarioElegido)),
+                    )}
+                  </strong>{" "}
+                  a las{" "}
+                  <strong className="agendar-hora-inline">
+                    {FORMATO_HORA.format(new Date(horarioElegido))}
+                  </strong>
+                </>
+              ) : (
+                "Elige un día y un horario para continuar."
+              )}
+            </p>
+            <button
+              type="button"
+              className="agendar-btn-continuar"
+              disabled={!horarioElegido}
+              onClick={() => setMostrarForm(true)}
+            >
+              Continuar
+            </button>
+          </div>
+        </>
+      )}
+
+      {mostrarForm && horarioElegido && (
+        <div className="agendar-paso3">
+          <button
+            type="button"
+            className="agendar-volver"
+            onClick={() => setMostrarForm(false)}
+          >
+            ← Cambiar horario
+          </button>
+          <p className="agendar-resumen">
+            {capitalizarPrimera(
+              FORMATO_DIA_LARGO.format(new Date(horarioElegido)),
+            )}{" "}
+            ·{" "}
+            <span className="agendar-hora-inline">
+              {FORMATO_HORA.format(new Date(horarioElegido))}
+            </span>
+          </p>
+          <FormularioDatos
+            disabled={fase === "enviando"}
+            error={mensajeError}
+            onConfirmar={confirmar}
+          />
         </div>
       )}
     </div>
@@ -233,7 +404,14 @@ function FormularioDatos({
 }: {
   disabled: boolean;
   error: string;
-  onConfirmar: (datos: { nombre: string; correo: string; telefono: string; empresa: string; nota: string; trampa: string }) => void;
+  onConfirmar: (datos: {
+    nombre: string;
+    correo: string;
+    telefono: string;
+    empresa: string;
+    nota: string;
+    trampa: string;
+  }) => void;
 }) {
   return (
     <form
@@ -252,16 +430,55 @@ function FormularioDatos({
       }}
     >
       <div className="agendar-form-fila">
-        <input name="nombre" type="text" placeholder="Nombre *" required disabled={disabled} />
-        <input name="telefono" type="tel" placeholder="Teléfono *" required disabled={disabled} />
+        <input
+          name="nombre"
+          type="text"
+          placeholder="Nombre *"
+          required
+          disabled={disabled}
+        />
+        <input
+          name="telefono"
+          type="tel"
+          placeholder="Teléfono *"
+          required
+          disabled={disabled}
+        />
       </div>
-      <input name="correo" type="email" placeholder="Correo *" required disabled={disabled} />
-      <input name="empresa" type="text" placeholder="Empresa (opcional)" disabled={disabled} />
-      <textarea name="nota" placeholder="Cuéntanos brevemente qué necesitas (opcional)" rows={3} disabled={disabled} />
+      <input
+        name="correo"
+        type="email"
+        placeholder="Correo *"
+        required
+        disabled={disabled}
+      />
+      <input
+        name="empresa"
+        type="text"
+        placeholder="Empresa (opcional)"
+        disabled={disabled}
+      />
+      <textarea
+        name="nota"
+        placeholder="Cuéntanos brevemente qué necesitas (opcional)"
+        rows={3}
+        disabled={disabled}
+      />
       {/* Campo trampa: oculto para una persona real, los bots suelen llenar todo. */}
-      <input name="sitio_web" type="text" className="agendar-honeypot" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+      <input
+        name="sitio_web"
+        type="text"
+        className="agendar-honeypot"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+      />
       {error && <p className="agendar-form-error">{error}</p>}
-      <button type="submit" className="btn agendar-btn-confirmar" disabled={disabled}>
+      <button
+        type="submit"
+        className="agendar-btn-confirmar"
+        disabled={disabled}
+      >
         {disabled ? "Agendando…" : "Confirmar reunión"}
       </button>
     </form>

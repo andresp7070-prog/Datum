@@ -742,9 +742,24 @@
   .agenda-texto { text-align: left; padding-top: 8px; }
   .agenda-texto h2 { font-size: clamp(28px, 3.6vw, 40px); line-height: 1.12; max-width: 14ch; }
   .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 40ch; margin: 18px 0 0; }
+  /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
+     #precios y #ecosistema — ver el comentario grande sobre .hero más
+     arriba) en vez del --card claro genérico: así combina con la
+     referencia que aprobó Andrés (calendario + lista de horas sobre
+     fondo oscuro) sin importar el tema claro/oscuro del visitante. */
   .agenda-formulario {
-    background: var(--card); border: 1px solid var(--line); border-radius: 20px;
-    padding: clamp(20px, 3vw, 32px);
+    background: #1a1b33;
+    border: 1px solid rgba(243, 242, 238, 0.14);
+    border-radius: 20px;
+    padding: clamp(22px, 3vw, 30px);
+    --ink: #f3f2ee;
+    --ink-soft: #c3c2d6;
+    --ink-faint: #9698ad;
+    --line: rgba(243, 242, 238, 0.22);
+    --line-strong: rgba(243, 242, 238, 0.4);
+    --accent: #e3a748;
+    --good: #6fbf94;
+    color: var(--ink);
   }
   @media (max-width: 760px) {
     .agenda-grid { grid-template-columns: 1fr; }
@@ -757,48 +772,93 @@
   .agendar-estado .btn { margin-top: 20px; }
 
   .agendar-paso {
-    margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    margin: 0 0 16px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
     text-transform: uppercase; color: var(--ink-faint);
   }
-  .agendar-widget > .agendar-paso:not(:first-child) { margin-top: 26px; }
   .agendar-nota-zona { text-transform: none; font-weight: 500; letter-spacing: normal; }
 
-  /* Tira horizontal de días, en una sola fila (con scroll si no caben) en
-     vez de envolver en filas dispares — se ve más ordenada que pastillas
-     de ancho variable. */
-  .agendar-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
-  .agendar-dia {
-    flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px;
-    width: 72px; padding: 10px 6px; border-radius: 12px; border: 1px solid var(--line);
-    background: transparent; color: var(--ink); cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  /* Panel dividido: calendario de mes a la izquierda, horas del día
+     elegido a la derecha, los dos visibles siempre — mismo patrón que
+     Andrés aprobó del set de opciones (calendario mensual + lista). */
+  .agendar-split { display: grid; grid-template-columns: 1fr 1.05fr; gap: 24px; }
+  @media (max-width: 560px) {
+    .agendar-split { grid-template-columns: 1fr; }
   }
-  .agendar-dia:hover { border-color: var(--ink-soft); }
-  .agendar-dia.activo { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-  .agendar-dia-corto { font-size: 11.5px; font-weight: 600; text-transform: capitalize; opacity: 0.7; }
-  .agendar-dia.activo .agendar-dia-corto { opacity: 0.85; }
-  .agendar-dia-num { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 
-  /* Los horarios del día quedan en un alto fijo con scroll propio, para que
-     la tarjeta no crezca sin control según cuántas franjas haya ese día —
-     así el bloque de texto y el formulario siempre quedan bien alineados. */
-  .agendar-horas-lista { max-height: 220px; overflow-y: auto; padding-right: 4px; }
-  .agendar-horas-grupo + .agendar-horas-grupo { margin-top: 14px; }
-  .agendar-horas-grupo-titulo {
-    margin: 0 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.03em;
-    text-transform: uppercase; color: var(--ink-faint);
+  .agendar-cal-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .agendar-cal-mes { font-family: var(--font-fraunces), serif; font-size: 15px; font-weight: 600; text-transform: capitalize; }
+  .agendar-cal-nav {
+    width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: none;
+    color: var(--ink-soft); display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
   }
-  .agendar-horas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .agendar-cal-nav:hover:not(:disabled) { border-color: var(--ink-soft); color: var(--ink); }
+  .agendar-cal-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .agendar-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+  .agendar-cal-dow {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+    color: var(--ink-faint); padding-bottom: 6px;
+  }
+  .agendar-cal-dia {
+    aspect-ratio: 1; border: none; background: none; border-radius: 50%; position: relative;
+    font-size: 12.5px; font-weight: 600; color: var(--ink-faint); font-variant-numeric: tabular-nums;
+    cursor: default;
+  }
+  .agendar-cal-dia.vacio { visibility: hidden; }
+  .agendar-cal-dia.disponible {
+    color: var(--ink); cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .agendar-cal-dia.disponible::after {
+    content: ""; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+    width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
+  }
+  .agendar-cal-dia.disponible:hover { background: rgba(243, 242, 238, 0.08); }
+  .agendar-cal-dia.activo { background: var(--accent) !important; color: #1a1b33 !important; }
+  .agendar-cal-dia.activo::after { display: none; }
+
+  .agendar-horas-col { display: flex; flex-direction: column; min-width: 0; }
+  .agendar-horas-fecha { margin: 0 0 12px; font-size: 13px; font-weight: 700; text-transform: capitalize; }
+  /* Alto fijo con scroll propio, para que la tarjeta no crezca sin
+     control según cuántas franjas haya ese día. */
+  .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
   .agendar-hora {
-    padding: 9px 6px; border-radius: 10px; border: 1px solid transparent;
-    background: var(--bg-alt); color: var(--ink); font-size: 13.5px; font-weight: 600;
-    font-variant-numeric: tabular-nums; cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: none; text-align: left;
+    font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
   }
-  .agendar-hora:hover { border-color: var(--line-strong); }
-  .agendar-hora.activo { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .agendar-hora:hover { border-color: var(--ink-soft); }
+  .agendar-hora.activo { background: var(--accent); border-color: var(--accent); color: #1a1b33; }
 
-  .agendar-paso3 { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
+  /* Barra de resumen + confirmación, siempre visible debajo del panel —
+     mismo patrón de la referencia de Pinterest que Andrés compartió. */
+  .agendar-resumen-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line);
+  }
+  .agendar-resumen-texto { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .agendar-resumen-texto strong { color: var(--ink); font-weight: 700; }
+  /* "a. m."/"p. m." trae un espacio adentro — sin esto, un ancho angosto
+     lo parte a la mitad entre el punto y la "m". */
+  .agendar-hora-inline { white-space: nowrap; }
+  .agendar-btn-continuar {
+    flex: 0 0 auto; padding: 12px 24px; border: none; border-radius: 999px;
+    background: var(--accent); color: #1a1b33; font-weight: 700; font-size: 14px; cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .agendar-btn-continuar:hover:not(:disabled) { background: #f0bb6a; }
+  .agendar-btn-continuar:disabled { opacity: 0.35; cursor: not-allowed; }
+  @media (max-width: 480px) {
+    .agendar-resumen-bar { flex-direction: column; align-items: stretch; }
+    .agendar-btn-continuar { width: 100%; }
+  }
+
+  .agendar-volver {
+    display: inline-flex; align-items: center; gap: 4px; margin: 0 0 16px; padding: 0; border: none;
+    background: none; color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .agendar-volver:hover { color: var(--ink); }
   .agendar-resumen { margin: 0 0 16px; font-size: 14.5px; font-weight: 600; color: var(--accent); }
 
   .agendar-form { display: flex; flex-direction: column; gap: 12px; }
@@ -806,7 +866,7 @@
   .agendar-form input,
   .agendar-form textarea {
     width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--ink); font-family: inherit; font-size: 14.5px;
+    background: rgba(243, 242, 238, 0.05); color: var(--ink); font-family: inherit; font-size: 14.5px;
     transition: border-color 0.15s ease;
   }
   .agendar-form input::placeholder,
@@ -815,8 +875,13 @@
   .agendar-form textarea:focus { outline: none; border-color: var(--accent); }
   .agendar-form textarea { resize: vertical; min-height: 72px; }
   .agendar-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-  .agendar-form-error { margin: 0; color: #b3403a; font-size: 13.5px; }
-  .agendar-btn-confirmar { width: 100%; justify-content: center; margin-top: 4px; }
+  .agendar-form-error { margin: 0; color: #e8998c; font-size: 13.5px; }
+  .agendar-btn-confirmar {
+    width: 100%; margin-top: 4px; border: none; border-radius: 999px; padding: 13px;
+    background: var(--accent); color: #1a1b33; font-weight: 700; font-size: 14.5px; cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .agendar-btn-confirmar:hover:not(:disabled) { background: #f0bb6a; }
   .agendar-btn-confirmar:disabled { opacity: 0.6; cursor: not-allowed; }
   @media (max-width: 480px) {
     .agendar-form-fila { grid-template-columns: 1fr; }

@@ -732,7 +732,7 @@
 
   /* --- Formulario de agendamiento (último segmento antes del footer) --- */
   .agenda-grid {
-    display: grid; grid-template-columns: 0.85fr 1.15fr; gap: clamp(32px, 6vw, 72px);
+    display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(32px, 6vw, 72px);
     /* Centrado contra la fila completa (la marca el calendario, más alto
        que el texto) para que el bloque de texto quede a la altura de su
        mitad, no pegado arriba. */
@@ -740,7 +740,7 @@
   }
   .agenda-texto { text-align: center; }
   .agenda-texto h2 { font-size: clamp(28px, 3.6vw, 40px); line-height: 1.12; max-width: 14ch; margin: 0 auto; }
-  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 40ch; margin: 18px auto 0; }
+  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 52ch; margin: 18px auto 0; }
   /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
      #precios y #ecosistema — ver el comentario grande sobre .hero más
      arriba) en vez del --card claro genérico: así combina con la

@@ -10,7 +10,7 @@ import { refrescarAccessToken, consultarFreeBusy, crearEventoCalendarConToken } 
 // src/lib/supabase/admin.ts para el porqué.
 
 const DURACION_MINUTOS = 30;
-const DIAS_HABILES_ADELANTE = 10;
+const MESES_ADELANTE = 2;
 const HORAS_MINIMO_ANTICIPACION = 2;
 const HORA_APERTURA_DEFECTO = 9;
 const HORA_CIERRE_DEFECTO = 17;
@@ -97,16 +97,24 @@ function generarFranjasCandidatas(horaApertura: number, horaCierre: number): Fra
   // que construirFranja).
   const ahoraBogota = new Date(ahoraUTC.getTime() - DESFASE_BOGOTA_HORAS * 60 * 60 * 1000);
   const minimoInicio = new Date(ahoraUTC.getTime() + HORAS_MINIMO_ANTICIPACION * 60 * 60 * 1000);
+  // Ventana fija de 2 meses calendario (no de días hábiles) — así el
+  // calendario del widget siempre tiene un segundo mes real para navegar,
+  // en vez de quedarse casi siempre en uno solo. Date.UTC ajusta el
+  // desborde de mes/año solo (ej. mes 13 pasa a enero del año siguiente).
+  const fechaLimite = new Date(
+    Date.UTC(ahoraBogota.getUTCFullYear(), ahoraBogota.getUTCMonth() + MESES_ADELANTE, ahoraBogota.getUTCDate()),
+  );
 
   const franjas: Franja[] = [];
-  let diasHabilesEncontrados = 0;
-  for (let offsetDias = 0; diasHabilesEncontrados < DIAS_HABILES_ADELANTE && offsetDias < 30; offsetDias++) {
+  // El límite real es fechaLimite; offsetDias < 120 es solo un tope de
+  // seguridad para no iterar para siempre si algo raro pasa con las fechas.
+  for (let offsetDias = 0; offsetDias < 120; offsetDias++) {
     const dia = new Date(
       Date.UTC(ahoraBogota.getUTCFullYear(), ahoraBogota.getUTCMonth(), ahoraBogota.getUTCDate() + offsetDias),
     );
+    if (dia > fechaLimite) break;
     const diaSemana = dia.getUTCDay(); // 0 domingo, 6 sábado
     if (diaSemana === 0 || diaSemana === 6) continue;
-    diasHabilesEncontrados++;
 
     for (let hora = horaApertura; hora < horaCierre; hora++) {
       for (const minuto of [0, 30]) {

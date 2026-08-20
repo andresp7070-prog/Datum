@@ -120,6 +120,12 @@ export async function agendarSeguimiento(input: {
     .map((correo) => correo.trim())
     .filter(Boolean);
 
+  // Sin esto, un correo mal escrito en "Invitados" lo rechazaba Google del
+  // otro lado, y el error técnico en inglés/crudo se le mostraba tal cual a
+  // quien agenda — mejor detectarlo acá antes de llamar a Google.
+  const correoInvalido = invitados.find((correo) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo));
+  if (correoInvalido) return { error: `"${correoInvalido}" no parece un correo válido — revisa que esté bien escrito.` };
+
   const resultado = await crearEventoCalendar({
     perfilId: user.id,
     titulo: input.titulo.trim(),

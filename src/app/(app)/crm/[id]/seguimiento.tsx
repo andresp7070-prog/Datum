@@ -91,6 +91,12 @@ export function SeguimientoCalendar({
         </div>
       ) : (
         <>
+          <a
+            href={`/api/auth/google/connect?next=${encodeURIComponent(rutaConexion)}`}
+            className="mb-3 inline-block text-xs text-gray-400 hover:text-accent hover:underline"
+          >
+            ¿No te está agendando bien? Reconectar Google Calendar
+          </a>
           {eventos.length > 0 ? (
             <ul className="mb-4 divide-y divide-gray-200">
               {eventos.map((evento) => (

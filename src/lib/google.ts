@@ -67,7 +67,7 @@ export async function obtenerCorreoGoogle(accessToken: string): Promise<string |
   return data.email ?? null;
 }
 
-async function refrescarAccessToken(refreshToken: string): Promise<string> {
+export async function refrescarAccessToken(refreshToken: string): Promise<string> {
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -100,20 +100,19 @@ async function accessTokenDePerfil(perfilId: string): Promise<string | { error: 
   }
 }
 
-export async function crearEventoCalendar(input: {
-  perfilId: string;
-  titulo: string;
-  descripcion: string;
-  fechaInicioISO: string;
-  fechaFinISO: string;
-  invitados: string[];
-}): Promise<
+type ResultadoEvento =
   | { googleEventId: string; link: string | null; meetLink: string | null }
-  | { error: string }
-> {
-  const accessToken = await accessTokenDePerfil(input.perfilId);
-  if (typeof accessToken !== "string") return accessToken;
+  | { error: string };
 
+// Lógica real de creación, ya con un access_token en mano — la usan tanto
+// crearEventoCalendar() (busca el token vía la sesión de quien lo llama,
+// para "Agendar seguimiento" dentro de la app) como el formulario público
+// de agendamiento de la landing (sin sesión: consigue el token aparte, ver
+// src/lib/agendar.ts, porque el visitante no tiene con qué autenticarse).
+export async function crearEventoCalendarConToken(
+  accessToken: string,
+  input: { titulo: string; descripcion: string; fechaInicioISO: string; fechaFinISO: string; invitados: string[] },
+): Promise<ResultadoEvento> {
   try {
     // conferenceDataVersion=1 le pide a Google que cree el link de Meet;
     // sendUpdates=all manda el correo de invitación a cada invitado.
@@ -139,6 +138,42 @@ export async function crearEventoCalendar(input: {
     };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Error desconocido al crear el evento." };
+  }
+}
+
+export async function crearEventoCalendar(input: {
+  perfilId: string;
+  titulo: string;
+  descripcion: string;
+  fechaInicioISO: string;
+  fechaFinISO: string;
+  invitados: string[];
+}): Promise<ResultadoEvento> {
+  const accessToken = await accessTokenDePerfil(input.perfilId);
+  if (typeof accessToken !== "string") return accessToken;
+  return crearEventoCalendarConToken(accessToken, input);
+}
+
+// Períodos ocupados del calendario "primary" de quien sea dueño del
+// access_token, en el rango dado — usado por el formulario público de
+// agendamiento para calcular qué horarios ofrecer (ver src/lib/agendar.ts).
+export async function consultarFreeBusy(
+  accessToken: string,
+  timeMinISO: string,
+  timeMaxISO: string,
+): Promise<{ ocupados: { inicio: string; fin: string }[] } | { error: string }> {
+  try {
+    const res = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ timeMin: timeMinISO, timeMax: timeMaxISO, items: [{ id: "primary" }] }),
+    });
+    if (!res.ok) return { error: `Google rechazó la consulta de disponibilidad: ${await res.text()}` };
+    const data = await res.json();
+    const busy = data.calendars?.primary?.busy ?? [];
+    return { ocupados: busy.map((b: { start: string; end: string }) => ({ inicio: b.start, fin: b.end })) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error desconocido al consultar disponibilidad." };
   }
 }
 

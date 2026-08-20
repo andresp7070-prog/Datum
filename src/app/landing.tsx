@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import "./landing.css";
 import { EcosistemaDemo } from "./ecosistema-demo";
+import { AgendarWidget } from "./agendar-widget";
 
 type Plan = {
   nombre: string;
@@ -774,6 +775,21 @@ export function Landing() {
           >
             Agendar ahora
           </a>
+        </div>
+      </section>
+
+      <section className="chapter alt agenda-layout reveal" id="agenda">
+        <div className="wrap agenda-grid">
+          <div className="agenda-texto">
+            <h2>Agenda tu reunión en línea</h2>
+            <p className="sub">
+              Elige el horario que mejor te sirva y quedas agendado al instante — te llega la
+              invitación con el link de la videollamada.
+            </p>
+          </div>
+          <div className="agenda-formulario">
+            <AgendarWidget />
+          </div>
         </div>
       </section>
 

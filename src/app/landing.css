@@ -756,27 +756,52 @@
   .agendar-estado { text-align: center; color: var(--ink-soft); }
   .agendar-estado .btn { margin-top: 20px; }
 
-  .agendar-dias { display: flex; flex-wrap: wrap; gap: 8px; }
-  .agendar-dia {
-    padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line);
-    background: transparent; color: var(--ink-soft); font-size: 13.5px; font-weight: 600;
-    text-transform: capitalize; cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  .agendar-paso {
+    margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--ink-faint);
   }
-  .agendar-dia:hover { border-color: var(--ink-soft); color: var(--ink); }
-  .agendar-dia.activo { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .agendar-widget > .agendar-paso:not(:first-child) { margin-top: 26px; }
+  .agendar-nota-zona { text-transform: none; font-weight: 500; letter-spacing: normal; }
 
-  .agendar-horas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  /* Tira horizontal de días, en una sola fila (con scroll si no caben) en
+     vez de envolver en filas dispares — se ve más ordenada que pastillas
+     de ancho variable. */
+  .agendar-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .agendar-dia {
+    flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    width: 72px; padding: 10px 6px; border-radius: 12px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink); cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .agendar-dia:hover { border-color: var(--ink-soft); }
+  .agendar-dia.activo { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .agendar-dia-corto { font-size: 11.5px; font-weight: 600; text-transform: capitalize; opacity: 0.7; }
+  .agendar-dia.activo .agendar-dia-corto { opacity: 0.85; }
+  .agendar-dia-num { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+
+  /* Los horarios del día quedan en un alto fijo con scroll propio, para que
+     la tarjeta no crezca sin control según cuántas franjas haya ese día —
+     así el bloque de texto y el formulario siempre quedan bien alineados. */
+  .agendar-horas-lista { max-height: 220px; overflow-y: auto; padding-right: 4px; }
+  .agendar-horas-grupo + .agendar-horas-grupo { margin-top: 14px; }
+  .agendar-horas-grupo-titulo {
+    margin: 0 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.03em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .agendar-horas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .agendar-hora {
-    padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line);
-    background: transparent; color: var(--ink); font-size: 13.5px; font-weight: 600;
+    padding: 9px 6px; border-radius: 10px; border: 1px solid transparent;
+    background: var(--bg-alt); color: var(--ink); font-size: 13.5px; font-weight: 600;
     font-variant-numeric: tabular-nums; cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease;
   }
-  .agendar-hora:hover { border-color: var(--ink-soft); }
+  .agendar-hora:hover { border-color: var(--line-strong); }
   .agendar-hora.activo { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-  .agendar-nota-zona { margin: 12px 0 0; font-size: 12.5px; color: var(--ink-faint); }
 
-  .agendar-form { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+  .agendar-paso3 { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
+  .agendar-resumen { margin: 0 0 16px; font-size: 14.5px; font-weight: 600; color: var(--accent); }
+
+  .agendar-form { display: flex; flex-direction: column; gap: 12px; }
   .agendar-form-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .agendar-form input,
   .agendar-form textarea {

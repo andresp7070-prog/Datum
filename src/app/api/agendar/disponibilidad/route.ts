@@ -7,7 +7,10 @@ import { consultarDisponibilidad } from "@/lib/agendar";
 export async function GET() {
   const resultado = await consultarDisponibilidad();
   if ("error" in resultado) {
-    return NextResponse.json({ error: resultado.error }, { status: 200 });
+    // "detalle" es solo para diagnóstico — el widget de la landing lo
+    // ignora y siempre muestra el mensaje genérico; visitar esta URL
+    // directamente en el navegador sí lo deja ver, para saber qué falló.
+    return NextResponse.json({ error: resultado.error, detalle: resultado.detalle }, { status: 200 });
   }
   return NextResponse.json({ franjas: resultado.franjas.map((f) => f.inicioISO) });
 }

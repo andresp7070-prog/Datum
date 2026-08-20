@@ -19,22 +19,38 @@ const DESFASE_BOGOTA_HORAS = 5;
 
 export type Franja = { inicioISO: string; finISO: string };
 
-async function obtenerAccessTokenAdmin(): Promise<string | null> {
+type TokenAdmin = { token: string; detalle?: undefined } | { token: null; detalle: string };
+
+// Devuelve también un "detalle" técnico (nunca se le muestra al visitante,
+// solo viaja hasta el JSON de /api/agendar/disponibilidad para que, si algo
+// falla, se pueda ver la causa real visitando esa dirección directamente en
+// el navegador, en vez de quedar a ciegas con un mensaje genérico.
+async function obtenerAccessTokenAdmin(): Promise<TokenAdmin> {
   const superAdminId = process.env.SUPER_ADMIN_USER_ID;
-  if (!superAdminId) return null;
+  if (!superAdminId) return { token: null, detalle: "Falta configurar la variable SUPER_ADMIN_USER_ID." };
 
   const supabase = createAdminClient();
-  const { data: integracion } = await supabase
+  const { data: integracion, error } = await supabase
     .from("integraciones_google")
     .select("refresh_token")
     .eq("perfil_id", superAdminId)
     .maybeSingle();
-  if (!integracion) return null;
+  if (error) return { token: null, detalle: `No se pudo leer integraciones_google: ${error.message}` };
+  if (!integracion) {
+    return {
+      token: null,
+      detalle: `No hay ninguna cuenta de Google conectada para el usuario ${superAdminId}. Conéctala con el botón "Conectar Google Calendar" usando exactamente esa cuenta.`,
+    };
+  }
 
   try {
-    return await refrescarAccessToken(integracion.refresh_token);
-  } catch {
-    return null;
+    const token = await refrescarAccessToken(integracion.refresh_token);
+    return { token };
+  } catch (e) {
+    return {
+      token: null,
+      detalle: `No se pudo renovar el acceso a Google: ${e instanceof Error ? e.message : String(e)}`,
+    };
   }
 }
 
@@ -106,10 +122,12 @@ function seCruzan(a: Franja, ocupado: { inicio: string; fin: string }): boolean 
   return new Date(a.inicioISO) < new Date(ocupado.fin) && new Date(a.finISO) > new Date(ocupado.inicio);
 }
 
-export async function consultarDisponibilidad(): Promise<{ franjas: Franja[] } | { error: string }> {
-  const accessToken = await obtenerAccessTokenAdmin();
-  if (!accessToken) {
-    return { error: "Por ahora no podemos mostrar horarios disponibles — escríbenos directamente." };
+export async function consultarDisponibilidad(): Promise<
+  { franjas: Franja[] } | { error: string; detalle: string }
+> {
+  const resultadoToken = await obtenerAccessTokenAdmin();
+  if (resultadoToken.token === null) {
+    return { error: "Por ahora no podemos mostrar horarios disponibles — escríbenos directamente.", detalle: resultadoToken.detalle };
   }
 
   const { horaApertura, horaCierre } = await obtenerHorarioAtencion();
@@ -117,12 +135,12 @@ export async function consultarDisponibilidad(): Promise<{ franjas: Franja[] } |
   if (candidatas.length === 0) return { franjas: [] };
 
   const resultado = await consultarFreeBusy(
-    accessToken,
+    resultadoToken.token,
     candidatas[0].inicioISO,
     candidatas[candidatas.length - 1].finISO,
   );
   if ("error" in resultado) {
-    return { error: "Por ahora no podemos mostrar horarios disponibles — escríbenos directamente." };
+    return { error: "Por ahora no podemos mostrar horarios disponibles — escríbenos directamente.", detalle: resultado.error };
   }
 
   const libres = candidatas.filter((franja) => !resultado.ocupados.some((ocupado) => seCruzan(franja, ocupado)));
@@ -158,8 +176,9 @@ export async function reservarReunion(input: {
   const fin = new Date(inicio.getTime() + DURACION_MINUTOS * 60 * 1000);
   const franjaElegida: Franja = { inicioISO: inicio.toISOString(), finISO: fin.toISOString() };
 
-  const accessToken = await obtenerAccessTokenAdmin();
-  if (!accessToken) return { error: "Por ahora no podemos agendar reuniones — escríbenos directamente." };
+  const resultadoToken = await obtenerAccessTokenAdmin();
+  if (resultadoToken.token === null) return { error: "Por ahora no podemos agendar reuniones — escríbenos directamente." };
+  const accessToken = resultadoToken.token;
 
   // Se vuelve a consultar justo antes de crear el evento, para no chocar
   // con alguien más reservando la misma franja segundos antes.

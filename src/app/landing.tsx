@@ -592,10 +592,7 @@ export function Landing() {
             <EcosistemaDemo />
           </div>
           <div className="chapter-cta">
-            <a
-              className="btn"
-              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2015%20d%C3%ADas%20con%20Datum"
-            >
+            <a className="btn" href="#contacto">
               Solicita tu prueba gratis de 15 días
             </a>
           </div>
@@ -626,10 +623,7 @@ export function Landing() {
             </div>
           </div>
           <div className="chapter-cta">
-            <a
-              className="btn"
-              href="mailto:andresp7070@gmail.com?subject=Quiero%20mi%20prueba%20gratis%20de%2015%20d%C3%ADas%20con%20Datum"
-            >
+            <a className="btn" href="#contacto">
               Solicita tu prueba gratis de 15 días
             </a>
           </div>
@@ -705,13 +699,7 @@ export function Landing() {
 
           <div className="precios-cta-row">
             {PLANES.map((plan) => (
-              <a
-                key={plan.nombre}
-                className="precios-cta"
-                href={`mailto:andresp7070@gmail.com?subject=${encodeURIComponent(
-                  `Quiero mi prueba gratis de 15 días — Plan ${plan.nombre}`,
-                )}`}
-              >
+              <a key={plan.nombre} className="precios-cta" href="#contacto">
                 Solicita tu prueba gratis de 15 días
               </a>
             ))}
@@ -762,29 +750,14 @@ export function Landing() {
         </div>
       </dialog>
 
-      <section className="chapter alt cta-final statement reveal" id="contacto">
-        <div className="wrap">
-          <h2>Hablemos de tu negocio</h2>
-          <p className="sub">
-            Agendemos una conversación de 20 minutos sin costo, y descubre todo lo que Datum
-            puede hacer por tu negocio.
-          </p>
-          <a
-            className="btn"
-            href="mailto:andresp7070@gmail.com?subject=Quiero%20agendar%20una%20conversaci%C3%B3n%20con%20Datum"
-          >
-            Agendar ahora
-          </a>
-        </div>
-      </section>
-
-      <section className="chapter alt agenda-layout reveal" id="agenda">
+      <section className="chapter alt agenda-layout reveal" id="contacto">
         <div className="wrap agenda-grid">
           <div className="agenda-texto">
-            <h2>Agenda tu reunión en línea</h2>
+            <h2>Hablemos de tu negocio</h2>
             <p className="sub">
-              Elige el horario que mejor te sirva y quedas agendado al instante — te llega la
-              invitación con el link de la videollamada.
+              Agendemos una conversación de 20 minutos sin costo — elige el horario que mejor te
+              sirva y quedas agendado al instante, con la invitación y el link de la
+              videollamada directo a tu correo.
             </p>
           </div>
           <div className="agenda-formulario">

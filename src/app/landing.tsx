@@ -182,11 +182,23 @@ export function Landing() {
         contenedor.insertBefore(linea, contenedor.firstChild);
         paresLista.push({ a, b });
       }
+      // Cada punto elige a sus 3 vecinos más cercanos, pero esa elección casi
+      // siempre es mutua (B también elige a A) — sin este control, esa misma
+      // línea se dibujaba dos veces una encima de la otra, y se veía más
+      // gruesa/brillante que el resto. `vistos` se asegura de dibujar cada
+      // conexión una sola vez, sin importar quién la haya elegido primero.
+      const vistos = new Set<string>();
       for (let j = 0; j < puntos.length; j++) {
         const distancias = puntos
           .map((p, k) => ({ k, d: k === j ? Infinity : distancia3(puntos[j], p) }))
           .sort((a, b) => a.d - b.d);
-        for (let m = 0; m < 3; m++) agregarLinea(puntos[j], puntos[distancias[m].k]);
+        for (let m = 0; m < 3; m++) {
+          const k = distancias[m].k;
+          const clave = j < k ? `${j}-${k}` : `${k}-${j}`;
+          if (vistos.has(clave)) continue;
+          vistos.add(clave);
+          agregarLinea(puntos[j], puntos[k]);
+        }
       }
       return paresLista;
     }

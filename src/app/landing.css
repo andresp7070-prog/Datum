@@ -192,8 +192,16 @@
     border-radius: 50%; background: #e3a748; opacity: 0.75;
   }
   .hero-esfera .linea {
-    position: absolute; top: 0; left: 0; height: 1px;
-    background: #ffffff; opacity: 0.14; transform-origin: 0 50%;
+    /* height algo mayor a 1px a propósito: una línea de 1px, girada en 3D
+       y vista casi de canto en algunos ángulos, se proyecta en pantalla
+       más delgada que un píxel real y el navegador la dibuja punteada en
+       vez de sólida. Las líneas casi paralelas al eje de giro (Y) se
+       quedan de canto todo el tiempo, sin importar cuánto gire la esfera
+       — más alto no bastaba para esas; el filter:blur difumina cualquier
+       hueco de rasterizado que quede, sin engordar visualmente la línea. */
+    position: absolute; top: -1.5px; left: 0; height: 3px;
+    background: #ffffff; opacity: 0.08; transform-origin: 0 50%;
+    filter: blur(0.5px);
   }
   .hero-esfera .pulso {
     position: absolute; top: 0; left: 0; width: 6px; height: 6px; margin: -3px 0 0 -3px;
@@ -425,8 +433,9 @@
     border-radius: 50%; background: #e3a748; opacity: 0.8;
   }
   .esfera-viajera .linea {
-    position: absolute; top: 0; left: 0; height: 1px;
-    background: #ffffff; opacity: 0.16; transform-origin: 0 50%;
+    position: absolute; top: -1.5px; left: 0; height: 3px;
+    background: #ffffff; opacity: 0.08; transform-origin: 0 50%;
+    filter: blur(0.5px);
   }
   @media (max-width: 760px) {
     .esfera-viajera-fondo { display: none; }

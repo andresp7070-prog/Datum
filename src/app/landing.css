@@ -732,15 +732,18 @@
 
   /* --- Formulario de agendamiento (último segmento antes del footer) --- */
   .agenda-grid {
-    display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(32px, 6vw, 72px);
+    display: grid; grid-template-columns: 1.15fr 0.95fr; gap: clamp(32px, 6vw, 72px);
     /* Centrado contra la fila completa (la marca el calendario, más alto
        que el texto) para que el bloque de texto quede a la altura de su
        mitad, no pegado arriba. */
     align-items: center;
   }
   .agenda-texto { text-align: center; }
-  .agenda-texto h2 { font-size: clamp(28px, 3.6vw, 40px); line-height: 1.12; max-width: 14ch; margin: 0 auto; }
-  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 52ch; margin: 18px auto 0; }
+  /* Más grande que un h2 normal de la landing a propósito — Andrés la
+     quería con peso de H1, no de descripción; se queda como <h2> en el
+     HTML (el único <h1> real es el del hero) pero se ve tan grande. */
+  .agenda-texto h2 { font-size: clamp(32px, 4vw, 48px); line-height: 1.1; max-width: none; margin: 0 auto; }
+  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; }
   /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
      #precios y #ecosistema — ver el comentario grande sobre .hero más
      arriba) en vez del --card claro genérico: así combina con la
@@ -762,7 +765,6 @@
   }
   @media (max-width: 760px) {
     .agenda-grid { grid-template-columns: 1fr; }
-    .agenda-texto h2 { max-width: none; }
   }
 
   .agendar-estado { text-align: center; color: var(--ink-soft); }

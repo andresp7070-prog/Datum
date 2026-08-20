@@ -15,6 +15,12 @@ const USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
+  // calendar.events solo alcanza para crear/borrar eventos — freeBusy.query
+  // (que usa el formulario público de agendamiento para saber qué horarios
+  // ofrecer, ver src/lib/agendar.ts) necesita este permiso aparte. Cualquier
+  // cuenta conectada ANTES de este cambio necesita reconectarse una vez más
+  // para que Google le otorgue este permiso nuevo.
+  "https://www.googleapis.com/auth/calendar.freebusy",
   "https://www.googleapis.com/auth/userinfo.email",
 ].join(" ");
 

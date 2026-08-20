@@ -335,6 +335,17 @@
   .legal-section p { color: var(--ink-soft); font-size: 14.5px; line-height: 1.7; max-width: 70ch; margin: 0 0 4px; }
   .legal-section a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 
+  /* Páginas propias de Términos/Privacidad (src/app/terminos,
+     src/app/privacidad) — mismo texto que los <dialog> de la landing, pero
+     con dirección web real (Google la pide así para la pantalla de
+     consentimiento de OAuth). */
+  .legal-standalone { background: var(--bg); min-height: 100vh; padding: 48px 0 96px; }
+  .legal-volver {
+    display: inline-block; margin-bottom: 32px; color: var(--ink-soft); font-size: 14px;
+    font-weight: 600; transition: color 0.15s ease;
+  }
+  .legal-volver:hover { color: var(--ink); }
+
   .legal-dialog {
     /* El reset de Tailwind pone margin:0 en todo, incluido <dialog> — eso
        pisa el margin:auto que el navegador usa por defecto para centrarlo,

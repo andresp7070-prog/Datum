@@ -445,33 +445,6 @@
 
   .eco-demo-stage { position: relative; }
   .eco-demo-stage > .demo-wrap { position: relative; z-index: 1; }
-  /* Ancla invisible: no dibuja nada, solo le da al hook de React un punto
-     real del DOM (getBoundingClientRect) para saber dónde debe terminar la
-     esfera de tránsito de más abajo — la única esfera ambiente que existe,
-     para que nunca se vean dos al tiempo. */
-  .eco-esfera-fondo { position: absolute; left: 50%; top: 50%; width: 1px; height: 1px; pointer-events: none; }
-
-  /* Esfera de tránsito — misma especie de la esfera del hero (mismo
-     generador, mismos puntos dorados y líneas), pero position:fixed: es la
-     que viaja en pantalla desde donde el hero la suelta hasta quedar
-     detrás de la demo de módulos, y se queda ahí (ver el hook de React). */
-  .esfera-viajera-fondo {
-    position: fixed; left: 0; top: 0; width: 1px; height: 1px;
-    perspective: 900px; opacity: 0; pointer-events: none; z-index: 1;
-  }
-  .esfera-viajera { position: relative; width: 1px; height: 1px; transform-style: preserve-3d; }
-  .esfera-viajera .punto {
-    position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
-    border-radius: 50%; background: #e3a748; opacity: 0.8;
-  }
-  .esfera-viajera .linea {
-    position: absolute; top: -1.5px; left: 0; height: 3px;
-    background: #ffffff; opacity: 0.08; transform-origin: 0 50%;
-    filter: blur(0.5px);
-  }
-  @media (max-width: 760px) {
-    .esfera-viajera-fondo { display: none; }
-  }
 
   /* --- Demo interactiva de módulos (recreación de la presentación comercial) --- */
   .demo-wrap {

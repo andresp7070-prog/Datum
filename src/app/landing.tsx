@@ -63,9 +63,6 @@ export function Landing() {
   const h1Ref = useRef<HTMLHeadingElement>(null);
   const progresoScrollRef = useRef<HTMLDivElement>(null);
   const heroTextoRef = useRef<HTMLDivElement>(null);
-  const ecoEsferaRef = useRef<HTMLDivElement>(null);
-  const esferaViajeraFondoRef = useRef<HTMLDivElement>(null);
-  const esferaViajeraRef = useRef<HTMLDivElement>(null);
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
@@ -131,12 +128,9 @@ export function Landing() {
     const h1 = h1Ref.current;
     const progresoScrollEl = progresoScrollRef.current;
     const heroTexto = heroTextoRef.current;
-    const ecoEsfera = ecoEsferaRef.current;
-    const esferaViajeraFondo = esferaViajeraFondoRef.current;
-    const esferaViajera = esferaViajeraRef.current;
     if (
       !needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 ||
-      !progresoScrollEl || !heroTexto || !ecoEsfera || !esferaViajeraFondo || !esferaViajera
+      !progresoScrollEl || !heroTexto
     ) {
       return;
     }
@@ -204,7 +198,6 @@ export function Landing() {
       return paresLista;
     }
     const paresLista = crearEsferaPuntos(esfera, 72, 200);
-    crearEsferaPuntos(esferaViajera, 72, 200);
 
     type Pulso = { el: HTMLDivElement; activo: boolean; inicioT: number; duracion: number; par: { a: Punto3; b: Punto3 } | null; espera: number };
     const pulsos: Pulso[] = [];
@@ -383,46 +376,6 @@ export function Landing() {
       orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15 - zoomIn * 10).toFixed(1)}px)`;
       actualizarPulsos(t);
 
-      // ---- esfera de tránsito: recoge el relevo justo donde el hero suelta
-      // el scroll fijo (el compás ya se desvaneció, pero la esfera del hero
-      // queda con la misma opacidad/escala con la que arranca ésta) y viaja
-      // en pantalla, con posición fija, hasta quedar detrás de la demo de
-      // módulos — es la ÚNICA esfera ambiente ahí, no hay una segunda
-      // esfera estática aparte (eso era lo que se veía "duplicado"): el
-      // ancla dentro de #ecosistema es solo un punto invisible para medir
-      // en vivo dónde debe quedar (getBoundingClientRect, porque esa
-      // sección sigue subiendo con el scroll normal). Una vez que llega,
-      // se queda seguida a ese punto (p2 satura en 1) y solo se apaga
-      // cuando la demo ya quedó bien arriba, fuera de pantalla. ----
-      const limiteHero = scrolly!.offsetTop + scrolly!.offsetHeight - window.innerHeight;
-      // 0.28 en vez de 0.75 a propósito — Andrés lo pidió: antes, después
-      // de que el hero se desvanecía, había un tramo largo (0.75 de la
-      // altura de pantalla) donde solo se veía la esfera viajando sola,
-      // sin nada más pasando en pantalla, antes de que el resto de
-      // Ecosistema (encabezado + demo) terminara de asentarse. Acortado
-      // para que el aterrizaje de la esfera y la aparición del contenido
-      // de Ecosistema se sientan como una sola cosa, no dos por separado.
-      const distanciaViaje = window.innerHeight * 0.28;
-      const crudoTransito = (window.scrollY - limiteHero) / distanciaViaje;
-      if (crudoTransito >= 0) {
-        const p2 = Math.min(1, crudoTransito);
-        const inicioX = window.innerWidth * 0.26;
-        const inicioY = 64 + (window.innerHeight - 64) / 2;
-        const destino = ecoEsfera!.getBoundingClientRect();
-        const x = inicioX + (destino.left - inicioX) * p2;
-        const y = inicioY + (destino.top - inicioY) * p2;
-        const escalaInicio = 1 + zoomIn * 0.65 - 0.4; // misma fórmula de escalaEsfera con salida=1
-        const escala = escalaInicio + (2.4 - escalaInicio) * p2;
-        // Se apaga sola una vez que el ancla ya quedó muy por encima del
-        // viewport (el usuario siguió bajando más allá de Ecosistema).
-        const salidaEco = Math.max(0, Math.min(1, (-destino.top - window.innerHeight * 0.4) / (window.innerHeight * 0.6)));
-        esferaViajeraFondo!.style.opacity = String(0.15 * (1 - salidaEco));
-        esferaViajeraFondo!.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-        esferaViajera!.style.transform = `scale(${escala.toFixed(2)}) rotateY(${(t * 20).toFixed(1)}deg) rotateX(8deg)`;
-      } else {
-        esferaViajeraFondo!.style.opacity = "0";
-      }
-
       const enfoqueNorte = trapecio(progreso, 0.14, 0.2, 0.26, 0.34);
       const targetUsado = enfoqueNorte > 0.5 ? 0 : targetDeg;
       if (reduceMotion) {
@@ -448,12 +401,11 @@ export function Landing() {
 
   if (vistaMovil) {
     // key distinto a propósito: sin esto, React reutiliza el mismo <div>
-    // que antes era .esfera-viajera-fondo (misma posición, mismo tag) en
-    // vez de desecharlo — la animación de esa esfera, que sigue corriendo
-    // en el fondo (el useEffect de abajo nunca se limpia solo con este
-    // cambio de vista), le seguía escribiendo su opacidad encima al marco
-    // del teléfono, dejándolo translúcido. El key fuerza a React a
-    // desmontar de verdad ese nodo viejo en vez de reciclarlo.
+    // en la misma posición del árbol (mismo tag) en vez de desecharlo —
+    // la animación del hero, que sigue corriendo en el fondo (el
+    // useEffect de abajo nunca se limpia solo con este cambio de vista),
+    // le seguía escribiendo estilos encima a ese nodo reciclado. El key
+    // fuerza a React a desmontar de verdad el árbol viejo en cada cambio.
     return (
       <div key="vista-movil" className="mobile-preview-wrap">
         <button type="button" className="viewport-toggle" onClick={() => setVistaMovil(false)}>
@@ -469,9 +421,6 @@ export function Landing() {
   return (
     <div key="vista-escritorio" ref={rootRef}>
       <div className="progreso-scroll" ref={progresoScrollRef} aria-hidden="true" />
-      <div className="esfera-viajera-fondo" ref={esferaViajeraFondoRef} aria-hidden="true">
-        <div className="esfera-viajera" ref={esferaViajeraRef} />
-      </div>
       <button
         type="button"
         ref={viewportToggleRef}
@@ -599,10 +548,6 @@ export function Landing() {
             </p>
           </div>
           <div className="eco-demo-stage">
-            {/* Ancla invisible: solo marca en el DOM dónde debe terminar la
-                esfera de tránsito (position:fixed, definida al inicio del
-                documento). No dibuja nada — la esfera visible es una sola. */}
-            <div className="eco-esfera-fondo" aria-hidden="true" ref={ecoEsferaRef} />
             <EcosistemaDemo />
           </div>
           <div className="chapter-cta">

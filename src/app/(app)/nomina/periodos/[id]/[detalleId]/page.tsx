@@ -45,24 +45,25 @@ export default async function DesprendiblePage({
 
   const empresa = Array.isArray(perfil.empresas) ? perfil.empresas[0] : perfil.empresas;
 
-  const { data: periodo } = await supabase
-    .from("nomina_periodos")
-    .select("id, fecha_inicio, fecha_fin, fecha_pago, estado")
-    .eq("id", id)
-    .eq("empresa_id", perfil.empresa_id)
-    .single();
+  // Ninguna depende de la otra — ambas solo necesitan los ids de la ruta.
+  const [{ data: periodo }, { data: detalleData }] = await Promise.all([
+    supabase
+      .from("nomina_periodos")
+      .select("id, fecha_inicio, fecha_fin, fecha_pago, estado")
+      .eq("id", id)
+      .eq("empresa_id", perfil.empresa_id)
+      .single(),
+    supabase
+      .from("nomina_detalles")
+      .select(
+        "id, salario_base, auxilio_transporte, deduccion_salud, deduccion_pension, total_devengado, total_deducido, neto_pagado, empleados ( nombre, cedula, cargo )",
+      )
+      .eq("id", detalleId)
+      .eq("periodo_id", id)
+      .single(),
+  ]);
 
   if (!periodo) notFound();
-
-  const { data: detalleData } = await supabase
-    .from("nomina_detalles")
-    .select(
-      "id, salario_base, auxilio_transporte, deduccion_salud, deduccion_pension, total_devengado, total_deducido, neto_pagado, empleados ( nombre, cedula, cargo )",
-    )
-    .eq("id", detalleId)
-    .eq("periodo_id", id)
-    .single();
-
   if (!detalleData) notFound();
 
   const empleadoRaw = Array.isArray(detalleData.empleados) ? detalleData.empleados[0] : detalleData.empleados;

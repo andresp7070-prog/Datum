@@ -7,12 +7,13 @@ type CampoEtapa = {
   id: string;
   etapa_id: string | null;
   nombre: string;
-  tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion";
+  tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion" | "enlace";
   opciones: string[] | null;
   requerido: boolean;
 };
 
-type Valores = Record<string, string | boolean | null>;
+type ValorEnlace = { nombre: string; url: string };
+type Valores = Record<string, string | boolean | ValorEnlace | null>;
 
 function CampoInput({
   campo,
@@ -20,17 +21,30 @@ function CampoInput({
   onGuardado,
 }: {
   campo: CampoEtapa;
-  valor: string | boolean | null | undefined;
-  onGuardado: (campoId: string, valor: string | boolean | null) => void;
+  valor: string | boolean | ValorEnlace | null | undefined;
+  onGuardado: (campoId: string, valor: string | boolean | ValorEnlace | null) => void;
 }) {
-  const [valorLocal, setValorLocal] = useState<string | boolean | null>(valor ?? (campo.tipo === "si_no" ? false : ""));
+  const valorEnlace = valor && typeof valor === "object" ? (valor as ValorEnlace) : null;
+  const [valorLocal, setValorLocal] = useState<string | boolean | null>(
+    campo.tipo === "enlace" ? "" : (valor as string | boolean | null) ?? (campo.tipo === "si_no" ? false : ""),
+  );
+  const [nombreEnlace, setNombreEnlace] = useState(valorEnlace?.nombre ?? "");
+  const [urlEnlace, setUrlEnlace] = useState(valorEnlace?.url ?? "");
   const [guardando, setGuardando] = useState(false);
 
-  async function guardar(nuevoValor: string | boolean | null) {
-    setValorLocal(nuevoValor);
+  async function guardar(nuevoValor: string | boolean | ValorEnlace | null) {
+    setValorLocal(typeof nuevoValor === "object" ? valorLocal : nuevoValor);
     setGuardando(true);
     onGuardado(campo.id, nuevoValor);
     setGuardando(false);
+  }
+
+  async function guardarEnlace(nombre: string, url: string) {
+    if (!nombre.trim() && !url.trim()) {
+      await guardar(null);
+      return;
+    }
+    await guardar({ nombre: nombre.trim(), url: url.trim() });
   }
 
   return (
@@ -63,6 +77,37 @@ function CampoInput({
             </option>
           ))}
         </select>
+      ) : campo.tipo === "enlace" ? (
+        <div className="space-y-1.5">
+          <div className="flex flex-col gap-1.5 sm:flex-row">
+            <input
+              value={nombreEnlace}
+              onChange={(e) => setNombreEnlace(e.target.value)}
+              onBlur={() => guardarEnlace(nombreEnlace, urlEnlace)}
+              disabled={guardando}
+              placeholder="Nombre del archivo"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
+            />
+            <input
+              value={urlEnlace}
+              onChange={(e) => setUrlEnlace(e.target.value)}
+              onBlur={() => guardarEnlace(nombreEnlace, urlEnlace)}
+              disabled={guardando}
+              placeholder="Enlace (URL de Drive, etc.)"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
+            />
+          </div>
+          {valorEnlace?.url && (
+            <a
+              href={valorEnlace.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+            >
+              📎 {valorEnlace.nombre || "Ver archivo"}
+            </a>
+          )}
+        </div>
       ) : (
         <input
           type={campo.tipo === "numero" ? "number" : campo.tipo === "fecha" ? "date" : "text"}
@@ -91,7 +136,7 @@ export function CamposAdicionales({
 
   if (campos.length === 0) return null;
 
-  async function onGuardado(campoId: string, valor: string | boolean | null) {
+  async function onGuardado(campoId: string, valor: string | boolean | ValorEnlace | null) {
     setError(null);
     setValoresLocales((prev) => ({ ...prev, [campoId]: valor }));
     const resultado = await guardarCampoValor({ contactoId, campoId, valor });

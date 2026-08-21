@@ -30,14 +30,18 @@ export async function updateSession(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
   // Accesibles sin sesión: la raíz (landing pública — src/app/page.tsx
   // decide ahí mismo si muestra la landing o redirige adentro de la
-  // plataforma), recuperar contraseña (pide el correo) y el enlace del
+  // plataforma), recuperar contraseña (pide el correo), el enlace del
   // correo que la confirma (todavía no hay sesión hasta que se valide el
-  // token ahí adentro).
+  // token ahí adentro), y Términos/Privacidad como páginas propias (para
+  // que Google pueda visitarlas directamente desde la pantalla de
+  // consentimiento de OAuth — ver src/app/terminos y src/app/privacidad).
   const esRutaPublica =
     isLoginPage ||
     request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname.startsWith("/recuperar-password") ||
-    request.nextUrl.pathname.startsWith("/auth/confirm");
+    request.nextUrl.pathname.startsWith("/auth/confirm") ||
+    request.nextUrl.pathname.startsWith("/terminos") ||
+    request.nextUrl.pathname.startsWith("/privacidad");
 
   if (!user && !esRutaPublica) {
     const url = request.nextUrl.clone();

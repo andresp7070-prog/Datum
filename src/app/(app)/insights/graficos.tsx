@@ -25,11 +25,7 @@ export type Barra = {
   etiqueta: string;
   valor: number;
   textoValor: string;
-  // 'tenue' = de-énfasis (gris), para cuando la mayoría de las barras son
-  // solo contexto y una o dos son las que de verdad importan — el patrón de
-  // "emphasis" (una en color, el resto en gris) en vez de que todo compita
-  // por la atención igual.
-  tono?: "default" | "positivo" | "negativo" | "alerta" | "tenue";
+  tono?: "default" | "positivo" | "negativo" | "alerta";
   // Si viene, la barra se puede hacer clic y navega ahí — así se arma un
   // filtro (por mes, por día de la semana, por producto...) haciendo clic
   // directo en la gráfica, sumándose a cualquier otro filtro ya activo.
@@ -41,7 +37,6 @@ const COLOR: Record<NonNullable<Barra["tono"]>, string> = {
   positivo: "#9c6900",
   negativo: "#7f2525",
   alerta: "#7f2525",
-  tenue: "#c3c2b7",
 };
 
 function tonoAutomatico(valor: number): NonNullable<Barra["tono"]> {
@@ -120,17 +115,15 @@ export function GraficoBarras({
                 fill={color}
                 opacity={activo ? 1 : 0.85}
               />
-              {d.tono !== "tenue" && (
-                <text
-                  x={x + anchoBarra / 2}
-                  y={d.valor >= 0 ? y - 6 : y + h + 14}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill="#52514e"
-                >
-                  {d.textoValor}
-                </text>
-              )}
+              <text
+                x={x + anchoBarra / 2}
+                y={d.valor >= 0 ? y - 6 : y + h + 14}
+                textAnchor="middle"
+                fontSize={11}
+                fill="#52514e"
+              >
+                {d.textoValor}
+              </text>
               <text
                 x={x + anchoBarra / 2}
                 y={alto + 18}
@@ -457,119 +450,6 @@ export function GraficoBarrasAgrupadas({
           })}
         </svg>
       </div>
-    </div>
-  );
-}
-
-export type PuntoDispersion = {
-  etiqueta: string;
-  x: number;
-  y: number;
-  textoX: string;
-  textoY: string;
-  // Los puntos destacados llevan el color de énfasis y su etiqueta al lado
-  // siempre visible; el resto queda en gris, de contexto — mismo patrón de
-  // "emphasis" que las barras con tono 'tenue'.
-  destacado?: boolean;
-  enlace?: string;
-};
-
-// Gráfico de dispersión (scatter) — para cruzar dos variables por entidad
-// (ej. margen % vs. ingresos por producto, o inversión total vs. qué tan
-// atrasado está un cliente respecto a su propio ritmo de compra). El patrón
-// completo siempre se muestra (así se ve la forma general de los datos);
-// los puntos que el motor de anomalías marcó como destacados se resaltan en
-// vez de solo describirse en una frase aparte.
-export function GraficoDispersion({
-  datos,
-  ejeXLabel,
-  ejeYLabel,
-  alto = 260,
-}: {
-  datos: PuntoDispersion[];
-  ejeXLabel: string;
-  ejeYLabel: string;
-  alto?: number;
-}) {
-  const [hover, setHover] = useState<number | null>(null);
-  const [contenedorRef, anchoDisponible] = useAnchoContenedor();
-
-  if (datos.length === 0) return null;
-
-  const margenIzq = 20;
-  const margenDer = 20;
-  const margenSup = 20;
-  const margenInf = 34;
-  const anchoMinimo = 320;
-  const ancho = Math.max(anchoMinimo, anchoDisponible);
-  const anchoPlot = ancho - margenIzq - margenDer;
-  const altoPlot = alto - margenSup - margenInf;
-
-  const xs = datos.map((d) => d.x);
-  const ys = datos.map((d) => d.y);
-  const xMin = Math.min(0, ...xs);
-  const xMax = Math.max(...xs, xMin + 1);
-  const yMin = Math.min(0, ...ys);
-  const yMax = Math.max(...ys, yMin + 1);
-
-  const escalaX = (v: number) => margenIzq + ((v - xMin) / (xMax - xMin)) * anchoPlot;
-  const escalaY = (v: number) => margenSup + altoPlot - ((v - yMin) / (yMax - yMin)) * altoPlot;
-
-  return (
-    <div ref={contenedorRef} className="w-full overflow-x-auto">
-      <svg width={ancho} height={alto} role="img" aria-label="Gráfico de dispersión">
-        <line x1={margenIzq} y1={margenSup} x2={margenIzq} y2={margenSup + altoPlot} stroke="#e1e0d9" strokeWidth={1} />
-        <line
-          x1={margenIzq}
-          y1={margenSup + altoPlot}
-          x2={margenIzq + anchoPlot}
-          y2={margenSup + altoPlot}
-          stroke="#e1e0d9"
-          strokeWidth={1}
-        />
-        <text x={margenIzq + anchoPlot / 2} y={alto - 6} textAnchor="middle" fontSize={10} fill="#898781">
-          {ejeXLabel}
-        </text>
-        <text x={margenIzq} y={margenSup - 6} fontSize={10} fill="#898781">
-          {ejeYLabel}
-        </text>
-        {datos
-          .slice()
-          .sort((a, b) => Number(a.destacado) - Number(b.destacado))
-          .map((d, i) => {
-            const cx = escalaX(d.x);
-            const cy = escalaY(d.y);
-            const r = d.destacado ? 6 : 4;
-            const color = d.destacado ? "#9c6900" : "#c3c2b7";
-            const mostrarEtiqueta = d.destacado || hover === i;
-            const contenido = (
-              <g
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover(null)}
-                className={d.enlace ? "cursor-pointer" : "cursor-default"}
-              >
-                <circle cx={cx} cy={cy} r={r} fill={color} stroke="#fdfcf9" strokeWidth={2} />
-                {mostrarEtiqueta && (
-                  <text x={cx} y={cy - r - 5} textAnchor="middle" fontSize={9} fill="#52514e">
-                    {d.etiqueta}
-                  </text>
-                )}
-                {hover === i && (
-                  <text x={cx} y={cy + r + 12} textAnchor="middle" fontSize={9} fill="#898781">
-                    {d.textoX} · {d.textoY}
-                  </text>
-                )}
-              </g>
-            );
-            return d.enlace ? (
-              <a key={i} href={d.enlace} aria-label={`Ver ${d.etiqueta}`}>
-                {contenido}
-              </a>
-            ) : (
-              <g key={i}>{contenido}</g>
-            );
-          })}
-      </svg>
     </div>
   );
 }

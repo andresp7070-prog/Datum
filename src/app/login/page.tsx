@@ -19,9 +19,9 @@ function LogoCompass({ className = "h-4 w-4" }: { className?: string }) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; password_actualizada?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, password_actualizada } = await searchParams;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
@@ -32,6 +32,12 @@ export default async function LoginPage({
 
       <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
         <h1 className="mb-6 text-xl font-semibold text-gray-900">Iniciar sesión</h1>
+
+        {password_actualizada === "1" && (
+          <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+            Contraseña actualizada. Inicia sesión con tu contraseña nueva.
+          </p>
+        )}
 
         {error && (
           <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -29,7 +29,7 @@ export type CampoEtapa = {
   id: string;
   etapa_id: string;
   nombre: string;
-  tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion";
+  tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion" | "enlace";
   opciones: string[] | null;
   requerido: boolean;
 };
@@ -37,7 +37,7 @@ export type CampoEtapa = {
 export type CampoGeneral = {
   id: string;
   nombre: string;
-  tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion";
+  tipo: "texto" | "numero" | "fecha" | "si_no" | "seleccion" | "enlace";
   opciones: string[] | null;
   requerido: boolean;
 };
@@ -48,6 +48,7 @@ const tiposCampo = [
   { value: "fecha", label: "Fecha" },
   { value: "si_no", label: "Sí / No" },
   { value: "seleccion", label: "Selección (opciones)" },
+  { value: "enlace", label: "Enlace (archivo de Drive, etc.)" },
 ];
 
 function CamposEtapaConfig({ etapaId, campos }: { etapaId: string; campos: CampoEtapa[] }) {
@@ -573,7 +574,7 @@ export function EtapasForm({
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Configurar etapas de leads</h1>
         <Link href="/admin/leads" className="text-sm text-gray-500 hover:text-gray-700">
-          Volver a Leads
+          Volver al CRM
         </Link>
       </div>
 

@@ -284,6 +284,17 @@ create trigger trigger_crear_etapas_por_defecto
 after insert on empresas
 for each row execute function crear_etapas_por_defecto();
 
+-- Responsable asignado a un contacto (CRM modo 'leads'): solo un nombre,
+-- sin cuenta ni acceso a Datum — permite saber quién lleva cada lead sin
+-- tener que crear un usuario real por cada vendedor. Se crea desde el
+-- mismo desplegable de "Responsable" en la ficha, escribiendo el nombre.
+create table crm_responsables (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  nombre text not null,
+  created_at timestamptz default now()
+);
+
 create table crm_contactos (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
@@ -292,6 +303,16 @@ create table crm_contactos (
   email text,
   etapa_id uuid references crm_etapas(id),
   atributos jsonb default '{}',  -- lo que varía por tipo de negocio: modelo de vehículo, preferencias, alergias, etc.
+  -- CRM modo 'leads': valor estimado del negocio (se llena a mano en
+  -- cualquier momento después del primer contacto/cotización — no
+  -- confundir con ventas.monto, que es la venta real ya cerrada),
+  -- prioridad manual (1 alta, 2 media, 3 baja, como un podio), productos
+  -- o servicios de interés (solo aplica si la empresa tiene Inventario
+  -- activo) y responsable asignado.
+  valor_estimado numeric(12,2),
+  prioridad smallint check (prioridad in (1,2,3)),
+  productos_interes uuid[],
+  responsable_id uuid references crm_responsables(id),
   created_at timestamptz default now()
 );
 
@@ -403,7 +424,7 @@ create table crm_etapa_campos (
   id uuid primary key default gen_random_uuid(),
   etapa_id uuid references crm_etapas(id) not null,
   nombre text not null,
-  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion', 'enlace')),
   opciones text[],   -- solo aplica si tipo = 'seleccion'
   requerido boolean not null default false,
   orden int not null default 1,
@@ -428,7 +449,7 @@ create table crm_campos_generales (
   id uuid primary key default gen_random_uuid(),
   empresa_id uuid references empresas(id) not null,
   nombre text not null,
-  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion', 'enlace')),
   opciones text[],
   requerido boolean not null default false,
   orden int not null default 1,
@@ -505,6 +526,14 @@ insert into datum_crm_etapas (nombre, orden, es_cierre) values
   ('Propuesta', 3, false),
   ('Cerrado', 4, true);
 
+-- Mismo criterio que crm_responsables: solo un nombre, sin cuenta ni
+-- acceso a Datum, para saber quién lleva cada lead propio.
+create table datum_responsables (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  created_at timestamptz default now()
+);
+
 create table datum_leads (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,          -- persona de contacto
@@ -514,6 +543,15 @@ create table datum_leads (
   etapa_id uuid references datum_crm_etapas(id),
   calificacion smallint check (calificacion between 0 and 5),
   notas text,
+  -- Mismo criterio que crm_contactos: valor estimado (distinto de
+  -- valor_venta, que es el cierre real), prioridad manual (1 alta, 2
+  -- media, 3 baja), módulos de interés (Datum no vende inventario propio,
+  -- así que en vez de un catálogo de inventario_items se usa la misma
+  -- lista de módulos del producto) y responsable asignado.
+  valor_estimado numeric(12,2),
+  prioridad smallint check (prioridad in (1,2,3)),
+  modulos_interes text[],
+  responsable_id uuid references datum_responsables(id),
   created_at timestamptz default now()
 );
 
@@ -594,7 +632,7 @@ create table datum_crm_etapa_campos (
   id uuid primary key default gen_random_uuid(),
   etapa_id uuid references datum_crm_etapas(id) not null,
   nombre text not null,
-  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion', 'enlace')),
   opciones text[],
   requerido boolean not null default false,
   orden int not null default 1,
@@ -608,7 +646,7 @@ alter table datum_leads add column campos_etapa jsonb not null default '{}';
 create table datum_crm_campos_generales (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
-  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion')),
+  tipo text not null check (tipo in ('texto', 'numero', 'fecha', 'si_no', 'seleccion', 'enlace')),
   opciones text[],
   requerido boolean not null default false,
   orden int not null default 1,
@@ -1169,6 +1207,91 @@ begin
   end loop;
 
   return v_creados;
+end;
+$$;
+
+-- Carga masiva de recetas — agregado 2026-08-15, para cuando una empresa
+-- arma su inventario desde cero y tiene varios productos compuestos (ej.
+-- un restaurante con varios platos, cada uno con sus insumos): evita
+-- configurar receta por receta a mano en "Configurar receta". Se corre
+-- DESPUÉS de cargar_inventario_inicial() — busca el producto y cada
+-- insumo por nombre dentro del inventario que ya existe, no crea ningún
+-- producto nuevo, solo los conecta. Por cada producto que aparece en el
+-- archivo, reemplaza su receta completa la primera vez que se lo
+-- encuentra (mismo criterio que "Configurar receta" a mano) — así el
+-- archivo queda como única fuente de verdad para esos productos, sin
+-- mezclar filas viejas con las nuevas. Devuelve cuántas líneas se
+-- conectaron y el detalle de las que no se pudieron (producto o insumo
+-- no encontrado, etc.), para que la pantalla se lo muestre a la persona.
+create or replace function cargar_recetas_iniciales(
+  p_empresa_id uuid,
+  p_recetas jsonb,  -- [{"producto":"...","insumo":"...","cantidad":1.5}, ...]
+  p_punto_venta_id uuid default null
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_fila jsonb;
+  v_producto_nombre text;
+  v_insumo_nombre text;
+  v_cantidad numeric;
+  v_producto_id uuid;
+  v_insumo_id uuid;
+  v_productos_reseteados uuid[] := '{}';
+  v_creadas int := 0;
+  v_errores text[] := '{}';
+begin
+  for v_fila in select * from jsonb_array_elements(p_recetas)
+  loop
+    v_producto_nombre := trim(v_fila->>'producto');
+    v_insumo_nombre := trim(v_fila->>'insumo');
+    v_cantidad := nullif(v_fila->>'cantidad', '')::numeric;
+
+    select id into v_producto_id
+    from inventario_items
+    where empresa_id = p_empresa_id
+      and punto_venta_id is not distinct from p_punto_venta_id
+      and lower(unaccent(nombre)) = lower(unaccent(v_producto_nombre))
+    limit 1;
+
+    select id into v_insumo_id
+    from inventario_items
+    where empresa_id = p_empresa_id
+      and punto_venta_id is not distinct from p_punto_venta_id
+      and lower(unaccent(nombre)) = lower(unaccent(v_insumo_nombre))
+    limit 1;
+
+    if v_producto_id is null then
+      v_errores := array_append(v_errores, 'Producto "' || v_producto_nombre || '" no existe en el inventario');
+      continue;
+    end if;
+    if v_insumo_id is null then
+      v_errores := array_append(v_errores, 'Insumo "' || v_insumo_nombre || '" no existe en el inventario');
+      continue;
+    end if;
+    if v_producto_id = v_insumo_id then
+      v_errores := array_append(v_errores, '"' || v_producto_nombre || '" no puede ser insumo de sí mismo');
+      continue;
+    end if;
+    if v_cantidad is null or v_cantidad <= 0 then
+      v_errores := array_append(v_errores, 'Cantidad inválida para "' || v_producto_nombre || '" / "' || v_insumo_nombre || '"');
+      continue;
+    end if;
+
+    if not (v_producto_id = any(v_productos_reseteados)) then
+      delete from inventario_receta where item_resultante_id = v_producto_id;
+      v_productos_reseteados := array_append(v_productos_reseteados, v_producto_id);
+    end if;
+
+    insert into inventario_receta (item_resultante_id, item_insumo_id, cantidad_insumo)
+    values (v_producto_id, v_insumo_id, v_cantidad)
+    on conflict (item_resultante_id, item_insumo_id) do update set cantidad_insumo = excluded.cantidad_insumo;
+
+    v_creadas := v_creadas + 1;
+  end loop;
+
+  return jsonb_build_object('creadas', v_creadas, 'errores', v_errores);
 end;
 $$;
 
@@ -2942,6 +3065,79 @@ create table insights_resumen_ia (
   generado_en timestamptz default now()
 );
 
+-- ------------------------------------------------------------
+-- Integración con Google Calendar (CRM modo 'leads', tanto en empresas
+-- cliente como en el CRM propio de Datum): cada usuario conecta su propia
+-- cuenta de Google, no hay una cuenta compartida para toda la plataforma.
+-- Solo se guarda el refresh_token — el access_token nunca se guarda, se
+-- pide de nuevo con el refresh_token cada vez que hace falta, así este
+-- código no tiene que preocuparse por manejar su expiración.
+-- ------------------------------------------------------------
+create table integraciones_google (
+  perfil_id uuid primary key references perfiles(id) on delete cascade,
+  refresh_token text not null,
+  correo_google text,
+  created_at timestamptz default now()
+);
+
+-- Un seguimiento agendado desde la ficha de un cliente, enlazado al evento
+-- real creado en el Google Calendar de quien lo agendó.
+create table crm_eventos_calendar (
+  id uuid primary key default gen_random_uuid(),
+  contacto_id uuid references crm_contactos(id) not null,
+  perfil_id uuid references perfiles(id) not null,
+  google_event_id text not null,
+  link text,   -- htmlLink que devuelve Google, para abrir el evento sin otra llamada a su API
+  meet_link text,   -- hangoutLink que devuelve Google al pedir conferenceData
+  titulo text not null,
+  fecha timestamptz not null,
+  nota text,
+  created_at timestamptz default now()
+);
+
+-- Mismo patrón, para el CRM propio de leads de Datum.
+create table datum_crm_eventos_calendar (
+  id uuid primary key default gen_random_uuid(),
+  lead_id uuid references datum_leads(id) not null,
+  perfil_id uuid references perfiles(id) not null,
+  google_event_id text not null,
+  link text,
+  meet_link text,
+  titulo text not null,
+  fecha timestamptz not null,
+  nota text,
+  created_at timestamptz default now()
+);
+
+-- ------------------------------------------------------------
+-- Historial de cambios (agregado 2026-08-11): cada cambio de etapa, de un
+-- campo personalizado (general o de etapa) o del valor de venta de un
+-- lead deja una línea acá — qué cambió, de qué valor a cuál, quién y
+-- cuándo. "campo" guarda el nombre para mostrar (no el id), así el
+-- historial se sigue leyendo bien aunque después se renombre o se borre
+-- ese campo. perfil_id null = lo cambió el sistema (ej. reglas de
+-- inactividad del CRM), no una persona.
+-- ------------------------------------------------------------
+create table crm_historial_contacto (
+  id uuid primary key default gen_random_uuid(),
+  contacto_id uuid references crm_contactos(id) not null,
+  perfil_id uuid references perfiles(id),
+  campo text not null,
+  valor_anterior text,
+  valor_nuevo text,
+  created_at timestamptz default now()
+);
+
+create table datum_crm_historial_lead (
+  id uuid primary key default gen_random_uuid(),
+  lead_id uuid references datum_leads(id) not null,
+  perfil_id uuid references perfiles(id),
+  campo text not null,
+  valor_anterior text,
+  valor_nuevo text,
+  created_at timestamptz default now()
+);
+
 -- ============================================================
 -- ROW LEVEL SECURITY — el corazón del multi-tenant
 -- Cada empresa ve solo sus propias filas; el admin las ve todas.
@@ -2959,6 +3155,7 @@ alter table crm_etapas enable row level security;
 alter table crm_etapa_campos enable row level security;
 alter table crm_campos_generales enable row level security;
 alter table crm_contactos enable row level security;
+alter table crm_responsables enable row level security;
 alter table crm_interacciones enable row level security;
 alter table inventario_items enable row level security;
 alter table inventario_movimientos enable row level security;
@@ -2980,13 +3177,19 @@ alter table nomina_periodos enable row level security;
 alter table nomina_detalles enable row level security;
 alter table nomina_vacaciones enable row level security;
 alter table insights_resumen_ia enable row level security;
+alter table integraciones_google enable row level security;
+alter table crm_eventos_calendar enable row level security;
+alter table crm_historial_contacto enable row level security;
 alter table datum_pasivos enable row level security;
 alter table datum_movimientos enable row level security;
 alter table datum_crm_etapas enable row level security;
 alter table datum_crm_etapa_campos enable row level security;
 alter table datum_crm_campos_generales enable row level security;
 alter table datum_leads enable row level security;
+alter table datum_responsables enable row level security;
 alter table datum_crm_interacciones enable row level security;
+alter table datum_crm_eventos_calendar enable row level security;
+alter table datum_crm_historial_lead enable row level security;
 
 -- Funciones auxiliares, para no repetir la misma subconsulta en cada política.
 -- security definer es necesario aquí: la política de "perfiles" usa es_admin(),
@@ -3033,6 +3236,11 @@ create policy "actualizar mi propio perfil" on perfiles
   for update using (id = auth.uid() or es_admin())
   with check (id = auth.uid() or es_admin());
 
+-- Personal, no de empresa: cada quien conecta y ve solo su propia cuenta de
+-- Google, nadie más (ni siquiera el admin) necesita leer este token.
+create policy "ver mi propia integracion de google" on integraciones_google
+  for all using (perfil_id = auth.uid()) with check (perfil_id = auth.uid());
+
 -- No es un dato de ninguna empresa en particular (como festivos) — cualquier
 -- persona con sesión puede leerlas, para que el pop-up funcione.
 create policy "ver actualizaciones con sesión activa" on actualizaciones
@@ -3058,6 +3266,9 @@ create policy "ver mis etapas de crm" on crm_etapas
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mi crm" on crm_contactos
+  for all using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver mis responsables de crm" on crm_responsables
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 create policy "ver mi inventario" on inventario_items
@@ -3112,6 +3323,18 @@ create policy "ver interacciones de mi crm" on crm_interacciones
 create policy "ver campos de mis etapas de crm" on crm_etapa_campos
   for all using (
     etapa_id in (select id from crm_etapas where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver eventos de calendar de mi crm" on crm_eventos_calendar
+  for all using (
+    contacto_id in (select id from crm_contactos where empresa_id = mi_empresa_id())
+    or es_admin()
+  );
+
+create policy "ver historial de mi crm" on crm_historial_contacto
+  for all using (
+    contacto_id in (select id from crm_contactos where empresa_id = mi_empresa_id())
     or es_admin()
   );
 
@@ -3201,7 +3424,16 @@ create policy "solo admin ve campos generales de leads de datum" on datum_crm_ca
 create policy "solo admin ve leads de datum" on datum_leads
   for all using (es_admin()) with check (es_admin());
 
+create policy "solo admin ve responsables de leads de datum" on datum_responsables
+  for all using (es_admin()) with check (es_admin());
+
 create policy "solo admin ve interacciones de leads de datum" on datum_crm_interacciones
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve eventos de calendar de leads de datum" on datum_crm_eventos_calendar
+  for all using (es_admin()) with check (es_admin());
+
+create policy "solo admin ve historial de leads de datum" on datum_crm_historial_lead
   for all using (es_admin()) with check (es_admin());
 
 -- ============================================================
@@ -3548,4 +3780,147 @@ language sql
 stable
 as $$
   select pg_database_size(current_database());
+$$;
+
+-- ============================================================
+-- ÍNDICES — agregado 2026-08-13, sin esto la app se sentía lenta en
+-- general. Cada política de Row Level Security compara empresa_id contra
+-- mi_empresa_id() en CADA consulta; sin un índice ahí, Postgres tenía que
+-- recorrer la tabla completa fila por fila cada vez, en cada pantalla, y
+-- empeora solo a medida que entran más datos. `if not exists` porque esto
+-- se corre sobre una base de datos que ya existe, no desde cero.
+--
+-- Cambio puramente aditivo: no toca datos ni cambia ningún comportamiento,
+-- solo le da a Postgres un atajo para buscar. No incluye búsqueda de texto
+-- (buscar_clientes() usa ilike '%...%', que un índice normal no acelera —
+-- si el buscador de clientes se siente lento más adelante, ahí sí hace
+-- falta un índice de trigramas aparte, no antes de que sea un problema real).
+-- ============================================================
+
+-- empresa_id — la columna que revisa Row Level Security en cada consulta.
+-- Ventas, movimientos financieros y nómina se filtran casi siempre por
+-- empresa Y por fecha juntos, así que ahí el índice va compuesto en vez de
+-- solo en empresa_id (puntos_venta, crm_etapas e inventario_items ya
+-- quedan cubiertos por un unique existente que empieza en empresa_id, así
+-- que no hace falta repetirlo).
+create index if not exists ventas_empresa_fecha_idx on ventas (empresa_id, fecha);
+create index if not exists finanzas_movimientos_empresa_fecha_idx on finanzas_movimientos (empresa_id, fecha);
+create index if not exists nomina_periodos_empresa_fecha_pago_idx on nomina_periodos (empresa_id, fecha_pago);
+
+create index if not exists perfiles_empresa_id_idx on perfiles (empresa_id);
+create index if not exists diagnosticos_empresa_id_idx on diagnosticos (empresa_id);
+create index if not exists suscripciones_empresa_id_idx on suscripciones (empresa_id);
+create index if not exists crm_responsables_empresa_id_idx on crm_responsables (empresa_id);
+create index if not exists crm_contactos_empresa_id_idx on crm_contactos (empresa_id);
+create index if not exists crm_campos_generales_empresa_id_idx on crm_campos_generales (empresa_id);
+create index if not exists proveedores_empresa_id_idx on proveedores (empresa_id);
+create index if not exists apartados_empresa_id_idx on apartados (empresa_id);
+create index if not exists pasivos_empresa_id_idx on pasivos (empresa_id);
+create index if not exists promociones_empresa_id_idx on promociones (empresa_id);
+create index if not exists devoluciones_empresa_id_idx on devoluciones (empresa_id);
+create index if not exists cupones_empresa_id_idx on cupones (empresa_id);
+create index if not exists empleados_empresa_id_idx on empleados (empresa_id);
+create index if not exists insights_resumen_ia_empresa_id_idx on insights_resumen_ia (empresa_id);
+
+-- Llaves foráneas que se consultan constantemente (el detalle de una venta,
+-- el historial de compras/interacciones de un cliente, etc.) — sin índice,
+-- cada join o "traer todo lo de este padre" también recorre la tabla entera.
+create index if not exists ventas_contacto_id_idx on ventas (contacto_id);
+create index if not exists ventas_items_venta_id_idx on ventas_items (venta_id);
+create index if not exists ventas_items_item_id_idx on ventas_items (item_id);
+create index if not exists crm_interacciones_contacto_id_idx on crm_interacciones (contacto_id);
+create index if not exists crm_etapa_campos_etapa_id_idx on crm_etapa_campos (etapa_id);
+create index if not exists inventario_movimientos_item_id_idx on inventario_movimientos (item_id);
+create index if not exists inventario_lotes_item_id_idx on inventario_lotes (item_id);
+create index if not exists apartados_contacto_id_idx on apartados (contacto_id);
+create index if not exists apartados_items_apartado_id_idx on apartados_items (apartado_id);
+create index if not exists apartados_abonos_apartado_id_idx on apartados_abonos (apartado_id);
+create index if not exists finanzas_movimientos_pasivo_id_idx on finanzas_movimientos (pasivo_id);
+create index if not exists promocion_items_promocion_id_idx on promocion_items (promocion_id);
+create index if not exists devoluciones_venta_id_idx on devoluciones (venta_id);
+create index if not exists devoluciones_contacto_id_idx on devoluciones (contacto_id);
+create index if not exists devoluciones_items_devolucion_id_idx on devoluciones_items (devolucion_id);
+create index if not exists cupones_contacto_id_idx on cupones (contacto_id);
+create index if not exists nomina_detalles_empleado_id_idx on nomina_detalles (empleado_id);
+create index if not exists nomina_vacaciones_empleado_id_idx on nomina_vacaciones (empleado_id);
+create index if not exists crm_eventos_calendar_contacto_id_idx on crm_eventos_calendar (contacto_id);
+create index if not exists crm_historial_contacto_contacto_id_idx on crm_historial_contacto (contacto_id);
+
+-- Mismo criterio, del lado del CRM propio de Datum (datum_leads y compañía).
+create index if not exists datum_leads_etapa_id_idx on datum_leads (etapa_id);
+create index if not exists datum_crm_interacciones_lead_id_idx on datum_crm_interacciones (lead_id);
+create index if not exists datum_crm_etapa_campos_etapa_id_idx on datum_crm_etapa_campos (etapa_id);
+create index if not exists datum_crm_eventos_calendar_lead_id_idx on datum_crm_eventos_calendar (lead_id);
+create index if not exists datum_crm_historial_lead_lead_id_idx on datum_crm_historial_lead (lead_id);
+create index if not exists datum_movimientos_pasivo_id_idx on datum_movimientos (pasivo_id);
+
+-- ============================================================
+-- DOTACIÓN: vincular con empleado — agregado 2026-08-15. Antes "a quién se
+-- le dio" era una nota de texto libre; ahora se elige de la lista real de
+-- empleados (tabla `empleados`, la misma que usa Nómina) y la fecha de
+-- entrega queda registrada explícitamente en vez de asumir siempre "hoy".
+-- empleado_id es nullable a propósito: las dotaciones registradas antes de
+-- este cambio se quedan sin ese dato, sin que se rompa nada.
+-- ============================================================
+alter table inventario_movimientos add column if not exists empleado_id uuid references empleados(id);
+create index if not exists inventario_movimientos_empleado_id_idx on inventario_movimientos (empleado_id);
+
+create or replace function registrar_dotacion(
+  p_item_id uuid,
+  p_cantidad numeric,
+  p_nota text default null,
+  p_empleado_id uuid default null,
+  p_fecha date default current_date
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_empresa_id uuid;
+  v_nombre text;
+  v_stock numeric(12,2);
+  v_costo_consumido numeric(12,2);
+  v_empleado_nombre text;
+begin
+  select empresa_id, nombre, cantidad into v_empresa_id, v_nombre, v_stock
+  from inventario_items where id = p_item_id;
+
+  if v_empresa_id is null then
+    raise exception 'Producto no encontrado';
+  end if;
+  if p_cantidad <= 0 then
+    raise exception 'La cantidad debe ser mayor a cero';
+  end if;
+  if v_stock < p_cantidad then
+    raise exception 'No hay suficiente stock de "%": quedan % y se intentó entregar %.',
+      v_nombre, v_stock, p_cantidad;
+  end if;
+
+  if p_empleado_id is not null then
+    select nombre into v_empleado_nombre
+    from empleados where id = p_empleado_id and empresa_id = v_empresa_id;
+    if v_empleado_nombre is null then
+      raise exception 'Empleado no encontrado';
+    end if;
+  end if;
+
+  v_costo_consumido := consumir_lotes_fifo(p_item_id, p_cantidad);
+
+  insert into inventario_movimientos (item_id, tipo, motivo, cantidad, fecha, nota, empleado_id)
+  values (p_item_id, 'salida', 'dotacion', p_cantidad, p_fecha, p_nota, p_empleado_id);
+
+  update inventario_items set cantidad = cantidad - p_cantidad where id = p_item_id;
+
+  insert into finanzas_movimientos (empresa_id, tipo, categoria, monto, fecha, nota)
+  values (
+    v_empresa_id, 'gasto', 'dotación a empleados',
+    p_cantidad * coalesce(v_costo_consumido, 0),
+    p_fecha,
+    coalesce(
+      case when v_empleado_nombre is not null then 'Dotación de "' || v_nombre || '" a ' || v_empleado_nombre end,
+      p_nota,
+      'Dotación de "' || v_nombre || '" a empleado'
+    )
+  );
+end;
 $$;

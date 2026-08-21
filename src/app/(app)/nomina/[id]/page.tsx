@@ -27,26 +27,24 @@ export default async function EmpleadoPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  const { data: empleado } = await supabase
-    .from("empleados")
-    .select("id, nombre, cedula, cargo, salario_base, fecha_ingreso, fecha_retiro, activo, tipo_contrato")
-    .eq("id", id)
-    .eq("empresa_id", perfil.empresa_id)
-    .single();
+  // Las tres consultas solo dependen del id de la ruta (o de empresa_id, ya
+  // conocido) — ninguna depende del resultado de otra, así que salen juntas.
+  const [{ data: empleado }, { data: vacacionesInfo }, { data: vacacionesData }] = await Promise.all([
+    supabase
+      .from("empleados")
+      .select("id, nombre, cedula, cargo, salario_base, fecha_ingreso, fecha_retiro, activo, tipo_contrato")
+      .eq("id", id)
+      .eq("empresa_id", perfil.empresa_id)
+      .single(),
+    supabase.from("vista_vacaciones_empleado").select("dias_causados, dias_tomados").eq("empleado_id", id).single(),
+    supabase
+      .from("nomina_vacaciones")
+      .select("id, fecha_inicio, fecha_fin, dias")
+      .eq("empleado_id", id)
+      .order("fecha_inicio", { ascending: false }),
+  ]);
 
   if (!empleado) notFound();
-
-  const { data: vacacionesInfo } = await supabase
-    .from("vista_vacaciones_empleado")
-    .select("dias_causados, dias_tomados")
-    .eq("empleado_id", id)
-    .single();
-
-  const { data: vacacionesData } = await supabase
-    .from("nomina_vacaciones")
-    .select("id, fecha_inicio, fecha_fin, dias")
-    .eq("empleado_id", id)
-    .order("fecha_inicio", { ascending: false });
 
   return (
     <FichaEmpleado

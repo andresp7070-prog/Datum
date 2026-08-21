@@ -16,26 +16,23 @@ export default async function ApartadoPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: apartado } = await supabase
-    .from("apartados")
-    .select(
-      "id, cliente_nombre, cliente_telefono, cliente_email, monto_total, monto_abonado, fecha, fecha_limite, estado, venta_id",
-    )
-    .eq("id", id)
-    .single();
+  // Ninguna depende de otra — las tres solo necesitan el id de la ruta.
+  const [{ data: apartado }, { data: items }, { data: abonos }] = await Promise.all([
+    supabase
+      .from("apartados")
+      .select(
+        "id, cliente_nombre, cliente_telefono, cliente_email, monto_total, monto_abonado, fecha, fecha_limite, estado, venta_id",
+      )
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("apartados_items")
+      .select("id, nombre_libre, cantidad, precio_unitario, inventario_items ( nombre )")
+      .eq("apartado_id", id),
+    supabase.from("apartados_abonos").select("id, monto, fecha").eq("apartado_id", id).order("fecha", { ascending: false }),
+  ]);
 
   if (!apartado) notFound();
-
-  const { data: items } = await supabase
-    .from("apartados_items")
-    .select("id, nombre_libre, cantidad, precio_unitario, inventario_items ( nombre )")
-    .eq("apartado_id", id);
-
-  const { data: abonos } = await supabase
-    .from("apartados_abonos")
-    .select("id, monto, fecha")
-    .eq("apartado_id", id)
-    .order("fecha", { ascending: false });
 
   function formatoMoneda(valor: number) {
     return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });

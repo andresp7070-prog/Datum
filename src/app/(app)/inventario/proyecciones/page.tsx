@@ -55,23 +55,24 @@ export default async function ProyeccionesInventarioPage() {
   const items = (itemsData ?? []) as Item[];
   const itemIds = items.map((item) => item.id);
 
-  const { data: velocidadData } =
+  // Ninguna depende de la otra — ambas solo necesitan itemIds, así que
+  // salen juntas.
+  const [{ data: velocidadData }, { data: compraData }] = await Promise.all([
     itemIds.length > 0
-      ? await supabase
+      ? supabase
           .from("vista_velocidad_ventas")
           .select("item_id, unidades_por_dia")
           .eq("empresa_id", perfil.empresa_id)
           .in("item_id", itemIds)
-      : { data: [] };
-
-  const { data: compraData } =
+      : Promise.resolve({ data: [] }),
     itemIds.length > 0
-      ? await supabase
+      ? supabase
           .from("vista_compras_producto")
           .select("item_id, ultima_compra, dias_promedio_entre_compras")
           .eq("empresa_id", perfil.empresa_id)
           .in("item_id", itemIds)
-      : { data: [] };
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const velocidadPorItem = new Map(
     ((velocidadData ?? []) as Velocidad[]).map((v) => [v.item_id, v.unidades_por_dia]),

@@ -19,6 +19,22 @@ type VentaItemFila = {
   ventas: { fecha: string } | { fecha: string }[] | null;
 };
 
+type DotacionFila = {
+  id: string;
+  cantidad: number;
+  fecha: string;
+  nota: string | null;
+  empleados: { nombre: string } | { nombre: string }[] | null;
+};
+
+function formatoFecha(valor: string) {
+  return new Date(`${valor}T00:00:00`).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function formatoMoneda(valor: number | null) {
   if (valor === null) return "—";
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
@@ -42,35 +58,68 @@ export default async function FichaProductoPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: perfil } = await supabase
-    .from("perfiles")
-    .select("empresa_id")
-    .eq("id", user.id)
-    .single();
-
-  const { data: item } = await supabase
-    .from("inventario_items")
-    .select(
-      "id, nombre, sku, categoria, unidad, cantidad, costo, precio_venta, es_insumo, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad, proveedor:proveedores ( nombre, frecuencia_pago, dia_semana_pago, dias_personalizado )",
-    )
-    .eq("id", id)
-    .single();
+  // Ninguna de las tres depende de las otras — todas solo necesitan el
+  // usuario o el id de la ruta, así que salen juntas en vez de una detrás
+  // de otra.
+  const [{ data: perfil }, { data: item }, { data: recetaData }] = await Promise.all([
+    supabase.from("perfiles").select("empresa_id").eq("id", user.id).single(),
+    supabase
+      .from("inventario_items")
+      .select(
+        "id, nombre, sku, categoria, unidad, cantidad, costo, precio_venta, es_insumo, foto_path, marca:atributos->>marca, contenido_por_unidad:atributos->>contenido_por_unidad, proveedor:proveedores ( nombre, frecuencia_pago, dia_semana_pago, dias_personalizado )",
+      )
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("inventario_receta")
+      .select(
+        "cantidad_insumo, inventario_items!inventario_receta_item_insumo_id_fkey ( nombre, unidad, cantidad )",
+      )
+      .eq("item_resultante_id", id),
+  ]);
 
   if (!item) notFound();
   if (!perfil?.empresa_id) notFound();
 
   const proveedor = Array.isArray(item.proveedor) ? item.proveedor[0] : item.proveedor;
+  const receta = (recetaData ?? []) as unknown as RecetaFila[];
 
-  const fotoUrl = await firmarFotoUrl(supabase, item.foto_path);
+  const maxProducible = calcularMaxProducible(
+    receta.map((fila) => ({
+      cantidadInsumo: fila.cantidad_insumo,
+      stockInsumo: fila.inventario_items?.cantidad ?? 0,
+    })),
+  );
+
+  // fotoUrl, el historial de ventas, los empleados (para el selector de
+  // dotación) y el historial de dotaciones no dependen entre sí — salen
+  // todos juntos también.
+  const [fotoUrl, { data: ventasItem }, { data: empleadosData }, { data: dotacionesData }] =
+    await Promise.all([
+      firmarFotoUrl(supabase, item.foto_path),
+      item.es_insumo
+        ? Promise.resolve({ data: null })
+        : supabase.from("ventas_items").select("venta_id, ventas!inner(fecha)").eq("item_id", id),
+      supabase
+        .from("empleados")
+        .select("id, nombre")
+        .eq("empresa_id", perfil.empresa_id)
+        .eq("activo", true)
+        .order("nombre"),
+      supabase
+        .from("inventario_movimientos")
+        .select("id, cantidad, fecha, nota, empleados(nombre)")
+        .eq("item_id", id)
+        .eq("motivo", "dotacion")
+        .order("fecha", { ascending: false }),
+    ]);
+
+  const empleados = empleadosData ?? [];
+  const dotaciones = (dotacionesData ?? []) as unknown as DotacionFila[];
 
   let totalVentas = 0;
   let promedioDias: number | null = null;
   if (!item.es_insumo) {
-    const { data: ventasItem } = await supabase
-      .from("ventas_items")
-      .select("venta_id, ventas!inner(fecha)")
-      .eq("item_id", id);
-
     const fechasPorVenta = new Map<string, number>();
     for (const fila of (ventasItem ?? []) as unknown as VentaItemFila[]) {
       const venta = Array.isArray(fila.ventas) ? fila.ventas[0] : fila.ventas;
@@ -81,22 +130,6 @@ export default async function FichaProductoPage({
     totalVentas = fechasPorVenta.size;
     promedioDias = promedioDiasEntreVentas(Array.from(fechasPorVenta.values()));
   }
-
-  const { data } = await supabase
-    .from("inventario_receta")
-    .select(
-      "cantidad_insumo, inventario_items!inventario_receta_item_insumo_id_fkey ( nombre, unidad, cantidad )",
-    )
-    .eq("item_resultante_id", id);
-
-  const receta = (data ?? []) as unknown as RecetaFila[];
-
-  const maxProducible = calcularMaxProducible(
-    receta.map((fila) => ({
-      cantidadInsumo: fila.cantidad_insumo,
-      stockInsumo: fila.inventario_items?.cantidad ?? 0,
-    })),
-  );
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -178,6 +211,7 @@ export default async function FichaProductoPage({
             itemId={item.id}
             cantidadActual={item.cantidad}
             unidad={etiquetaUnidad(item.unidad)}
+            empleados={empleados}
           />
         </div>
       </div>
@@ -201,6 +235,33 @@ export default async function FichaProductoPage({
           </ul>
         )}
       </div>
+
+      {dotaciones.length > 0 && (
+        <div className="rounded-xl border border-gray-200 p-4">
+          <h2 className="mb-4 text-sm font-semibold text-gray-900">Historial de dotaciones</h2>
+          <ul className="divide-y divide-gray-200">
+            {dotaciones.map((dotacion) => {
+              const empleado = Array.isArray(dotacion.empleados)
+                ? dotacion.empleados[0]
+                : dotacion.empleados;
+              return (
+                <li key={dotacion.id} className="flex items-start justify-between gap-4 py-2 text-sm">
+                  <div>
+                    <p className="text-gray-900">
+                      {dotacion.cantidad} {etiquetaUnidad(item.unidad)} a{" "}
+                      {empleado?.nombre ?? "empleado sin registrar"}
+                    </p>
+                    {dotacion.nota && <p className="text-xs text-gray-400">{dotacion.nota}</p>}
+                  </div>
+                  <span className="whitespace-nowrap text-xs text-gray-400">
+                    {formatoFecha(dotacion.fecha)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

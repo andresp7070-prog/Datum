@@ -7,12 +7,17 @@ function formatoMonedaCorta(valor: number) {
   });
 }
 
+// formato "moneda" (por defecto) muestra la diferencia en pesos; "numero" la
+// muestra como cantidad simple — para tarjetas que no son plata (unidades,
+// clientes, productos por día).
 export function VariacionBadge({
   actual,
   anterior,
+  formato = "moneda",
 }: {
   actual: number;
   anterior: number;
+  formato?: "moneda" | "numero";
 }) {
   const diferencia = actual - anterior;
   if (anterior === 0) {
@@ -23,6 +28,10 @@ export function VariacionBadge({
   const porcentaje = (diferencia / Math.abs(anterior)) * 100;
   const subio = diferencia > 0;
   const igual = diferencia === 0;
+  const textoDiferencia =
+    formato === "moneda"
+      ? formatoMonedaCorta(Math.abs(diferencia))
+      : Math.abs(diferencia).toLocaleString("es-CO", { maximumFractionDigits: 1 });
 
   return (
     <span
@@ -30,7 +39,7 @@ export function VariacionBadge({
     >
       {igual ? "Igual" : subio ? "▲" : "▼"} {Math.abs(porcentaje).toFixed(1)}% (
       {subio ? "+" : diferencia === 0 ? "" : "-"}
-      {formatoMonedaCorta(Math.abs(diferencia))}) vs. período anterior
+      {textoDiferencia}) vs. período anterior
     </span>
   );
 }

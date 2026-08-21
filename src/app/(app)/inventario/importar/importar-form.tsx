@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parsearCsv } from "@/lib/csv";
-import { sinTildes } from "@/lib/texto";
+import { sinTildes, numeroDesdeTexto } from "@/lib/texto";
 import { normalizarUnidad, etiquetaUnidad } from "@/lib/unidades";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { ejemplosInventario } from "@/lib/ejemplos-negocio";
@@ -126,19 +126,19 @@ export function ImportarInventarioForm({
         if (unidadOriginal && !unidadReconocida) {
           errores.push(`Unidad "${unidadOriginal}" no reconocida, se guarda como Unidades`);
         }
-        if (cantidadCruda && Number.isNaN(Number(cantidadCruda))) {
+        if (cantidadCruda && Number.isNaN(numeroDesdeTexto(cantidadCruda))) {
           errores.push(`Cantidad "${cantidadCruda}" no es un número válido, se guarda como 0`);
         }
-        if (costoCrudo && Number.isNaN(Number(costoCrudo))) {
+        if (costoCrudo && Number.isNaN(numeroDesdeTexto(costoCrudo))) {
           errores.push(`Costo "${costoCrudo}" no es un número válido, se guarda como 0`);
         }
-        if (precioCrudo && Number.isNaN(Number(precioCrudo))) {
+        if (precioCrudo && Number.isNaN(numeroDesdeTexto(precioCrudo))) {
           errores.push(`Precio de venta "${precioCrudo}" no es un número válido, se guarda como 0`);
         }
         if (!esInsumoReconocido) {
           errores.push(`"es_insumo" con valor "${esInsumoOriginal}" no reconocido, se guarda como No`);
         }
-        if (esInsumo && precioCrudo && Number(precioCrudo) > 0) {
+        if (esInsumo && precioCrudo && numeroDesdeTexto(precioCrudo) > 0) {
           errores.push(`Tiene precio de venta pero está marcado como insumo — se guarda sin precio de venta`);
         }
 
@@ -148,9 +148,9 @@ export function ImportarInventarioForm({
           unidad,
           unidadOriginal,
           unidadReconocida,
-          cantidad: Number(cantidadCruda) || 0,
-          costo: Number(costoCrudo) || 0,
-          precioVenta: Number(precioCrudo) || 0,
+          cantidad: numeroDesdeTexto(cantidadCruda) || 0,
+          costo: numeroDesdeTexto(costoCrudo) || 0,
+          precioVenta: numeroDesdeTexto(precioCrudo) || 0,
           esInsumo,
           esInsumoOriginal,
           esInsumoReconocido,
@@ -203,7 +203,7 @@ export function ImportarInventarioForm({
   return (
     <div className="max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Importar inventario</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Paso 1 — Importar productos</h1>
         <DescargarCsv
           filas={[
             {

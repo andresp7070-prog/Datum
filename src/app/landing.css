@@ -157,46 +157,111 @@
     html { scroll-behavior: auto; }
   }
 
+  /* El hero vive dentro de un contenedor alto (.hero-scrolly) para poder
+     quedarse fijo (sticky) mientras la brújula hace su recorrido de
+     scroll — el mismo patrón "chapter-oscuro" que ya usan #ecosistema y
+     #precios (navy fijo #1a1b33, no reactivo al tema claro/oscuro del
+     visitante), así el hero combina con lo que sigue en vez de quedar
+     como un bloque beige suelto entre dos navys, que es justo lo que
+     decía el comentario viejo de acá que nunca se hizo realidad. */
+  .hero-scrolly { position: relative; height: 148vh; }
   .hero {
-    position: relative;
-    min-height: 92svh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; overflow: hidden; padding: 120px 0 80px;
-    /* Beige, igual que el resto de bloques claros — así el navy de Ecosistema
-       y Precios queda como el color que se resalta entre bloques claros, en
-       vez de dos bloques navy pegados al principio de la página. */
-    background: var(--bg);
+    /* top/height cuentan los 64px del nav (que también es sticky) — sin
+       esto, al quedar fijo el hero se pega detrás del nav en vez de justo
+       debajo. */
+    position: sticky; top: 64px; height: calc(100svh - 64px); overflow: hidden;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+    background: #1a1b33;
+    --ink: #f3f2ee;
+    --ink-soft: #c3c2d6;
+    --ink-faint: #9698ad;
+    --line: rgba(243, 242, 238, 0.22);
+    --line-strong: rgba(243, 242, 238, 0.4);
+    --accent: #e3a748;
+    --good: #6fbf94;
     color: var(--ink);
   }
+
+  /* Esfera de puntos en CSS 3D real (perspective + preserve-3d) — sin
+     WebGL ni librerías. Crece durante el scroll (ver el hook de React);
+     el logo se queda siempre en su tamaño estándar, no ella. */
+  .hero-orbita { position: absolute; left: 26%; top: 50%; width: 1px; height: 1px; perspective: 900px; }
+  .hero-esfera { position: relative; width: 1px; height: 1px; transform-style: preserve-3d; }
+  .hero-esfera .punto {
+    position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+    border-radius: 50%; background: #e3a748; opacity: 0.75;
+  }
+  .hero-esfera .linea {
+    /* height algo mayor a 1px a propósito: una línea de 1px, girada en 3D
+       y vista casi de canto en algunos ángulos, se proyecta en pantalla
+       más delgada que un píxel real y el navegador la dibuja punteada en
+       vez de sólida. Las líneas casi paralelas al eje de giro (Y) se
+       quedan de canto todo el tiempo, sin importar cuánto gire la esfera
+       — más alto no bastaba para esas; el filter:blur difumina cualquier
+       hueco de rasterizado que quede, sin engordar visualmente la línea. */
+    position: absolute; top: -1.5px; left: 0; height: 3px;
+    background: #ffffff; opacity: 0.08; transform-origin: 0 50%;
+    filter: blur(0.5px);
+  }
+  .hero-esfera .pulso {
+    position: absolute; top: 0; left: 0; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%; background: #e3a748; opacity: 0;
+    box-shadow: 0 0 9px 2px rgba(227, 167, 72, 0.85);
+    pointer-events: none;
+  }
+
+  /* Dos capas separadas a propósito: .hero-compas-wrap solo maneja la
+     entrada al cargar; .hero-compas-zoom solo la opacidad del scroll —
+     así nunca compiten por la misma propiedad transform. El tamaño no
+     cambia con el scroll (a diferencia de la esfera, que sí crece). */
+  .hero-compas-wrap {
+    position: absolute; left: 26%; top: 50%; transform: translate(-50%, -50%);
+    width: min(40vw, 420px); height: min(40vw, 420px);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hero-compas-zoom { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
   .hero-motif {
-    position: absolute; inset: 0; margin: auto; width: min(1000px, 130vw); height: min(1000px, 130vw);
-    color: var(--motif-color, var(--accent)); pointer-events: none;
+    width: 82%; height: 82%; color: #f2f1eb; pointer-events: none;
+    filter: drop-shadow(0 0 34px rgba(148, 152, 255, 0.16));
   }
-  .hero-motif .ring { opacity: 0.16; }
-  .hero-motif .needle {
-    transform-origin: 100px 100px;
-    transition: transform 0.5s cubic-bezier(.2,.6,.2,1);
+  .hero-motif .ring { opacity: 0.5; }
+  .hero-motif .needle { transform-origin: 100px 100px; }
+  .hero-motif .needle .head-left { opacity: 0.88; }
+  .hero-motif .needle .head-right { opacity: 0.7; }
+  .hero-motif .needle .head-ridge { opacity: 0.95; }
+  .hero-motif .needle .tail { opacity: 0.4; }
+  .hero-motif .needle .tail-ridge { opacity: 0.55; }
+
+  .hero-texto {
+    position: relative; z-index: 3;
+    max-width: 560px; margin: 0 6vw 0 auto; padding: 0 24px;
+    text-align: left;
   }
-  .hero-motif .needle .head-left { opacity: 0.34; }
-  .hero-motif .needle .head-right { opacity: 0.24; }
-  .hero-motif .needle .head-ridge { opacity: 0.48; }
-  .hero-motif .needle .tail { opacity: 0.16; }
-  .hero-motif .needle .tail-ridge { opacity: 0.28; }
-  @media (prefers-reduced-motion: reduce) { .hero-motif .needle { transition: none; } }
-  .hero h1 {
+  .hero-texto h1 {
     position: relative;
-    font-size: clamp(40px, 7vw, 92px);
-    line-height: 1.04;
-    max-width: 16ch; margin: 0 auto;
+    font-size: clamp(34px, 4.4vw, 64px);
+    line-height: 1.05;
   }
+  /* Cada palabra entra por separado (desenfoque + sube), no el bloque
+     entero de golpe — el texto es exactamente el mismo de siempre, esto
+     es solo cómo aparece. */
+  /* margin-right en vez de un espacio de texto entre palabras — un
+     espacio dentro de un inline-block se puede colapsar y las palabras
+     quedan pegadas. */
+  .hero-texto h1 .palabra {
+    display: inline-block; margin-right: 0.26em; opacity: 0; filter: blur(9px); transform: translateY(16px);
+    transition: opacity 0.65s cubic-bezier(.2,.7,.2,1), filter 0.65s cubic-bezier(.2,.7,.2,1), transform 0.65s cubic-bezier(.2,.7,.2,1);
+    transition-delay: calc(var(--i, 0) * 0.045s);
+  }
+  .hero-texto h1.in .palabra { opacity: 1; filter: blur(0); transform: translateY(0); }
   .hero .lede {
     position: relative;
-    margin: 28px auto 0; max-width: 58ch;
-    font-size: clamp(17px, 1.6vw, 20px); color: var(--ink-soft);
+    margin: 24px 0 0; max-width: 46ch;
+    font-size: clamp(16px, 1.4vw, 18px); color: var(--ink-soft);
     text-wrap: balance;
   }
   .hero .more {
-    position: relative; margin-top: 56px;
+    position: relative; margin-top: 40px;
     display: inline-flex; align-items: center; justify-content: center;
     width: 40px; height: 40px; border-radius: 50%; color: var(--ink-soft);
     transition: color 0.15s ease, border-color 0.15s ease;
@@ -204,8 +269,28 @@
   }
   .hero .more:hover { color: var(--ink); border-color: var(--ink-soft); }
   .hero .more svg { width: 14px; height: 14px; animation: bob 2.2s ease-in-out infinite; }
-  @media (prefers-reduced-motion: reduce) { .hero .more svg { animation: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-motif .needle { transition: none; }
+    .hero .more svg { animation: none; }
+    .hero-texto h1 .palabra { transition: none; opacity: 1; filter: none; transform: none; }
+  }
   @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+  /* Barra de progreso de scroll — fija arriba de todo, para toda la página
+     (no solo el hero). Puramente decorativa, sin texto. */
+  .progreso-scroll {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 100;
+    background: #e3a748; pointer-events: none;
+  }
+
+  @media (max-width: 760px) {
+    .hero-scrolly { height: auto; }
+    .hero { position: relative; height: auto; min-height: 92svh; padding: 120px 24px 80px; flex-direction: column; }
+    .hero-orbita, .hero-compas-wrap { display: none; }
+    .hero-texto { margin: 0 auto; max-width: 480px; text-align: center; padding: 0; }
+    .hero-texto h1 { text-align: center; }
+    .hero .lede { margin-left: auto; margin-right: auto; text-align: center; }
+  }
 
   .chapter-pasos .chapter-head { margin-bottom: 56px; }
   .pasos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(28px, 4vw, 48px); }
@@ -228,9 +313,6 @@
   .chapter-head .subtitle { margin: 18px 0 0; font-family: var(--font-fraunces), serif; font-weight: 560; font-size: clamp(19px, 2vw, 24px); color: var(--ink); }
   .chapter-head p { margin: 20px 0 0; color: var(--ink-soft); font-size: 18px; }
 
-  .statement { text-align: center; }
-  .statement h2 { font-size: clamp(34px, 5vw, 64px); max-width: 18ch; margin: 0 auto; line-height: 1.12; }
-
   .nosotros-layout { display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: flex-start; max-width: 760px; margin: 0 auto; }
   .nosotros-avatar {
     width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
@@ -249,6 +331,17 @@
   .legal-section h3 { font-family: var(--font-fraunces), serif; font-size: 18px; font-weight: 600; margin: 28px 0 8px; }
   .legal-section p { color: var(--ink-soft); font-size: 14.5px; line-height: 1.7; max-width: 70ch; margin: 0 0 4px; }
   .legal-section a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Páginas propias de Términos/Privacidad (src/app/terminos,
+     src/app/privacidad) — mismo texto que los <dialog> de la landing, pero
+     con dirección web real (Google la pide así para la pantalla de
+     consentimiento de OAuth). */
+  .legal-standalone { background: var(--bg); min-height: 100vh; padding: 48px 0 96px; }
+  .legal-volver {
+    display: inline-block; margin-bottom: 32px; color: var(--ink-soft); font-size: 14px;
+    font-weight: 600; transition: color 0.15s ease;
+  }
+  .legal-volver:hover { color: var(--ink); }
 
   .legal-dialog {
     /* El reset de Tailwind pone margin:0 en todo, incluido <dialog> — eso
@@ -324,6 +417,36 @@
     --line-strong: rgba(243, 242, 238, 0.4);
     --accent: #e3a748;
     color: var(--ink);
+  }
+
+  .eco-demo-stage { position: relative; }
+  .eco-demo-stage > .demo-wrap { position: relative; z-index: 1; }
+  /* Ancla invisible: no dibuja nada, solo le da al hook de React un punto
+     real del DOM (getBoundingClientRect) para saber dónde debe terminar la
+     esfera de tránsito de más abajo — la única esfera ambiente que existe,
+     para que nunca se vean dos al tiempo. */
+  .eco-esfera-fondo { position: absolute; left: 50%; top: 50%; width: 1px; height: 1px; pointer-events: none; }
+
+  /* Esfera de tránsito — misma especie de la esfera del hero (mismo
+     generador, mismos puntos dorados y líneas), pero position:fixed: es la
+     que viaja en pantalla desde donde el hero la suelta hasta quedar
+     detrás de la demo de módulos, y se queda ahí (ver el hook de React). */
+  .esfera-viajera-fondo {
+    position: fixed; left: 0; top: 0; width: 1px; height: 1px;
+    perspective: 900px; opacity: 0; pointer-events: none; z-index: 1;
+  }
+  .esfera-viajera { position: relative; width: 1px; height: 1px; transform-style: preserve-3d; }
+  .esfera-viajera .punto {
+    position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+    border-radius: 50%; background: #e3a748; opacity: 0.8;
+  }
+  .esfera-viajera .linea {
+    position: absolute; top: -1.5px; left: 0; height: 3px;
+    background: #ffffff; opacity: 0.08; transform-origin: 0 50%;
+    filter: blur(0.5px);
+  }
+  @media (max-width: 760px) {
+    .esfera-viajera-fondo { display: none; }
   }
 
   /* --- Demo interactiva de módulos (recreación de la presentación comercial) --- */
@@ -599,7 +722,6 @@
   .plan-feats li { display: flex; align-items: flex-start; gap: 10px; font-size: 14.5px; color: var(--ink); }
   .plan-feats svg { width: 15px; height: 15px; margin-top: 2px; flex-shrink: 0; color: var(--accent); }
 
-  .cta-final p.sub { color: var(--ink-soft); font-size: 18px; max-width: 54ch; margin: 20px auto 0; text-wrap: balance; }
   .btn {
     display: inline-flex; margin-top: 40px; padding: 16px 34px; border-radius: 999px;
     background: var(--accent); color: var(--bg); font-weight: 600; font-size: 15.5px;
@@ -607,6 +729,169 @@
   }
   .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
   .chapter-cta { text-align: center; margin-top: 32px; }
+
+  /* --- Formulario de agendamiento (último segmento antes del footer) --- */
+  .agenda-grid {
+    display: grid; grid-template-columns: 1.15fr 0.95fr; gap: clamp(32px, 6vw, 72px);
+    /* Centrado contra la fila completa (la marca el calendario, más alto
+       que el texto) para que el bloque de texto quede a la altura de su
+       mitad, no pegado arriba. */
+    align-items: center;
+  }
+  .agenda-texto { text-align: center; }
+  /* Más grande que un h2 normal de la landing a propósito — Andrés la
+     quería con peso de H1, no de descripción; se queda como <h2> en el
+     HTML (el único <h1> real es el del hero) pero se ve tan grande. */
+  .agenda-texto h2 { font-size: clamp(32px, 4vw, 48px); line-height: 1.1; max-width: none; margin: 0 auto; }
+  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; }
+  /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
+     #precios y #ecosistema — ver el comentario grande sobre .hero más
+     arriba) en vez del --card claro genérico: así combina con la
+     referencia que aprobó Andrés (calendario + lista de horas sobre
+     fondo oscuro) sin importar el tema claro/oscuro del visitante. */
+  .agenda-formulario {
+    background: #1a1b33;
+    border: 1px solid rgba(243, 242, 238, 0.14);
+    border-radius: 20px;
+    padding: clamp(22px, 3vw, 30px);
+    --ink: #f3f2ee;
+    --ink-soft: #c3c2d6;
+    --ink-faint: #9698ad;
+    --line: rgba(243, 242, 238, 0.22);
+    --line-strong: rgba(243, 242, 238, 0.4);
+    --accent: #e3a748;
+    --good: #6fbf94;
+    color: var(--ink);
+  }
+  @media (max-width: 760px) {
+    .agenda-grid { grid-template-columns: 1fr; }
+  }
+
+  .agendar-estado { text-align: center; color: var(--ink-soft); }
+  .agendar-estado .btn { margin-top: 20px; }
+
+  .agendar-paso {
+    margin: 0 0 16px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .agendar-nota-zona { text-transform: none; font-weight: 500; letter-spacing: normal; }
+
+  /* Panel dividido: calendario de mes a la izquierda, horas del día
+     elegido a la derecha, los dos visibles siempre — mismo patrón que
+     Andrés aprobó del set de opciones (calendario mensual + lista). */
+  .agendar-split { display: grid; grid-template-columns: 1fr 1.05fr; gap: 24px; }
+  @media (max-width: 560px) {
+    .agendar-split { grid-template-columns: 1fr; }
+  }
+
+  .agendar-cal-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .agendar-cal-mes { font-family: var(--font-fraunces), serif; font-size: 15px; font-weight: 600; text-transform: capitalize; }
+  .agendar-cal-nav {
+    width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: none;
+    color: var(--ink-soft); display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .agendar-cal-nav:hover:not(:disabled) { border-color: var(--ink-soft); color: var(--ink); }
+  .agendar-cal-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .agendar-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+  .agendar-cal-dow {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+    color: var(--ink-faint); padding-bottom: 6px;
+  }
+  .agendar-cal-dia {
+    aspect-ratio: 1; border: none; background: none; border-radius: 50%; position: relative;
+    font-size: 12.5px; font-weight: 600; color: var(--ink-faint); font-variant-numeric: tabular-nums;
+    cursor: default;
+  }
+  .agendar-cal-dia.vacio { visibility: hidden; }
+  .agendar-cal-dia.disponible {
+    color: var(--ink); cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .agendar-cal-dia.disponible::after {
+    content: ""; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+    width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
+  }
+  .agendar-cal-dia.disponible:hover { background: rgba(243, 242, 238, 0.08); }
+  .agendar-cal-dia.activo { background: var(--accent) !important; color: #1a1b33 !important; }
+  .agendar-cal-dia.activo::after { display: none; }
+
+  .agendar-horas-col { display: flex; flex-direction: column; min-width: 0; }
+  .agendar-horas-fecha { margin: 0 0 12px; font-size: 13px; font-weight: 700; text-transform: capitalize; }
+  /* Alto fijo con scroll propio, para que la tarjeta no crezca sin
+     control según cuántas franjas haya ese día. */
+  .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
+  .agendar-hora {
+    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: none; text-align: center;
+    font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .agendar-hora:hover { border-color: var(--ink-soft); }
+  .agendar-hora.activo { background: var(--accent); border-color: var(--accent); color: #1a1b33; }
+
+  /* Barra de resumen + confirmación, siempre visible debajo del panel —
+     mismo patrón de la referencia de Pinterest que Andrés compartió. */
+  .agendar-resumen-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line);
+  }
+  .agendar-resumen-texto { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .agendar-resumen-texto strong { color: var(--ink); font-weight: 700; }
+  /* "a. m."/"p. m." trae un espacio adentro — sin esto, un ancho angosto
+     lo parte a la mitad entre el punto y la "m". */
+  .agendar-hora-inline { white-space: nowrap; }
+  .agendar-btn-continuar {
+    flex: 0 0 auto; padding: 12px 24px; border: none; border-radius: 999px;
+    background: var(--accent); color: #1a1b33; font-weight: 700; font-size: 14px; cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .agendar-btn-continuar:hover:not(:disabled) { background: #f0bb6a; }
+  .agendar-btn-continuar:disabled { opacity: 0.35; cursor: not-allowed; }
+  @media (max-width: 480px) {
+    .agendar-resumen-bar { flex-direction: column; align-items: stretch; }
+    .agendar-btn-continuar { width: 100%; }
+  }
+
+  .agendar-volver {
+    display: inline-flex; align-items: center; gap: 4px; margin: 0 0 16px; padding: 0; border: none;
+    background: none; color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .agendar-volver:hover { color: var(--ink); }
+  .agendar-resumen { margin: 0 0 16px; font-size: 14.5px; font-weight: 600; color: var(--accent); }
+
+  .agendar-form { display: flex; flex-direction: column; gap: 12px; }
+  .agendar-form-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .agendar-form input,
+  .agendar-form textarea {
+    width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: rgba(243, 242, 238, 0.05); color: var(--ink); font-family: inherit; font-size: 14.5px;
+    transition: border-color 0.15s ease;
+  }
+  .agendar-form input::placeholder,
+  .agendar-form textarea::placeholder { color: var(--ink-faint); }
+  .agendar-form input:focus,
+  .agendar-form textarea:focus { outline: none; border-color: var(--accent); }
+  .agendar-form textarea { resize: vertical; min-height: 72px; }
+  .agendar-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .agendar-form-error { margin: 0; color: #e8998c; font-size: 13.5px; }
+  .agendar-btn-confirmar {
+    width: 100%; margin-top: 4px; border: none; border-radius: 999px; padding: 13px;
+    background: var(--accent); color: #1a1b33; font-weight: 700; font-size: 14.5px; cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .agendar-btn-confirmar:hover:not(:disabled) { background: #f0bb6a; }
+  .agendar-btn-confirmar:disabled { opacity: 0.6; cursor: not-allowed; }
+  @media (max-width: 480px) {
+    .agendar-form-fila { grid-template-columns: 1fr; }
+  }
+
+  .agendar-confirmado { text-align: center; }
+  .agendar-confirmado-titulo { font-family: var(--font-fraunces), serif; font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+  .agendar-link-evento {
+    display: inline-block; margin-top: 16px; color: var(--accent); font-weight: 600;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
 
   footer { border-top: 1px solid var(--line); padding: 64px 0 0; }
   .footer-top {

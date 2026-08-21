@@ -35,25 +35,18 @@ export default async function NuevoProductoPage({
   const empresa = perfil.empresas as unknown as { tipo_negocio: string | null } | null;
   const tipoNegocio = empresa?.tipo_negocio ?? null;
 
-  const { data: items } = await supabase
-    .from("inventario_items")
-    .select(
-      "id, nombre, categoria, cantidad, costo, precio_venta, unidad, proveedor_id, sku, es_insumo, punto_venta_id",
-    )
-    .eq("empresa_id", perfil.empresa_id)
-    .order("nombre");
-
-  const { data: proveedores } = await supabase
-    .from("proveedores")
-    .select("id, nombre")
-    .eq("empresa_id", perfil.empresa_id)
-    .order("nombre");
-
-  const { puntosVenta, puntoSeleccionado } = await obtenerContextoPunto(
-    supabase,
-    perfil.empresa_id,
-    null,
-  );
+  // Ninguna depende de otra — las tres solo necesitan empresa_id.
+  const [{ data: items }, { data: proveedores }, { puntosVenta, puntoSeleccionado }] = await Promise.all([
+    supabase
+      .from("inventario_items")
+      .select(
+        "id, nombre, categoria, cantidad, costo, precio_venta, unidad, proveedor_id, sku, es_insumo, punto_venta_id, tipo",
+      )
+      .eq("empresa_id", perfil.empresa_id)
+      .order("nombre"),
+    supabase.from("proveedores").select("id, nombre").eq("empresa_id", perfil.empresa_id).order("nombre"),
+    obtenerContextoPunto(supabase, perfil.empresa_id, null),
+  ]);
 
   return (
     <NuevoProductoForm

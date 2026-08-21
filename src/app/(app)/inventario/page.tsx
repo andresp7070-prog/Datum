@@ -32,11 +32,11 @@ export default async function InventarioPage({
     );
   }
 
-  const { puntoSeleccionado } = await obtenerContextoPunto(
-    supabase,
-    perfil.empresa_id,
-    perfil.punto_venta_id,
-  );
+  // Ninguna depende de la otra — ambas solo necesitan perfil.
+  const [{ puntoSeleccionado }, { data: velocidadData }] = await Promise.all([
+    obtenerContextoPunto(supabase, perfil.empresa_id, perfil.punto_venta_id),
+    supabase.from("vista_velocidad_ventas").select("item_id, unidades_por_dia").eq("empresa_id", perfil.empresa_id),
+  ]);
 
   let itemsQuery = supabase
     .from("inventario_items")
@@ -50,27 +50,20 @@ export default async function InventarioPage({
 
   const { data: items } = await itemsQuery;
 
-  const fotoUrlsPorPath = await firmarFotoUrls(
-    supabase,
-    (items ?? []).map((item) => item.foto_path),
-  );
-
   const itemIds = (items ?? []).map((item) => item.id);
 
-  const { data: recetaRows } =
+  // Ninguna depende de la otra — ambas solo necesitan los items ya cargados.
+  const [fotoUrlsPorPath, { data: recetaRows }] = await Promise.all([
+    firmarFotoUrls(
+      supabase,
+      (items ?? []).map((item) => item.foto_path),
+    ),
     itemIds.length > 0
-      ? await supabase
-          .from("inventario_receta")
-          .select("item_resultante_id")
-          .in("item_resultante_id", itemIds)
-      : { data: [] };
+      ? supabase.from("inventario_receta").select("item_resultante_id").in("item_resultante_id", itemIds)
+      : Promise.resolve({ data: [] as { item_resultante_id: string }[] }),
+  ]);
 
   const idsConReceta = new Set((recetaRows ?? []).map((r) => r.item_resultante_id));
-
-  const { data: velocidadData } = await supabase
-    .from("vista_velocidad_ventas")
-    .select("item_id, unidades_por_dia")
-    .eq("empresa_id", perfil.empresa_id);
 
   const velocidadPorItem = new Map(
     (velocidadData ?? []).map((v) => [v.item_id, Number(v.unidades_por_dia)]),

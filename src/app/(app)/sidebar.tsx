@@ -33,11 +33,19 @@ const modulos = [
   { nombre: "Nómina", href: "/nomina", slug: "nomina" },
 ];
 
+// Mismo orden que "modulos" (el menú genérico que ve cualquier cliente),
+// para que no se sienta como una experiencia distinta — "Panel" (propio de
+// admin, sin equivalente de cliente) va primero, y "Enviar bienvenida"/
+// "Probar correos" (también exclusivos de admin) al final.
 const enlacesAdmin = [
   { nombre: "Panel", href: "/admin" },
-  { nombre: "Panel de control de Datum", href: "/admin/panel" },
-  { nombre: "Leads de Datum", href: "/admin/leads" },
-  { nombre: "Finanzas de Datum", href: "/admin/finanzas" },
+  { nombre: "Ventas", href: "/ventas" },
+  { nombre: "CRM", href: "/admin/leads" },
+  { nombre: "Inventario", href: "/inventario" },
+  { nombre: "Estado P y G", href: "/admin/finanzas" },
+  { nombre: "Panel de control", href: "/admin/panel" },
+  { nombre: "Promociones", href: "/promociones" },
+  { nombre: "Nómina", href: "/nomina" },
   { nombre: "Enviar bienvenida", href: "/admin/bienvenida" },
   { nombre: "Probar correos", href: "/admin/correos" },
 ];
@@ -104,11 +112,11 @@ export function Sidebar({
 
   if (esAdmin) {
     return (
-      <nav className="flex w-56 shrink-0 flex-col justify-between border-r border-gray-200 p-4">
+      <nav className="flex w-56 shrink-0 flex-col justify-between bg-accent p-4">
         <div>
-          <div className="mb-6 flex items-center gap-3 px-3 text-accent">
+          <div className="mb-6 flex items-center gap-3 px-3 text-white">
             <LogoCompass className="h-9 w-9" />
-            <span className="font-serif text-4xl font-semibold text-gray-900">Datum</span>
+            <span className="font-serif text-4xl font-semibold text-white">Datum</span>
           </div>
           <ul className="space-y-1">
             {enlacesAdmin.map((enlace) => {
@@ -126,7 +134,9 @@ export function Sidebar({
                     href={enlace.href}
                     onClick={(e) => manejarClic(e, enlace.href, navegar)}
                     className={`block rounded-lg px-3 py-2 text-sm font-medium ${
-                      activo ? "bg-accent text-white" : "text-gray-700 hover:bg-gray-100"
+                      activo
+                        ? "bg-amber-600 text-white"
+                        : "text-[#c7c8dd] hover:bg-accent-hover"
                     }`}
                   >
                     {enlace.nombre}
@@ -136,7 +146,7 @@ export function Sidebar({
             })}
           </ul>
         </div>
-        <div className="flex items-center gap-1.5 px-3 text-[11px] whitespace-nowrap text-gray-300">
+        <div className="flex items-center gap-1.5 px-3 text-[11px] whitespace-nowrap text-[#8f91b0]">
           <LogoCompass className="h-3 w-3 shrink-0" />
           <span>Desarrollado por Datum</span>
         </div>
@@ -145,11 +155,11 @@ export function Sidebar({
   }
 
   return (
-    <nav className="flex w-56 shrink-0 flex-col justify-between border-r border-gray-200 p-4">
+    <nav className="flex w-56 shrink-0 flex-col justify-between bg-accent p-4">
       <div>
-        <div className="mb-6 flex items-center gap-3 px-3 text-accent">
+        <div className="mb-6 flex items-center gap-3 px-3 text-white">
           <LogoCompass className="h-9 w-9" />
-          <span className="font-serif text-4xl font-semibold text-gray-900">Datum</span>
+          <span className="font-serif text-4xl font-semibold text-white">Datum</span>
         </div>
 
         {mostrarSelectorPunto && (
@@ -159,8 +169,8 @@ export function Sidebar({
         )}
         {!mostrarSelectorPunto && puntoFijoNombre && (
           <div className="mb-3 px-3 py-2">
-            <p className="text-xs font-medium text-gray-400">Punto de venta</p>
-            <p className="text-sm text-gray-700">{puntoFijoNombre}</p>
+            <p className="text-xs font-medium text-[#9496b8]">Punto de venta</p>
+            <p className="text-sm text-[#e3e3ef]">{puntoFijoNombre}</p>
           </div>
         )}
 
@@ -173,7 +183,9 @@ export function Sidebar({
                   href={modulo.href}
                   onClick={(e) => manejarClic(e, modulo.href, navegar)}
                   className={`block rounded-lg px-3 py-2 text-sm font-medium ${
-                    activo ? "bg-accent text-white" : "text-gray-700 hover:bg-gray-100"
+                    activo
+                      ? "bg-amber-600 text-white"
+                      : "text-[#c7c8dd] hover:bg-accent-hover"
                   }`}
                 >
                   {modulo.nombre}
@@ -185,13 +197,13 @@ export function Sidebar({
 
         {bloqueados.length > 0 && (
           <>
-            <hr className="my-3 border-gray-200" />
+            <hr className="my-3 border-accent-hover" />
             <ul className="space-y-1">
               {bloqueados.map((modulo) => (
                 <li key={modulo.href}>
                   <span
                     title="No incluido en tu plan actual"
-                    className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-400"
+                    className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-[#6b6d8c]"
                   >
                     {modulo.nombre}
                     <IconoCandado />
@@ -203,7 +215,7 @@ export function Sidebar({
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 px-3 text-[11px] whitespace-nowrap text-gray-300">
+      <div className="flex items-center gap-1.5 px-3 text-[11px] whitespace-nowrap text-[#8f91b0]">
         <LogoCompass className="h-3 w-3 shrink-0" />
         <span>Desarrollado por Datum</span>
       </div>

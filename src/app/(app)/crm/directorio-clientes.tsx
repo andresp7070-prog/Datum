@@ -5,6 +5,7 @@ import Link from "next/link";
 import { sinTildes } from "@/lib/texto";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { Estrellas } from "./estrellas";
+import { PrioridadBadge, PrioridadFiltro } from "./prioridad";
 
 type Contacto = {
   id: string;
@@ -14,6 +15,7 @@ type Contacto = {
   etapa_id: string | null;
   calificacion: number | null;
   empresa_cliente: string | null;
+  prioridad: number | null;
 };
 
 type Etapa = { id: string; nombre: string; orden: number };
@@ -22,24 +24,32 @@ export function DirectorioClientes({
   contactos,
   etapas,
   mostrarConfigEtapas,
+  mostrarPrioridad,
 }: {
   contactos: Contacto[];
   etapas: Etapa[];
   mostrarConfigEtapas: boolean;
+  mostrarPrioridad: boolean;
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [etapaFiltro, setEtapaFiltro] = useState("todas");
+  const [prioridadFiltro, setPrioridadFiltro] = useState("todas");
 
   const nombrePorEtapa = new Map(etapas.map((etapa) => [etapa.id, etapa.nombre]));
 
   const filtrados = contactos.filter((contacto) => {
     const coincideEtapa = etapaFiltro === "todas" || contacto.etapa_id === etapaFiltro;
+    const coincidePrioridad =
+      prioridadFiltro === "todas" ||
+      (prioridadFiltro === "sin"
+        ? contacto.prioridad == null
+        : contacto.prioridad === Number(prioridadFiltro));
     const q = sinTildes(busqueda.trim());
     const coincideTexto =
       !q ||
       sinTildes(contacto.nombre).includes(q) ||
       sinTildes(contacto.empresa_cliente ?? "").includes(q);
-    return coincideEtapa && coincideTexto;
+    return coincideEtapa && coincidePrioridad && coincideTexto;
   });
 
   const filasCsv = filtrados.map((contacto) => ({
@@ -102,6 +112,7 @@ export function DirectorioClientes({
             </option>
           ))}
         </select>
+        {mostrarPrioridad && <PrioridadFiltro valor={prioridadFiltro} onChange={setPrioridadFiltro} />}
       </div>
 
       {filtrados.length === 0 ? (
@@ -120,9 +131,10 @@ export function DirectorioClientes({
                     {contacto.empresa_cliente ? `${contacto.empresa_cliente} · ` : ""}
                     {contacto.telefono ?? "Sin teléfono"}
                   </p>
-                  {contacto.calificacion != null && (
-                    <div className="mt-1">
-                      <Estrellas valor={contacto.calificacion} />
+                  {(contacto.calificacion != null || (mostrarPrioridad && contacto.prioridad)) && (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      {contacto.calificacion != null && <Estrellas valor={contacto.calificacion} />}
+                      {mostrarPrioridad && <PrioridadBadge valor={contacto.prioridad} />}
                     </div>
                   )}
                 </div>

@@ -25,17 +25,15 @@ export default async function NuevaVentaPage() {
     );
   }
 
-  const { puntoSeleccionado } = await obtenerContextoPunto(
-    supabase,
-    perfil.empresa_id,
-    perfil.punto_venta_id,
-  );
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("metodos_pago_disponibles, modulos_activos, permite_apartados")
-    .eq("id", perfil.empresa_id)
-    .single();
+  // Ninguna de las dos depende de la otra — ambas solo necesitan perfil.
+  const [{ puntoSeleccionado }, { data: empresa }] = await Promise.all([
+    obtenerContextoPunto(supabase, perfil.empresa_id, perfil.punto_venta_id),
+    supabase
+      .from("empresas")
+      .select("metodos_pago_disponibles, modulos_activos, permite_apartados")
+      .eq("id", perfil.empresa_id)
+      .single(),
+  ]);
 
   const crmActivo = (empresa?.modulos_activos ?? []).includes("crm");
   const inventarioActivo = (empresa?.modulos_activos ?? []).includes("inventario");
@@ -84,12 +82,32 @@ export default async function NuevaVentaPage() {
 
   if (puntoSeleccionado) itemsQuery = itemsQuery.eq("punto_venta_id", puntoSeleccionado);
 
-  const { data: itemsData } = await itemsQuery;
+  const hoy = new Date().toISOString().slice(0, 10);
+  let promocionesQuery = supabase
+    .from("promociones")
+    .select(
+      "id, nombre, tipo_promocion, valor, aplica_a_categoria, item_regalo_id, promocion_items ( item_id )",
+    )
+    .eq("empresa_id", perfil.empresa_id)
+    .eq("activo", true)
+    .lte("fecha_inicio", hoy)
+    .gte("fecha_fin", hoy);
 
-  const { data: velocidadData } = await supabase
-    .from("vista_velocidad_ventas")
-    .select("item_id, unidades_por_dia")
-    .eq("empresa_id", perfil.empresa_id);
+  // Promociones de este punto en particular, más las que aplican a todos
+  // los puntos (punto_venta_id null).
+  if (puntoSeleccionado) {
+    promocionesQuery = promocionesQuery.or(
+      `punto_venta_id.is.null,punto_venta_id.eq.${puntoSeleccionado}`,
+    );
+  }
+
+  // Las tres son independientes entre sí — solo necesitan empresa_id y el
+  // punto ya resuelto, así que salen juntas en vez de una detrás de otra.
+  const [{ data: itemsData }, { data: velocidadData }, { data: promocionesData }] = await Promise.all([
+    itemsQuery,
+    supabase.from("vista_velocidad_ventas").select("item_id, unidades_por_dia").eq("empresa_id", perfil.empresa_id),
+    promocionesQuery,
+  ]);
 
   const velocidadPorItem = new Map(
     (velocidadData ?? []).map((v) => [v.item_id, Number(v.unidades_por_dia)]),
@@ -116,27 +134,6 @@ export default async function NuevaVentaPage() {
   }[] = [];
 
   if (inventarioActivo) {
-    const hoy = new Date().toISOString().slice(0, 10);
-    let promocionesQuery = supabase
-      .from("promociones")
-      .select(
-        "id, nombre, tipo_promocion, valor, aplica_a_categoria, item_regalo_id, promocion_items ( item_id )",
-      )
-      .eq("empresa_id", perfil.empresa_id)
-      .eq("activo", true)
-      .lte("fecha_inicio", hoy)
-      .gte("fecha_fin", hoy);
-
-    // Promociones de este punto en particular, más las que aplican a todos
-    // los puntos (punto_venta_id null).
-    if (puntoSeleccionado) {
-      promocionesQuery = promocionesQuery.or(
-        `punto_venta_id.is.null,punto_venta_id.eq.${puntoSeleccionado}`,
-      );
-    }
-
-    const { data: promocionesData } = await promocionesQuery;
-
     promociones = (promocionesData ?? []).map((p) => {
       const regalo = p.item_regalo_id ? items.find((i) => i.id === p.item_regalo_id) : null;
       return {

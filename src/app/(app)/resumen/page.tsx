@@ -5,7 +5,10 @@ import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { primeraMayuscula } from "@/lib/texto";
 import { firmarFotoUrl } from "@/lib/fotos";
+import { calcularDiasRestantes } from "@/lib/inventario";
 import { LogoEmpresa } from "./logo-empresa";
+
+const UMBRAL_DIAS_POR_AGOTARSE = 7;
 
 function formatoMoneda(valor: number) {
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
@@ -66,13 +69,21 @@ export default async function ResumenPage() {
     .from("vista_estado_resultados")
     .select("mes, punto_venta_id, utilidad_neta")
     .eq("empresa_id", perfil.empresa_id);
+  // Sin filtro de cantidad: se trae todo el catálogo de productos para poder
+  // calcular, con la velocidad de venta, cuáles ya están agotados y cuáles
+  // se van a agotar pronto — no solo los que ya llegaron a cero.
   let itemsQuery = supabase
     .from("inventario_items")
     .select("id, nombre, cantidad, unidad")
     .eq("empresa_id", perfil.empresa_id)
     .eq("tipo", "producto")
-    .lte("cantidad", 0)
     .order("nombre");
+  // vista_velocidad_ventas no expone punto_venta_id (no se filtra por punto,
+  // mismo alcance que ya usan /inventario/proyecciones y /ventas/nueva).
+  const velocidadQuery = supabase
+    .from("vista_velocidad_ventas")
+    .select("item_id, unidades_por_dia")
+    .eq("empresa_id", perfil.empresa_id);
   let promocionesQuery = supabase
     .from("promociones")
     .select("id, nombre, tipo_promocion, fecha_fin")
@@ -95,15 +106,20 @@ export default async function ResumenPage() {
     { data: resultadosData },
     { data: pasivosData },
     { data: itemsData },
+    { data: velocidadData },
     { data: promocionesData },
   ] = await Promise.all([
     supabase.from("empresas").select("nombre, logo_path").eq("id", perfil.empresa_id).single(),
     tieneVentas ? ventasQuery : Promise.resolve({ data: [] }),
     tienePyg ? resultadosQuery : Promise.resolve({ data: [] }),
     tienePyg
-      ? supabase.from("pasivos").select("monto_total, monto_pagado, estado").eq("empresa_id", perfil.empresa_id)
+      ? supabase
+          .from("pasivos")
+          .select("descripcion, monto_total, monto_pagado, fecha_vencimiento, estado")
+          .eq("empresa_id", perfil.empresa_id)
       : Promise.resolve({ data: [] }),
     tieneInventario ? itemsQuery : Promise.resolve({ data: [] }),
+    tieneInventario ? velocidadQuery : Promise.resolve({ data: [] }),
     tienePromociones ? promocionesQuery : Promise.resolve({ data: [] }),
   ]);
 
@@ -128,6 +144,12 @@ export default async function ResumenPage() {
       ? Math.round(((totalVendidoHoy - promedioDiario) / promedioDiario) * 100)
       : null;
 
+  // ---- Ventas de este mes ----
+  // Mismo arreglo "ventas" de arriba, sin consulta aparte — ya trae todo lo
+  // necesario (fecha y monto).
+  const ventasMes = ventas.filter((v) => diaColombia(v.fecha).slice(0, 7) === mesActual);
+  const totalVendidoMes = ventasMes.reduce((suma, v) => suma + Number(v.monto), 0);
+
   // ---- Utilidad neta del mes ----
   // Con "todos los puntos" la vista trae una fila por punto — se suman para
   // tener la utilidad combinada del mes, igual que antes de tener puntos.
@@ -136,22 +158,88 @@ export default async function ResumenPage() {
     .filter((f) => f.mes.slice(0, 7) === mesActual)
     .reduce((suma, f) => suma + Number(f.utilidad_neta), 0);
 
-  // ---- Deudas pendientes ----
-  const pasivos = (pasivosData ?? []) as { monto_total: number; monto_pagado: number; estado: string }[];
-  const totalPendiente = pasivos
-    .filter((p) => p.estado !== "pagado")
-    .reduce((suma, p) => suma + (p.monto_total - p.monto_pagado), 0);
+  // ---- Deudas pendientes, con cuándo vencen ----
+  const pasivos = (pasivosData ?? []) as {
+    descripcion: string;
+    monto_total: number;
+    monto_pagado: number;
+    fecha_vencimiento: string | null;
+    estado: string;
+  }[];
+  const deudasPendientes = pasivos.filter((p) => p.estado !== "pagado");
+  const totalPendiente = deudasPendientes.reduce(
+    (suma, p) => suma + (p.monto_total - p.monto_pagado),
+    0,
+  );
+  const proximasAVencer = [...deudasPendientes]
+    .filter((p) => p.fecha_vencimiento !== null)
+    .sort((a, b) => (a.fecha_vencimiento as string).localeCompare(b.fecha_vencimiento as string))
+    .slice(0, 3);
 
-  // ---- Inventario agotado ----
-  const itemsAgotados = (itemsData ?? []) as { id: string; nombre: string; cantidad: number; unidad: string }[];
+  // ---- Inventario: agotado o por agotarse pronto ----
+  // Cruza el catálogo con la velocidad de venta de cada producto (misma
+  // fórmula que /inventario/proyecciones) para no solo avisar cuando ya
+  // llegó a cero, sino cuando le quedan pocos días de stock.
+  const velocidadPorItem = new Map(
+    ((velocidadData ?? []) as { item_id: string; unidades_por_dia: number }[]).map((v) => [
+      v.item_id,
+      v.unidades_por_dia,
+    ]),
+  );
+  const itemsInventario = (itemsData ?? []) as {
+    id: string;
+    nombre: string;
+    cantidad: number;
+    unidad: string;
+  }[];
+  const itemsPorAgotarse = itemsInventario
+    .map((item) => ({
+      ...item,
+      agotado: item.cantidad <= 0,
+      diasRestantes: calcularDiasRestantes(item.cantidad, velocidadPorItem.get(item.id)),
+    }))
+    .filter(
+      (item) =>
+        item.agotado || (item.diasRestantes !== null && item.diasRestantes <= UMBRAL_DIAS_POR_AGOTARSE),
+    )
+    .sort((a, b) => {
+      if (a.agotado !== b.agotado) return a.agotado ? -1 : 1;
+      return (a.diasRestantes ?? 0) - (b.diasRestantes ?? 0);
+    });
 
   // ---- Promociones activas ----
+  // Se pide aparte (no en el Promise.all de arriba) porque depende de saber
+  // primero cuáles promociones están activas — vista_efectividad_promociones
+  // trae cuántas ventas ha generado cada una hasta ahora.
   const promocionesActivas = (promocionesData ?? []) as {
     id: string;
     nombre: string;
     tipo_promocion: string;
     fecha_fin: string;
   }[];
+
+  const idsPromocionesActivas = promocionesActivas.map((p) => p.id);
+  const { data: efectividadData } =
+    idsPromocionesActivas.length > 0
+      ? await supabase
+          .from("vista_efectividad_promociones")
+          .select("promocion_id, ventas_con_este_descuento")
+          .in("promocion_id", idsPromocionesActivas)
+      : { data: [] };
+
+  const ventasPorPromocion = new Map(
+    (efectividadData ?? []).map((e) => [e.promocion_id, e.ventas_con_este_descuento]),
+  );
+
+  const hoyDate = new Date(`${hoy}T00:00:00`);
+  const promocionesConDetalle = promocionesActivas.map((promo) => ({
+    ...promo,
+    ventasGeneradas: ventasPorPromocion.get(promo.id) ?? 0,
+    diasRestantes: Math.max(
+      0,
+      Math.ceil((new Date(`${promo.fecha_fin}T00:00:00`).getTime() - hoyDate.getTime()) / (1000 * 60 * 60 * 24)),
+    ),
+  }));
 
   const logoUrl = await firmarFotoUrl(supabase, empresa?.logo_path ?? null, "empresas-logos");
 
@@ -177,7 +265,7 @@ export default async function ResumenPage() {
       </div>
 
       {(tieneVentas || tienePyg) && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tieneVentas && (
             <div className="rounded-xl border border-gray-200 p-4">
               <h2 className="mb-3 text-sm font-semibold text-gray-900">Ventas de hoy</h2>
@@ -205,6 +293,14 @@ export default async function ResumenPage() {
             </div>
           )}
 
+          {tieneVentas && (
+            <div className="rounded-xl border border-gray-200 p-4">
+              <h2 className="mb-3 text-sm font-semibold text-gray-900">Ventas de este mes</h2>
+              <p className="text-2xl font-semibold text-gray-900">{formatoMoneda(totalVendidoMes)}</p>
+              <p className="text-xs text-gray-400">{ventasMes.length} venta(s) en {mesActual}</p>
+            </div>
+          )}
+
           {tienePyg && (
             <div className="rounded-xl border border-gray-200 p-4">
               <h2 className="mb-3 text-sm font-semibold text-gray-900">Utilidad neta del mes</h2>
@@ -221,28 +317,76 @@ export default async function ResumenPage() {
         </div>
       )}
 
+      {tienePyg && deudasPendientes.length > 0 && (
+        <div className="rounded-xl border border-gray-200 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Deudas por vencer</h2>
+            <Link href="/pyg/pasivos" className="text-xs text-gray-500 hover:text-gray-700">
+              Ver todas
+            </Link>
+          </div>
+          {proximasAVencer.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              Tienes deudas pendientes sin fecha de vencimiento registrada.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 text-sm">
+              {proximasAVencer.map((deuda, i) => {
+                const dias = Math.ceil(
+                  (new Date(`${deuda.fecha_vencimiento}T00:00:00`).getTime() - new Date(`${hoy}T00:00:00`).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                );
+                return (
+                  <li key={i} className="flex items-center justify-between py-1.5">
+                    <div>
+                      <p className="text-gray-700">{deuda.descripcion}</p>
+                      <p
+                        className={`text-xs ${dias < 0 ? "text-red-600" : dias <= 7 ? "text-amber-600" : "text-gray-400"}`}
+                      >
+                        {dias < 0
+                          ? `Venció hace ${Math.abs(dias)} día(s)`
+                          : dias === 0
+                            ? "Vence hoy"
+                            : `Vence en ${dias} día(s)`}
+                      </p>
+                    </div>
+                    <span className="font-medium text-gray-900">
+                      {formatoMoneda(deuda.monto_total - deuda.monto_pagado)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
       {tieneInventario && (
         <div className="rounded-xl border border-gray-200 p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Inventario agotado</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Inventario por agotarse</h2>
             <Link href="/inventario" className="text-xs text-gray-500 hover:text-gray-700">
               Ver inventario
             </Link>
           </div>
-          {itemsAgotados.length === 0 ? (
-            <p className="text-sm text-gray-400">Ningún producto está en cero — todo en orden.</p>
+          {itemsPorAgotarse.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              Ningún producto está en cero ni se va a agotar pronto — todo en orden.
+            </p>
           ) : (
             <ul className="divide-y divide-gray-100 text-sm">
-              {itemsAgotados.slice(0, 5).map((item) => (
+              {itemsPorAgotarse.slice(0, 5).map((item) => (
                 <li key={item.id} className="flex justify-between py-1.5">
                   <span className="text-gray-700">{item.nombre}</span>
-                  <span className="text-red-600">Agotado</span>
+                  <span className={item.agotado ? "text-red-600" : "text-amber-600"}>
+                    {item.agotado ? "Agotado" : `Quedan ${item.diasRestantes} día(s)`}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
-          {itemsAgotados.length > 5 && (
-            <p className="mt-2 text-xs text-gray-400">y {itemsAgotados.length - 5} más...</p>
+          {itemsPorAgotarse.length > 5 && (
+            <p className="mt-2 text-xs text-gray-400">y {itemsPorAgotarse.length - 5} más...</p>
           )}
         </div>
       )}
@@ -255,18 +399,22 @@ export default async function ResumenPage() {
               Ver promociones
             </Link>
           </div>
-          {promocionesActivas.length === 0 ? (
+          {promocionesConDetalle.length === 0 ? (
             <p className="text-sm text-gray-400">Ninguna promoción activa en este momento.</p>
           ) : (
             <ul className="divide-y divide-gray-100 text-sm">
-              {promocionesActivas.map((promo) => (
-                <li key={promo.id} className="flex justify-between py-1.5">
-                  <span className="text-gray-700">{promo.nombre}</span>
-                  <span className="text-gray-400">
-                    Hasta {new Date(`${promo.fecha_fin}T00:00:00`).toLocaleDateString("es-CO", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+              {promocionesConDetalle.map((promo) => (
+                <li key={promo.id} className="flex items-center justify-between py-1.5">
+                  <div>
+                    <p className="text-gray-700">{promo.nombre}</p>
+                    <p className="text-xs text-gray-400">
+                      {promo.diasRestantes === 0
+                        ? "Último día"
+                        : `Queda${promo.diasRestantes === 1 ? "" : "n"} ${promo.diasRestantes} día${promo.diasRestantes === 1 ? "" : "s"}`}
+                    </p>
+                  </div>
+                  <span className="text-gray-500">
+                    {promo.ventasGeneradas} venta{promo.ventasGeneradas === 1 ? "" : "s"}
                   </span>
                 </li>
               ))}
@@ -275,29 +423,6 @@ export default async function ResumenPage() {
         </div>
       )}
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Accesos directos</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/ventas/nueva"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
-          >
-            Agregar venta
-          </Link>
-          <Link
-            href="/crm/nuevo"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Agregar cliente
-          </Link>
-          <Link
-            href="/inventario/nuevo"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Agregar producto
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }

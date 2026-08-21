@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { InventarioTabs } from "../inventario-tabs";
 import { ImportarInventarioForm } from "./importar-form";
+import { ImportarRecetasForm } from "./importar-recetas-form";
 
 export default async function ImportarInventarioPage() {
   const supabase = await createClient();
@@ -36,6 +37,16 @@ export default async function ImportarInventarioPage() {
     null,
   );
 
+  // Solo para mostrarle la unidad de cada insumo al lado de la cantidad en
+  // la vista previa de recetas — no participa en la carga en sí, eso lo
+  // resuelve cargar_recetas_iniciales() por su cuenta.
+  let itemsQuery = supabase
+    .from("inventario_items")
+    .select("nombre, unidad")
+    .eq("empresa_id", perfil.empresa_id);
+  if (puntoSeleccionado) itemsQuery = itemsQuery.eq("punto_venta_id", puntoSeleccionado);
+  const { data: itemsParaUnidad } = await itemsQuery;
+
   return (
     <div>
       <InventarioTabs />
@@ -44,6 +55,8 @@ export default async function ImportarInventarioPage() {
         puntoInicial={puntoSeleccionado}
         tipoNegocio={tipoNegocio}
       />
+      <hr className="my-8 max-w-2xl border-gray-200" />
+      <ImportarRecetasForm puntoVentaId={puntoSeleccionado} items={itemsParaUnidad ?? []} />
     </div>
   );
 }

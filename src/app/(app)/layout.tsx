@@ -76,11 +76,11 @@ export default async function AppLayout({
           }
         />
         <div className="flex flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <span className="text-sm text-gray-500">{perfil.nombre}</span>
+          <header className="flex items-center justify-between bg-accent px-6 py-4">
+            <span className="text-sm text-[#c7c8dd]">{perfil.nombre}</span>
             <Link
               href="/cuenta"
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+              className="rounded-lg border border-[#3f4166] px-3 py-1.5 text-sm text-[#e3e3ef] hover:bg-accent-hover"
             >
               Mi cuenta
             </Link>

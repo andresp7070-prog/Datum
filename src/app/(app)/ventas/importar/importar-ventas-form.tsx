@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parsearCsv } from "@/lib/csv";
-import { sinTildes } from "@/lib/texto";
+import { sinTildes, numeroDesdeTexto } from "@/lib/texto";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { importarVentasHistoricas, type FilaVentaHistorica } from "./actions";
 
@@ -90,9 +90,9 @@ export function ImportarVentasForm({ nombresProductos }: { nombresProductos: str
             clienteTelefono: (fila[indice.cliente_telefono] ?? "").trim(),
             clienteEmail: (fila[indice.cliente_email] ?? "").trim(),
             producto: (fila[indice.producto] ?? "").trim(),
-            cantidad: Number(fila[indice.cantidad]) || 0,
-            precioUnitario: Number(fila[indice.precio_unitario]) || 0,
-            costoUnitario: costoCrudo ? Number(costoCrudo) || null : null,
+            cantidad: numeroDesdeTexto(fila[indice.cantidad] ?? "") || 0,
+            precioUnitario: numeroDesdeTexto(fila[indice.precio_unitario] ?? "") || 0,
+            costoUnitario: costoCrudo ? numeroDesdeTexto(costoCrudo) || null : null,
             metodoPago: (fila[indice.metodo_pago] ?? "").trim(),
           };
         })

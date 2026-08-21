@@ -18,27 +18,42 @@ export function CambiarEtapa({
   const router = useRouter();
   const [etapa, setEtapa] = useState(etapaActualId ?? "");
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const nombreEtapa = (id: string) => etapas.find((item) => item.id === id)?.nombre ?? null;
 
   async function onChange(valor: string) {
+    const anterior = etapa;
     setEtapa(valor);
     setGuardando(true);
-    await cambiarEtapa(contactoId, valor);
+    const resultado = await cambiarEtapa({
+      contactoId,
+      etapaId: valor,
+      etapaNombreAnterior: nombreEtapa(anterior),
+      etapaNombreNueva: nombreEtapa(valor),
+      huboCambioEtapa: anterior !== valor,
+    });
+    setError(resultado.error);
+    if (resultado.error) setEtapa(anterior);
     setGuardando(false);
     router.refresh();
   }
 
   return (
-    <select
-      value={etapa}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={guardando}
-      className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
-    >
-      {etapas.map((item) => (
-        <option key={item.id} value={item.id}>
-          {item.nombre}
-        </option>
-      ))}
-    </select>
+    <div>
+      <select
+        value={etapa}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={guardando}
+        className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none disabled:opacity-50"
+      >
+        {etapas.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.nombre}
+          </option>
+        ))}
+      </select>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
   );
 }

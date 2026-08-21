@@ -283,10 +283,16 @@
     background: #e3a748; pointer-events: none;
   }
 
+  /* En móvil no hay tramo largo de scroll fijo (.hero-scrolly queda con
+     height:auto), así que "progreso" del scroll se queda siempre en 0 —
+     la esfera no crece ni gira más rápido al bajar, pero sigue viva: gira
+     sola todo el tiempo, con sus pulsos de luz, igual que en escritorio
+     antes de empezar a hacer scroll. Antes se ocultaba del todo acá; ahora
+     se reacomoda arriba del texto en vez de al lado, centrada y más chica. */
   @media (max-width: 760px) {
     .hero-scrolly { height: auto; }
-    .hero { position: relative; height: auto; min-height: 92svh; padding: 120px 24px 80px; flex-direction: column; }
-    .hero-orbita, .hero-compas-wrap { display: none; }
+    .hero { position: relative; height: auto; min-height: 92svh; padding: 220px 24px 80px; flex-direction: column; }
+    .hero-orbita, .hero-compas-wrap { left: 50%; top: 150px; }
     .hero-texto { margin: 0 auto; max-width: 480px; text-align: center; padding: 0; }
     .hero-texto h1 { text-align: center; }
     .hero .lede { margin-left: auto; margin-right: auto; text-align: center; }

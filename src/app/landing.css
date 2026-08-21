@@ -291,7 +291,13 @@
      se reacomoda arriba del texto en vez de al lado, centrada y más chica. */
   @media (max-width: 760px) {
     .hero-scrolly { height: auto; }
-    .hero { position: relative; height: auto; min-height: 92svh; padding: 220px 24px 80px; flex-direction: column; }
+    /* top:0 a propósito: la regla de escritorio deja top:64px (para el
+       position:sticky que pega el hero justo debajo del menú) — acá el
+       hero ya no es sticky, pero ese top se quedaba heredado y con
+       position:relative empujaba el hero 64px hacia abajo sin dejar
+       hueco, pintando su navy encima del principio de #ecosistema y
+       tapando la parte de arriba de "Nuestro ecosistema". */
+    .hero { position: relative; top: 0; height: auto; min-height: 92svh; padding: 220px 24px 80px; flex-direction: column; }
     .hero-orbita, .hero-compas-wrap { left: 50%; top: 150px; }
     .hero-texto { margin: 0 auto; max-width: 480px; text-align: center; padding: 0; }
     .hero-texto h1 { text-align: center; }

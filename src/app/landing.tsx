@@ -440,8 +440,15 @@ export function Landing() {
   }, []);
 
   if (vistaMovil) {
+    // key distinto a propósito: sin esto, React reutiliza el mismo <div>
+    // que antes era .esfera-viajera-fondo (misma posición, mismo tag) en
+    // vez de desecharlo — la animación de esa esfera, que sigue corriendo
+    // en el fondo (el useEffect de abajo nunca se limpia solo con este
+    // cambio de vista), le seguía escribiendo su opacidad encima al marco
+    // del teléfono, dejándolo translúcido. El key fuerza a React a
+    // desmontar de verdad ese nodo viejo en vez de reciclarlo.
     return (
-      <div className="mobile-preview-wrap">
+      <div key="vista-movil" className="mobile-preview-wrap">
         <button type="button" className="viewport-toggle" onClick={() => setVistaMovil(false)}>
           Ver escritorio
         </button>
@@ -453,7 +460,7 @@ export function Landing() {
   }
 
   return (
-    <div ref={rootRef}>
+    <div key="vista-escritorio" ref={rootRef}>
       <div className="progreso-scroll" ref={progresoScrollRef} aria-hidden="true" />
       <div className="esfera-viajera-fondo" ref={esferaViajeraFondoRef} aria-hidden="true">
         <div className="esfera-viajera" ref={esferaViajeraRef} />

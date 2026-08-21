@@ -395,7 +395,14 @@ export function Landing() {
       // se queda seguida a ese punto (p2 satura en 1) y solo se apaga
       // cuando la demo ya quedó bien arriba, fuera de pantalla. ----
       const limiteHero = scrolly!.offsetTop + scrolly!.offsetHeight - window.innerHeight;
-      const distanciaViaje = window.innerHeight * 0.75;
+      // 0.28 en vez de 0.75 a propósito — Andrés lo pidió: antes, después
+      // de que el hero se desvanecía, había un tramo largo (0.75 de la
+      // altura de pantalla) donde solo se veía la esfera viajando sola,
+      // sin nada más pasando en pantalla, antes de que el resto de
+      // Ecosistema (encabezado + demo) terminara de asentarse. Acortado
+      // para que el aterrizaje de la esfera y la aparición del contenido
+      // de Ecosistema se sientan como una sola cosa, no dos por separado.
+      const distanciaViaje = window.innerHeight * 0.28;
       const crudoTransito = (window.scrollY - limiteHero) / distanciaViaje;
       if (crudoTransito >= 0) {
         const p2 = Math.min(1, crudoTransito);

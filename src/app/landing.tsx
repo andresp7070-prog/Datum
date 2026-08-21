@@ -539,7 +539,7 @@ export function Landing() {
         </header>
       </div>
 
-      <section className="chapter chapter-oscuro" id="ecosistema">
+      <section className="chapter chapter-oscuro reveal reveal-sin-deslizar" id="ecosistema">
         <div className="wrap">
           <div className="chapter-head">
             <h2>Nuestro ecosistema</h2>

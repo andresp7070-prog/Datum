@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPerfilActual } from "@/lib/empresa";
 import { SignOutButton } from "@/components/signout-button";
-import { cambiarPassword } from "./actions";
+import { CambiarPasswordForm } from "./cambiar-password-form";
 
 const etiquetaEstado: Record<string, { texto: string; clase: string }> = {
   prueba: { texto: "En prueba gratis", clase: "text-amber-600" },
@@ -118,52 +118,7 @@ export default async function CuentaPage({
 
       <div className="rounded-xl border border-gray-200 p-4">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Cambiar contraseña</h2>
-
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-        )}
-
-        <form action={cambiarPassword} className="space-y-4">
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
-              Contraseña nueva
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={6}
-              className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="confirmar" className="mb-1 block text-sm font-medium text-gray-700">
-              Confirmar contraseña nueva
-            </label>
-            <input
-              id="confirmar"
-              name="confirmar"
-              type="password"
-              required
-              minLength={6}
-              className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-            />
-          </div>
-
-          <p className="text-xs text-gray-400">
-            Al guardar, se cierra la sesión en este dispositivo y hay que iniciar sesión de nuevo con
-            la contraseña nueva.
-          </p>
-
-          <button
-            type="submit"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
-          >
-            Guardar y cerrar sesión
-          </button>
-        </form>
+        <CambiarPasswordForm error={error} />
       </div>
 
       <div className="rounded-xl border border-gray-200 p-4">

@@ -164,7 +164,14 @@
      visitante), así el hero combina con lo que sigue en vez de quedar
      como un bloque beige suelto entre dos navys, que es justo lo que
      decía el comentario viejo de acá que nunca se hizo realidad. */
-  .hero-scrolly { position: relative; height: 148vh; }
+  /* 118vh en vez de 148vh a propósito: 100vh es lo mínimo para que el
+     hero se quede fijo y después se suelte — todo lo que pase de ahí es
+     el tramo real de scroll "sujeto" mientras corre la animación de la
+     esfera/brújula. Antes eran 48vh extra de scroll sin que pasara nada
+     visualmente nuevo; ahora son 18vh — la misma coreografía (todo el
+     JS usa fracciones de 0 a 1, no píxeles fijos), solo que se recorre
+     mucho más rápido. */
+  .hero-scrolly { position: relative; height: 118vh; }
   .hero {
     /* top/height cuentan los 64px del nav (que también es sticky) — sin
        esto, al quedar fijo el hero se pega detrás del nav en vez de justo
@@ -296,8 +303,13 @@
        hero ya no es sticky, pero ese top se quedaba heredado y con
        position:relative empujaba el hero 64px hacia abajo sin dejar
        hueco, pintando su navy encima del principio de #ecosistema y
-       tapando la parte de arriba de "Nuestro ecosistema". */
-    .hero { position: relative; top: 0; height: auto; min-height: 92svh; padding: 220px 24px 80px; flex-direction: column; }
+       tapando la parte de arriba de "Nuestro ecosistema". Sin
+       min-height a propósito también: con la esfera+brújula arriba del
+       texto, el contenido real ya no llena la pantalla completa como
+       antes — forzar un alto mínimo dejaba un tramo de navy vacío,
+       sin nada, entre el texto y #ecosistema. Ahora el alto lo decide
+       el contenido, ni más ni menos. */
+    .hero { position: relative; top: 0; height: auto; padding: 220px 24px 80px; flex-direction: column; }
     .hero-orbita, .hero-compas-wrap { left: 50%; top: 150px; }
     .hero-texto { margin: 0 auto; max-width: 480px; text-align: center; padding: 0; }
     .hero-texto h1 { text-align: center; }

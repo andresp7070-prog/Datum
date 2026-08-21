@@ -172,8 +172,8 @@ export async function reservarReunion(input: {
   // oculto — si llega con algo, es un bot rellenando el formulario entero.
   if (input.trampa) return { error: "No se pudo agendar la reunión." };
 
-  if (!input.nombre.trim() || !input.correo.trim() || !input.telefono.trim()) {
-    return { error: "Nombre, correo y teléfono son obligatorios." };
+  if (!input.nombre.trim() || !input.correo.trim() || !input.telefono.trim() || !input.empresa.trim()) {
+    return { error: "Nombre, correo, teléfono y empresa son obligatorios." };
   }
   if (!correoValido(input.correo)) return { error: "El correo no parece válido." };
 

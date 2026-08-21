@@ -455,12 +455,13 @@ function FormularioDatos({
       <input
         name="empresa"
         type="text"
-        placeholder="Empresa (opcional)"
+        placeholder="Empresa *"
+        required
         disabled={disabled}
       />
       <textarea
         name="nota"
-        placeholder="Cuéntanos brevemente qué necesitas (opcional)"
+        placeholder="Cuéntanos qué te gustaría ver de Datum (Opcional)"
         rows={3}
         disabled={disabled}
       />

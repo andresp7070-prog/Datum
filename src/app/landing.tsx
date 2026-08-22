@@ -63,6 +63,7 @@ export function Landing() {
   const h1Ref = useRef<HTMLHeadingElement>(null);
   const progresoScrollRef = useRef<HTMLDivElement>(null);
   const heroTextoRef = useRef<HTMLDivElement>(null);
+  const heroEcoCrossRef = useRef<HTMLDivElement>(null);
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
@@ -75,6 +76,26 @@ export function Landing() {
   // achicar un contenedor). Quitar cuando ya no haga falta revisar esto.
   const [vistaMovil, setVistaMovil] = useState(false);
   const esAnual = billing === "anual";
+
+  // Los enlaces "#ecosistema" (nav, flechita del hero, footer) en escritorio
+  // no usan el salto nativo del navegador — ese saltaría directo al punto
+  // donde vive #ecosistema en el documento, pasando de largo el tramo fijo
+  // donde el encabezado ya está visible (ver .hero-eco-cross más abajo) y
+  // aterrizando más abajo de lo esperado. En su lugar, se hace scroll suave
+  // hasta el punto exacto donde el hero termina de desvanecerse — el mismo
+  // que ya usa el propio scroll con rueda (scrolly.offsetTop +
+  // scrolly.offsetHeight - window.innerHeight). En móvil no hay tramo fijo
+  // (.hero-scrolly con height:auto), así que ahí se deja el salto nativo de
+  // siempre, que ya lleva directo al encabezado real dentro de #ecosistema.
+  function irAEcosistema(e: React.MouseEvent<HTMLAnchorElement>) {
+    setMenuAbierto(false);
+    if (window.matchMedia("(max-width: 760px)").matches) return;
+    e.preventDefault();
+    const scrolly = scrollyRef.current;
+    if (!scrolly) return;
+    const destino = scrolly.offsetTop + scrolly.offsetHeight - window.innerHeight;
+    window.scrollTo({ top: Math.max(0, destino), behavior: "smooth" });
+  }
 
   // El propio marco de vista previa carga esta misma página en un iframe —
   // ahí no debe mostrarse el botón de nuevo, se vería encima del menú.
@@ -128,9 +149,10 @@ export function Landing() {
     const h1 = h1Ref.current;
     const progresoScrollEl = progresoScrollRef.current;
     const heroTexto = heroTextoRef.current;
+    const heroEcoCross = heroEcoCrossRef.current;
     if (
       !needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 ||
-      !progresoScrollEl || !heroTexto
+      !progresoScrollEl || !heroTexto || !heroEcoCross
     ) {
       return;
     }
@@ -140,11 +162,8 @@ export function Landing() {
     }
 
     // ---- esfera de puntos (Fibonacci sphere) con líneas a los 3 vecinos
-    // más próximos de cada nodo. Se genera dos veces con la misma función:
-    // una para el hero (con pulsos, sigue el scroll) y otra, más adelante,
-    // como fondo ambiente detrás de la demo de módulos en #ecosistema (sin
-    // pulsos, gira sola) — así ambas son literalmente la misma especie de
-    // esfera, para que el paso de una a otra se sienta como una sola cosa. ----
+    // más próximos de cada nodo — la del hero, con pulsos de luz y ligada
+    // al scroll. ----
     type Punto3 = { x: number; y: number; z: number };
     function distancia3(a: Punto3, b: Punto3) {
       const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
@@ -353,14 +372,26 @@ export function Landing() {
       compasWrap!.style.transform = `translate(calc(-50% + ${(smNX * 9).toFixed(1)}px), calc(-50% + ${(smNY * 7).toFixed(1)}px)) scale(${entradaEscala})`;
 
       const zoomIn = trapecio(progreso, 0, 0.28, null, null);
-      // El desvanecido dura hasta el final exacto del recorrido (progreso=1,
-      // el mismo punto en el que arranca la esfera de tránsito) — así la
-      // esfera del hero llega a opacidad 0 justo cuando aparece la otra, sin
-      // un tramo intermedio "vacío" entre las dos.
-      const salida = Math.max(0, Math.min(1, (progreso - 0.35) / 0.65));
+      // El hero se apaga primero del todo y solo DESPUÉS entra el
+      // encabezado de Ecosistema — no al mismo tiempo. Con las dos cosas
+      // desvaneciéndose a la vez (mismo tramo de progreso), un instante a
+      // mitad de camino mostraba las dos, el título del hero y "Nuestro
+      // ecosistema", superpuestos y encimados — se veía sucio. Puestas en
+      // secuencia (con un pequeño hueco de por medio, ambas invisibles,
+      // solo fondo navy) nunca compiten por el mismo espacio. Tras
+      // "entradaEco" llegar a 1, se mantiene así (progreso 0.54 a 1) para
+      // que el encabezado se vea completo y quieto un momento, en vez de
+      // que se vaya de pantalla en el mismo golpe de rueda en que apareció.
+      const salida = Math.max(0, Math.min(1, (progreso - 0.2) / 0.16));
+      const entradaEco = Math.max(0, Math.min(1, (progreso - 0.38) / 0.16));
       compasZoom!.style.opacity = String(introEase * (1 - salida));
       heroTexto!.style.opacity = String(introEase * (1 - salida));
       heroTexto!.style.transform = `translateY(${salida * -14}px)`;
+      // El encabezado de Ecosistema vive apilado justo encima del hero
+      // (mismo rectángulo, position:absolute) — así no sube desde abajo,
+      // ya está ahí, solo se vuelve visible en el mismo lugar.
+      heroEcoCross!.style.opacity = String(entradaEco);
+      heroEcoCross!.classList.toggle("visible", entradaEco > 0.98);
 
       const giroBase = reduceMotion ? 0 : t * 11;
       const giroExtra = zoomIn * 55;
@@ -368,10 +399,8 @@ export function Landing() {
       esfera!.style.transform = `scale(${escalaEsfera}) rotateY(${giroBase + giroExtra}deg) rotateX(6deg)`;
       // Antes se quedaba con un piso de opacidad 0.15 aunque saliera=1 — esa
       // esfera del hero, todavía animándose sola, se alcanzaba a ver
-      // deslizándose fuera de pantalla justo cuando la esfera de tránsito
-      // ya había arrancado en el mismo punto, y las dos juntas un instante
-      // se sentían "duplicadas". Ahora sí llega a opacidad 0 de verdad, y
-      // para cuando arranca la de tránsito, la del hero ya es invisible.
+      // deslizándose fuera de pantalla justo cuando ya debía haber
+      // desaparecido del todo. Ahora sí llega a opacidad 0 de verdad.
       orbita!.style.opacity = String(introEase * (1 - salida));
       orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15 - zoomIn * 10).toFixed(1)}px)`;
       actualizarPulsos(t);
@@ -445,7 +474,7 @@ export function Landing() {
           </div>
           <div className="nav-actions">
             <div className={`nav-links${menuAbierto ? " is-open" : ""}`}>
-              <a href="#ecosistema" onClick={() => setMenuAbierto(false)}>
+              <a href="#ecosistema" onClick={irAEcosistema}>
                 Ecosistema
               </a>
               <a href="#precios" onClick={() => setMenuAbierto(false)}>
@@ -486,57 +515,68 @@ export function Landing() {
       </nav>
 
       <div className="hero-scrolly" ref={scrollyRef}>
-        <header className="hero" id="hero" ref={heroRef}>
-          <div className="hero-orbita" ref={orbitaRef}>
-            <div className="hero-esfera" ref={esferaRef} />
-          </div>
+        <div className="hero-pin">
+          <header className="hero" id="hero" ref={heroRef}>
+            <div className="hero-orbita" ref={orbitaRef}>
+              <div className="hero-esfera" ref={esferaRef} />
+            </div>
 
-          <div className="hero-compas-wrap" ref={compasWrapRef}>
-            <div className="hero-compas-zoom" ref={compasZoomRef}>
-              <svg className="hero-motif" viewBox="0 0 200 200" fill="none" aria-hidden="true">
-                <path
-                  className="ring"
-                  d="M100 175 A75 75 0 1 1 151.34 154.68"
-                  stroke="currentColor"
-                  strokeWidth="1.1"
-                  strokeLinecap="round"
-                />
-                <g className="needle" ref={needleRef}>
-                  <path className="head-left" d="M100 42 L100 100 L79 100 Z" fill="currentColor" stroke="none" />
-                  <path className="head-right" d="M100 42 L121 100 L100 100 Z" fill="currentColor" stroke="none" />
-                  <line className="head-ridge" x1="100" y1="42" x2="100" y2="100" stroke="currentColor" strokeWidth="0.6" />
-                  <path className="tail" d="M79 100 L100 158 L121 100" stroke="currentColor" strokeWidth="0.5" />
-                  <line className="tail-ridge" x1="100" y1="100" x2="100" y2="158" stroke="currentColor" strokeWidth="0.5" />
-                </g>
-              </svg>
+            <div className="hero-compas-wrap" ref={compasWrapRef}>
+              <div className="hero-compas-zoom" ref={compasZoomRef}>
+                <svg className="hero-motif" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+                  <path
+                    className="ring"
+                    d="M100 175 A75 75 0 1 1 151.34 154.68"
+                    stroke="currentColor"
+                    strokeWidth="1.1"
+                    strokeLinecap="round"
+                  />
+                  <g className="needle" ref={needleRef}>
+                    <path className="head-left" d="M100 42 L100 100 L79 100 Z" fill="currentColor" stroke="none" />
+                    <path className="head-right" d="M100 42 L121 100 L100 100 Z" fill="currentColor" stroke="none" />
+                    <line className="head-ridge" x1="100" y1="42" x2="100" y2="100" stroke="currentColor" strokeWidth="0.6" />
+                    <path className="tail" d="M79 100 L100 158 L121 100" stroke="currentColor" strokeWidth="0.5" />
+                    <line className="tail-ridge" x1="100" y1="100" x2="100" y2="158" stroke="currentColor" strokeWidth="0.5" />
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <div className="hero-texto" ref={heroTextoRef}>
+              <h1 ref={h1Ref}>
+                {"Todo lo que necesita tu empresa en un solo lugar".split(" ").map((palabra, i) => (
+                  <span key={i} className="palabra" style={{ "--i": i } as CSSProperties}>
+                    {palabra}
+                  </span>
+                ))}
+              </h1>
+              <p className="lede">
+                Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
+                crecimiento de tu empresa.
+              </p>
+              <a className="more" href="#ecosistema" aria-label="Ver más abajo" onClick={irAEcosistema}>
+                <svg viewBox="0 0 12 12" fill="none">
+                  <path
+                    d="M6 2v8M2.5 7 6 10.5 9.5 7"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </a>
+            </div>
+          </header>
+
+          <div className="hero-eco-cross" ref={heroEcoCrossRef}>
+            <div className="chapter-head">
+              <h2>Nuestro ecosistema</h2>
+              <p className="subtitle">
+                Cada módulo está conectado e interactúa con los demás, toda la gestión a un solo clic.
+              </p>
             </div>
           </div>
-
-          <div className="hero-texto" ref={heroTextoRef}>
-            <h1 ref={h1Ref}>
-              {"Todo lo que necesita tu empresa en un solo lugar".split(" ").map((palabra, i) => (
-                <span key={i} className="palabra" style={{ "--i": i } as CSSProperties}>
-                  {palabra}
-                </span>
-              ))}
-            </h1>
-            <p className="lede">
-              Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
-              crecimiento de tu empresa.
-            </p>
-            <a className="more" href="#ecosistema" aria-label="Ver más abajo">
-              <svg viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M6 2v8M2.5 7 6 10.5 9.5 7"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </a>
-          </div>
-        </header>
+        </div>
       </div>
 
       <section className="chapter chapter-oscuro reveal reveal-sin-deslizar" id="ecosistema">
@@ -925,7 +965,7 @@ export function Landing() {
 
           <div className="footer-col">
             <p className="footer-heading">Producto</p>
-            <a href="#ecosistema">Ecosistema</a>
+            <a href="#ecosistema" onClick={irAEcosistema}>Ecosistema</a>
             <a href="#precios">Precios</a>
             <a href="#contacto">Contacto</a>
           </div>

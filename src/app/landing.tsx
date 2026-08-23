@@ -653,7 +653,7 @@ export function Landing() {
       </dialog>
 
       <section className="chapter alt agenda-layout reveal" id="contacto">
-        <div className="wrap agenda-grid">
+        <div className="agenda-grid">
           <div className="agenda-texto">
             <h2>Hablemos de tu negocio</h2>
             <p className="sub">

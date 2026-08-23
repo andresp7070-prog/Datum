@@ -169,14 +169,14 @@
      #precios (no reactivo al tema claro/oscuro del visitante), así el
      hero combina con lo que sigue en vez de quedar como un bloque suelto
      entre dos navys. */
-  /* Dos mitades reales de la pantalla, no de un contenedor centrado: sin
-     max-width, grid-template-columns: 1fr 1fr divide el hero exacto por
-     la mitad. La esfera vive centrada en la mitad izquierda; el texto
-     (bloque y letra) centrado en la mitad derecha — la misma regla para
-     las dos, en vez de una proporción distinta para cada una. */
+  /* 40% esfera / 60% texto de la pantalla, sin max-width propio (grid
+     de dos columnas reales, no de un contenedor centrado). La esfera
+     vive centrada en su 40%; el texto (bloque y letra) centrado en su
+     60% — cada quien centrado en su propia columna, aunque ya no sean
+     del mismo ancho. */
   .hero {
     position: relative; min-height: calc(100svh - 64px);
-    display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+    display: grid; grid-template-columns: 2fr 3fr; align-items: center;
     gap: clamp(24px, 3vw, 40px);
     padding: 64px clamp(24px, 4vw, 48px);
     background: #1a1b33;

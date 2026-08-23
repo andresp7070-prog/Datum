@@ -55,7 +55,6 @@ export function Landing() {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const needleRef = useRef<SVGGElement>(null);
-  const scrollyRef = useRef<HTMLDivElement>(null);
   const esferaRef = useRef<HTMLDivElement>(null);
   const orbitaRef = useRef<HTMLDivElement>(null);
   const compasWrapRef = useRef<HTMLDivElement>(null);
@@ -63,7 +62,6 @@ export function Landing() {
   const h1Ref = useRef<HTMLHeadingElement>(null);
   const progresoScrollRef = useRef<HTMLDivElement>(null);
   const heroTextoRef = useRef<HTMLDivElement>(null);
-  const heroEcoCrossRef = useRef<HTMLDivElement>(null);
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
@@ -76,26 +74,6 @@ export function Landing() {
   // achicar un contenedor). Quitar cuando ya no haga falta revisar esto.
   const [vistaMovil, setVistaMovil] = useState(false);
   const esAnual = billing === "anual";
-
-  // Los enlaces "#ecosistema" (nav, flechita del hero, footer) en escritorio
-  // no usan el salto nativo del navegador — ese saltaría directo al punto
-  // donde vive #ecosistema en el documento, pasando de largo el tramo fijo
-  // donde el encabezado ya está visible (ver .hero-eco-cross más abajo) y
-  // aterrizando más abajo de lo esperado. En su lugar, se hace scroll suave
-  // hasta el punto exacto donde el hero termina de desvanecerse — el mismo
-  // que ya usa el propio scroll con rueda (scrolly.offsetTop +
-  // scrolly.offsetHeight - window.innerHeight). En móvil no hay tramo fijo
-  // (.hero-scrolly con height:auto), así que ahí se deja el salto nativo de
-  // siempre, que ya lleva directo al encabezado real dentro de #ecosistema.
-  function irAEcosistema(e: React.MouseEvent<HTMLAnchorElement>) {
-    setMenuAbierto(false);
-    if (window.matchMedia("(max-width: 760px)").matches) return;
-    e.preventDefault();
-    const scrolly = scrollyRef.current;
-    if (!scrolly) return;
-    const destino = scrolly.offsetTop + scrolly.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: Math.max(0, destino), behavior: "smooth" });
-  }
 
   // El propio marco de vista previa carga esta misma página en un iframe —
   // ahí no debe mostrarse el botón de nuevo, se vería encima del menú.
@@ -133,15 +111,13 @@ export function Landing() {
   // Todo el comportamiento del hero: la brújula sigue el cursor con física
   // de resorte real (no un simple promedio), la esfera de puntos (CSS 3D,
   // sin WebGL) con pulsos eléctricos dorados viajando entre nodos, el
-  // paralaje del cursor, el scroll con inercia (rueda del mouse) + la
-  // barra de progreso arriba de toda la página, y el momento central:
-  // justo antes de que el scroll entregue el paso a #ecosistema, la aguja
-  // suelta el cursor un instante y apunta derecho hacia arriba — encontró
-  // su norte — con el mismo resorte, así que llega con un rebote natural.
+  // paralaje del cursor, y la barra de progreso arriba de toda la página
+  // (lectura del scroll de toda la página, no solo del hero). El hero ya
+  // no tiene ningún mecanismo de scroll propio — es una sección estática,
+  // el scroll de acá para abajo es 100% nativo del navegador.
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const needle = needleRef.current;
-    const scrolly = scrollyRef.current;
     const esfera = esferaRef.current;
     const orbita = orbitaRef.current;
     const compasWrap = compasWrapRef.current;
@@ -149,10 +125,9 @@ export function Landing() {
     const h1 = h1Ref.current;
     const progresoScrollEl = progresoScrollRef.current;
     const heroTexto = heroTextoRef.current;
-    const heroEcoCross = heroEcoCrossRef.current;
     if (
-      !needle || !scrolly || !esfera || !orbita || !compasWrap || !compasZoom || !h1 ||
-      !progresoScrollEl || !heroTexto || !heroEcoCross
+      !needle || !esfera || !orbita || !compasWrap || !compasZoom || !h1 ||
+      !progresoScrollEl || !heroTexto
     ) {
       return;
     }
@@ -273,63 +248,15 @@ export function Landing() {
     }
     if (!reduceMotion) window.addEventListener("mousemove", onMouseMove);
 
-    // ---- scroll con inercia (rueda), pero SOLO mientras el hero sigue fijo
-    // en pantalla — es lo que necesita el recorrido de la brújula. Ya
-    // pasado el hero, la rueda vuelve a mover la página de forma nativa
-    // (instantánea, sin inercia); si no, el "retraso" de la inercia se
-    // sentía en toda la página, no solo en el hero. El táctil queda nativo
-    // a propósito. El teclado, arrastrar la barra de scroll, o cualquier
-    // salto de scroll que no venga de nuestro propio scrollTo (por ejemplo
-    // un enlace #ancla) resincronizan el objetivo en vez de pelear contra
-    // ese scroll — si no, cualquier scroll que no fuera con la rueda
-    // quedaba "atrapado" siempre volviendo a donde iba la rueda. Se
-    // reconoce un scroll como "propio" comparando el valor real contra el
-    // último que escribimos nosotros mismos, no con una bandera de tiempo
-    // — una bandera que se limpia "un frame después" corre el riesgo de
-    // limpiarse antes de que el navegador entregue el evento 'scroll' de
-    // esa misma escritura, y ahí el resync empieza a pelear consigo mismo
-    // (justo el "scroll muy retrasado" que se sentía). ----
-    let scrollObjetivo = window.scrollY;
-    let scrollActualSuave = window.scrollY;
-    let ultimoValorPropio = window.scrollY;
-    function onWheel(e: WheelEvent) {
-      const limiteHero = scrolly!.offsetTop + scrolly!.offsetHeight - window.innerHeight;
-      if (window.scrollY >= limiteHero) return;
-      e.preventDefault();
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      scrollObjetivo = Math.min(maxScroll, Math.max(0, scrollObjetivo + e.deltaY * 1.2));
-    }
-    if (!reduceMotion) window.addEventListener("wheel", onWheel, { passive: false });
-
-    function trapecio(p: number, s0: number, s1: number, b0: number | null, b1: number | null) {
-      if (p <= s0 || (b1 !== null && p >= b1)) return 0;
-      if (p < s1) return (p - s0) / (s1 - s0);
-      if (b0 === null || p <= b0) return 1;
-      return 1 - (p - b0) / (b1! - b0);
-    }
-
-    let progreso = 0;
-    function medirProgreso() {
-      const rect = scrolly!.getBoundingClientRect();
-      const total = rect.height - window.innerHeight;
-      progreso = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-    }
-    let tickingScroll = false;
+    // Barra de progreso de lectura de toda la página (no solo el hero) —
+    // se actualiza en cada scroll, sin ningún efecto sobre el hero mismo.
     function onScroll() {
-      if (!reduceMotion && Math.abs(window.scrollY - ultimoValorPropio) > 1) {
-        scrollObjetivo = window.scrollY;
-        scrollActualSuave = window.scrollY;
-      }
-      if (!tickingScroll) {
-        tickingScroll = true;
-        requestAnimationFrame(() => {
-          medirProgreso();
-          tickingScroll = false;
-        });
-      }
+      const maxScrollBarra = document.documentElement.scrollHeight - window.innerHeight;
+      const fraccionScroll = maxScrollBarra > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScrollBarra)) : 0;
+      progresoScrollEl!.style.width = `${fraccionScroll * 100}%`;
     }
     window.addEventListener("scroll", onScroll, { passive: true });
-    medirProgreso();
+    onScroll();
 
     let raf = 0;
     const inicio = performance.now();
@@ -340,22 +267,6 @@ export function Landing() {
       const t = (performance.now() - inicio) / 1000;
       const dt = Math.min(0.05, Math.max(0, t - ultimoT));
       ultimoT = t;
-
-      if (!reduceMotion) {
-        scrollActualSuave += (scrollObjetivo - scrollActualSuave) * 0.32;
-        if (Math.abs(scrollObjetivo - scrollActualSuave) > 0.4) {
-          // behavior:"instant" es necesario — la propiedad global
-          // scroll-behavior:smooth (html) también aplica a scrollTo()
-          // llamado sin opciones, así que cada uno de estos frames disparaba
-          // su propia animación suave del navegador encima de la nuestra,
-          // apilándose una sobre otra y sintiéndose muy retrasado.
-          window.scrollTo({ top: scrollActualSuave, left: 0, behavior: "instant" });
-          ultimoValorPropio = scrollActualSuave;
-        }
-      }
-      const maxScrollBarra = document.documentElement.scrollHeight - window.innerHeight;
-      const fraccionScroll = maxScrollBarra > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScrollBarra)) : 0;
-      progresoScrollEl!.style.width = `${fraccionScroll * 100}%`;
 
       const introCruda = reduceMotion ? 1 : Math.min(1, t / 1.1);
       const introEase = 1 - Math.pow(1 - introCruda, 3);
@@ -370,47 +281,22 @@ export function Landing() {
       const entradaEscala = 0.6 + 0.4 * introEase;
       compasWrap!.style.opacity = String(introEase);
       compasWrap!.style.transform = `translate(calc(-50% + ${(smNX * 9).toFixed(1)}px), calc(-50% + ${(smNY * 7).toFixed(1)}px)) scale(${entradaEscala})`;
+      compasZoom!.style.opacity = String(introEase);
+      heroTexto!.style.opacity = String(introEase);
 
-      const zoomIn = trapecio(progreso, 0, 0.28, null, null);
-      // El hero se apaga primero del todo y solo DESPUÉS entra el
-      // encabezado de Ecosistema — no al mismo tiempo. Con las dos cosas
-      // desvaneciéndose a la vez (mismo tramo de progreso), un instante a
-      // mitad de camino mostraba las dos, el título del hero y "Nuestro
-      // ecosistema", superpuestos y encimados — se veía sucio. Puestas en
-      // secuencia (con un pequeño hueco de por medio, ambas invisibles,
-      // solo fondo navy) nunca compiten por el mismo espacio. Tras
-      // "entradaEco" llegar a 1, se mantiene así (progreso 0.54 a 1) para
-      // que el encabezado se vea completo y quieto un momento, en vez de
-      // que se vaya de pantalla en el mismo golpe de rueda en que apareció.
-      const salida = Math.max(0, Math.min(1, (progreso - 0.2) / 0.16));
-      const entradaEco = Math.max(0, Math.min(1, (progreso - 0.38) / 0.16));
-      compasZoom!.style.opacity = String(introEase * (1 - salida));
-      heroTexto!.style.opacity = String(introEase * (1 - salida));
-      heroTexto!.style.transform = `translateY(${salida * -14}px)`;
-      // El encabezado de Ecosistema vive apilado justo encima del hero
-      // (mismo rectángulo, position:absolute) — así no sube desde abajo,
-      // ya está ahí, solo se vuelve visible en el mismo lugar.
-      heroEcoCross!.style.opacity = String(entradaEco);
-      heroEcoCross!.classList.toggle("visible", entradaEco > 0.98);
-
+      // La esfera ya no crece ni se apaga con el scroll — gira sola todo
+      // el tiempo, de forma ambiental, igual antes o después de hacer
+      // scroll.
       const giroBase = reduceMotion ? 0 : t * 11;
-      const giroExtra = zoomIn * 55;
-      const escalaEsfera = 1 + zoomIn * 0.65 - salida * 0.4;
-      esfera!.style.transform = `scale(${escalaEsfera}) rotateY(${giroBase + giroExtra}deg) rotateX(6deg)`;
-      // Antes se quedaba con un piso de opacidad 0.15 aunque saliera=1 — esa
-      // esfera del hero, todavía animándose sola, se alcanzaba a ver
-      // deslizándose fuera de pantalla justo cuando ya debía haber
-      // desaparecido del todo. Ahora sí llega a opacidad 0 de verdad.
-      orbita!.style.opacity = String(introEase * (1 - salida));
-      orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15 - zoomIn * 10).toFixed(1)}px)`;
+      esfera!.style.transform = `rotateY(${giroBase}deg) rotateX(6deg)`;
+      orbita!.style.opacity = String(introEase);
+      orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15).toFixed(1)}px)`;
       actualizarPulsos(t);
 
-      const enfoqueNorte = trapecio(progreso, 0.14, 0.2, 0.26, 0.34);
-      const targetUsado = enfoqueNorte > 0.5 ? 0 : targetDeg;
       if (reduceMotion) {
-        currentDeg = targetUsado;
+        currentDeg = targetDeg;
       } else {
-        const delta = shortestDelta(targetUsado - currentDeg);
+        const delta = shortestDelta(targetDeg - currentDeg);
         const RIGIDEZ = 210, AMORTIGUACION = 18;
         const aceleracion = delta * RIGIDEZ - velDeg * AMORTIGUACION;
         velDeg += aceleracion * dt;
@@ -423,7 +309,6 @@ export function Landing() {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
@@ -474,7 +359,7 @@ export function Landing() {
           </div>
           <div className="nav-actions">
             <div className={`nav-links${menuAbierto ? " is-open" : ""}`}>
-              <a href="#ecosistema" onClick={irAEcosistema}>
+              <a href="#ecosistema" onClick={() => setMenuAbierto(false)}>
                 Ecosistema
               </a>
               <a href="#precios" onClick={() => setMenuAbierto(false)}>
@@ -514,9 +399,9 @@ export function Landing() {
         </div>
       </nav>
 
-      <div className="hero-scrolly" ref={scrollyRef}>
-        <div className="hero-pin">
-          <header className="hero" id="hero" ref={heroRef}>
+      <div className="hero-fondo">
+        <header className="hero" id="hero" ref={heroRef}>
+          <div className="hero-grafico">
             <div className="hero-orbita" ref={orbitaRef}>
               <div className="hero-esfera" ref={esferaRef} />
             </div>
@@ -541,42 +426,42 @@ export function Landing() {
                 </svg>
               </div>
             </div>
+          </div>
 
-            <div className="hero-texto" ref={heroTextoRef}>
-              <h1 ref={h1Ref}>
-                {"Todo lo que necesita tu empresa en un solo lugar".split(" ").map((palabra, i) => (
+          <div className="hero-texto" ref={heroTextoRef}>
+            <h1 ref={h1Ref}>
+              <span className="linea">
+                {"Todo lo que necesita tu".split(" ").map((palabra, i) => (
                   <span key={i} className="palabra" style={{ "--i": i } as CSSProperties}>
                     {palabra}
                   </span>
                 ))}
-              </h1>
-              <p className="lede">
-                Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
-                crecimiento de tu empresa.
-              </p>
-              <a className="more" href="#ecosistema" aria-label="Ver más abajo" onClick={irAEcosistema}>
-                <svg viewBox="0 0 12 12" fill="none">
-                  <path
-                    d="M6 2v8M2.5 7 6 10.5 9.5 7"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </a>
-            </div>
-          </header>
-
-          <div className="hero-eco-cross" ref={heroEcoCrossRef}>
-            <div className="chapter-head">
-              <h2>Nuestro ecosistema</h2>
-              <p className="subtitle">
-                Cada módulo está conectado e interactúa con los demás, toda la gestión a un solo clic.
-              </p>
-            </div>
+              </span>
+              <span className="linea">
+                {"empresa en un solo lugar".split(" ").map((palabra, i) => (
+                  <span key={i + 5} className="palabra" style={{ "--i": i + 5 } as CSSProperties}>
+                    {palabra}
+                  </span>
+                ))}
+              </span>
+            </h1>
+            <p className="lede">
+              Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
+              crecimiento de tu empresa.
+            </p>
+            <a className="more" href="#ecosistema" aria-label="Ver más abajo">
+              <svg viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M6 2v8M2.5 7 6 10.5 9.5 7"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </a>
           </div>
-        </div>
+        </header>
       </div>
 
       <section className="chapter chapter-oscuro reveal reveal-sin-deslizar" id="ecosistema">
@@ -965,7 +850,7 @@ export function Landing() {
 
           <div className="footer-col">
             <p className="footer-heading">Producto</p>
-            <a href="#ecosistema" onClick={irAEcosistema}>Ecosistema</a>
+            <a href="#ecosistema">Ecosistema</a>
             <a href="#precios">Precios</a>
             <a href="#contacto">Contacto</a>
           </div>

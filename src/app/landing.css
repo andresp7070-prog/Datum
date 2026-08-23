@@ -298,17 +298,16 @@
     transition-delay: calc(var(--i, 0) * 0.045s);
   }
   .hero-texto h1.in .palabra { opacity: 1; filter: blur(0); transform: translateY(0); }
-  /* El párrafo descriptivo también se fuerza a 1 sola línea (nowrap) con
-     una letra que se ajusta al ancho disponible (clamp en vw) — a las
-     ~105 letras de este texto, dejarlo del mismo tamaño que un párrafo
-     normal no entra en media pantalla, así que queda más chico que antes
-     a propósito. Mismo media query de abajo relaja el nowrap en ventanas
-     angostas. */
+  /* Probando en 2 líneas en vez de 1 sola forzada — con más margen de
+     ancho (max-width en ch, no todo el ancho de la columna) y una letra
+     de tamaño normal, en vez de la muy chica que hacía falta para caber
+     en 1 sola línea. text-wrap:balance reparte las palabras entre las 2
+     líneas lo más parejo posible, en vez de una larga y una cortita. */
   .hero .lede {
     position: relative;
-    margin: 20px 0 0;
-    font-size: clamp(10.5px, 0.88vw, 15.5px); color: var(--ink-soft);
-    white-space: nowrap;
+    margin: 20px auto 0; max-width: 54ch;
+    font-size: clamp(15px, 1.1vw, 18px); color: var(--ink-soft);
+    text-wrap: balance;
   }
   .hero .more {
     position: relative; margin-top: 40px;
@@ -333,13 +332,14 @@
     background: #e3a748; pointer-events: none;
   }
 
-  /* Por debajo de este ancho, dos columnas + texto en una sola línea ya
-     no entran cómodos — se relaja el nowrap del encabezado y el párrafo
-     (vuelven a envolver como texto normal) en vez de desbordar. Cubre
-     tanto el escritorio angosto como el móvil apilado de abajo. */
+  /* Por debajo de este ancho, dos columnas + encabezado en 1 sola línea
+     por renglón ya no entran cómodos — se relaja el nowrap del
+     encabezado (vuelve a envolver como texto normal) en vez de
+     desbordar. Cubre tanto el escritorio angosto como el móvil apilado
+     de abajo. El párrafo (.lede) ya envuelve siempre por su cuenta
+     (max-width en ch), no necesita este ajuste. */
   @media (max-width: 1150px) {
     .hero-texto h1 .linea { white-space: normal; }
-    .hero .lede { white-space: normal; }
   }
 
   @media (max-width: 760px) {

@@ -48,12 +48,12 @@ type Modulo = {
 
 const MODULOS: Modulo[] = [
   { id: "Ventas", nombre: "Ventas", url: "app.datum.co/ventas", totalCuadros: 5 },
-  { id: "Inventario", nombre: "Inventario", url: "app.datum.co/inventario", totalCuadros: 4 },
   { id: "CRM", nombre: "CRM", url: "app.datum.co/crm", totalCuadros: 5 },
+  { id: "Inventario", nombre: "Inventario", url: "app.datum.co/inventario", totalCuadros: 4 },
   { id: "P y G", nombre: "Estado P y G", url: "app.datum.co/pyg", totalCuadros: 5 },
   { id: "Panel de control", nombre: "Panel de control", url: "app.datum.co/insights", totalCuadros: 4 },
-  { id: "Nómina", nombre: "Nómina", url: "app.datum.co/nomina", totalCuadros: 4 },
   { id: "Promociones", nombre: "Promociones", url: "app.datum.co/promociones", totalCuadros: 4 },
+  { id: "Nómina", nombre: "Nómina", url: "app.datum.co/nomina", totalCuadros: 4 },
 ];
 
 // A qué elemento se mueve y le "hace clic" el cursor en cada cuadro de
@@ -790,7 +790,7 @@ export function EcosistemaDemo() {
       </div>
 
       <p className="demo-highlights">
-        Esto es solo el comienzo, descubre todo lo que puedes hacer en Datum
+        Esto es solo el comienzo, descubre todo lo que puedes hacer en Datum.
       </p>
     </div>
   );

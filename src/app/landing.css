@@ -199,7 +199,7 @@
      abajo centre contra esta columna — ahora literalmente la mitad
      izquierda de la pantalla, gracias al grid de arriba — no contra el
      hero completo). */
-  .hero-grafico { position: relative; height: min(48vw, 480px); min-width: 0; }
+  .hero-grafico { position: relative; height: min(64vw, 640px); min-width: 0; }
 
   /* Esfera de puntos en CSS 3D real (perspective + preserve-3d) — sin
      WebGL ni librerías. Gira sola todo el tiempo (ambiental) — ya no
@@ -241,7 +241,7 @@
      ver el comentario en landing.tsx. */
   .hero-compas-wrap {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: min(94%, 480px); height: min(94%, 480px);
+    width: min(98%, 640px); height: min(98%, 640px);
     display: flex; align-items: center; justify-content: center;
   }
   .hero-compas-zoom { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
@@ -704,7 +704,11 @@
   .demo-nomina-totales .val { display: block; font-weight: 700; font-size: 13px; }
   .demo-nota-verde { color: var(--good); font-size: 11.5px; }
 
-  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: clamp(19px, 2vw, 24px); color: rgba(243, 242, 238, 0.85); }
+  /* Color estándar (--ink-soft, el mismo texto secundario que usa el
+     resto de la landing) en vez de un rgba a mano — y 2px menos en todo
+     el clamp, quedaba grande de más para ser una frase de transición
+     hacia el botón, no un subtítulo. */
+  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: clamp(17px, 1.8vw, 22px); color: var(--ink-soft); }
 
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 
@@ -854,6 +858,12 @@
   .agendar-split { display: grid; grid-template-columns: 7fr 3fr; gap: 24px; }
   @media (max-width: 560px) {
     .agendar-split { grid-template-columns: 1fr; }
+    /* En una sola columna, calendario y horas ya no comparten fila —
+       flex:1 (ver .agendar-horas-lista más abajo) no tiene contra qué
+       igualar el alto, así que la lista podría crecer sin control con
+       un día de muchas franjas. Acá sí vuelve a necesitar un tope fijo
+       con scroll propio. */
+    .agendar-horas-lista { flex: none; max-height: 240px; }
   }
 
   .agendar-cal-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -889,11 +899,22 @@
   .agendar-cal-dia.activo { background: var(--accent) !important; color: #1a1b33 !important; }
   .agendar-cal-dia.activo::after { display: none; }
 
-  .agendar-horas-col { display: flex; flex-direction: column; min-width: 0; }
+  /* align-self:start a propósito — sin esto, .agendar-cal se estira
+     (align-items:stretch, el valor normal de un grid) para igualar la
+     altura de .agendar-horas-col cuando ese día tiene muchas franjas,
+     dejando un hueco navy vacío debajo del propio calendario. Con
+     align-self:start, .agendar-cal siempre mide su alto real (el que
+     necesita su propio contenido — cuántas semanas tenga el mes), sin
+     que su vecino lo infle. Ese alto real es justo lo que
+     AgendarWidget mide con un ResizeObserver (ver agendar-widget.tsx)
+     para topar .agendar-horas-col al mismo tamaño — así "elegir hora"
+     siempre mide igual que "elegir día", con scroll propio si un día
+     tiene más franjas de las que caben (ver flex:1 + min-height:0 en
+     .agendar-horas-lista más abajo). */
+  .agendar-cal { align-self: start; }
+  .agendar-horas-col { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
   .agendar-horas-fecha { margin: 0 0 12px; font-size: 13px; font-weight: 700; text-transform: capitalize; }
-  /* Alto fijo con scroll propio, para que la tarjeta no crezca sin
-     control según cuántas franjas haya ese día. */
-  .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
+  .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
   .agendar-hora {
     padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: none; text-align: center;
     font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; cursor: pointer;

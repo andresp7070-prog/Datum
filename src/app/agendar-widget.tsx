@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // Widget de agendamiento público de la landing — ver CLAUDE.md, sección
 // "Formulario de agendamiento". Toda la lógica de horarios/Google Calendar
@@ -107,6 +107,32 @@ export function AgendarWidget() {
   const [mesActivo, setMesActivo] = useState({ anio: 2000, mes: 0 });
   const [mostrarForm, setMostrarForm] = useState(false);
   const [enlaceEvento, setEnlaceEvento] = useState<string | null>(null);
+
+  // El calendario manda: la lista de horas de al lado se topa a su mismo
+  // alto (con scroll propio si un día tiene más franjas de las que
+  // caben) en vez de al revés — sin esto, un día con muchas franjas
+  // (16, por ejemplo) hacía crecer TODA la tarjeta para acomodarlas,
+  // aunque el calendario ese mes solo necesitara 5 semanas. ResizeObserver
+  // en vez de un simple listener de resize porque el alto del calendario
+  // también cambia sin que cambie la ventana — al pasar de un mes de 5
+  // semanas a uno de 6, por ejemplo.
+  const calRef = useRef<HTMLDivElement>(null);
+  const [alturaCal, setAlturaCal] = useState<number | null>(null);
+  useEffect(() => {
+    // [fase] a propósito, no []: .agendar-cal (y calRef) solo existen en
+    // el DOM durante la fase "eligiendo" — con un efecto de una sola vez
+    // en el montaje inicial, calRef.current todavía sería null (el
+    // widget arranca en "cargando"), y el observer nunca se llegaría a
+    // enganchar cuando el calendario apareciera después.
+    const el = calRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const alto = entries[0]?.borderBoxSize?.[0]?.blockSize ?? entries[0]?.contentRect.height;
+      if (alto) setAlturaCal(alto);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fase]);
 
   useEffect(() => {
     let cancelado = false;
@@ -253,7 +279,7 @@ export function AgendarWidget() {
             <span className="agendar-nota-zona">(hora de Colombia)</span>
           </p>
           <div className="agendar-split">
-            <div className="agendar-cal">
+            <div className="agendar-cal" ref={calRef}>
               <div className="agendar-cal-cab">
                 <button
                   type="button"
@@ -312,7 +338,10 @@ export function AgendarWidget() {
               </div>
             </div>
 
-            <div className="agendar-horas-col">
+            <div
+              className="agendar-horas-col"
+              style={alturaCal ? { maxHeight: alturaCal } : undefined}
+            >
               {horariosDelDia.length > 0 && (
                 <p className="agendar-horas-fecha">
                   {capitalizarPrimera(

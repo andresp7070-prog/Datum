@@ -895,15 +895,20 @@
   .agendar-cal-dia.activo { background: var(--accent) !important; color: #1a1b33 !important; }
   .agendar-cal-dia.activo::after { display: none; }
 
-  /* .agendar-horas-col ya se estira a la misma altura que .agendar-cal
-     por defecto (align-items:stretch, el valor normal de .agendar-split)
-     — lo que faltaba era que la lista de horas de adentro también
-     llenara ese alto en vez de quedarse en un tope fijo de 240px con un
-     hueco vacío debajo. flex:1 + min-height:0 (para que sí pueda
-     encogerse y activar su propio scroll, en vez de desbordar) hacen que
-     el alto de "elegir hora" quede siempre igual al de "elegir día",
-     sin importar cuántas semanas tenga el mes en pantalla. */
-  .agendar-horas-col { display: flex; flex-direction: column; min-width: 0; }
+  /* align-self:start a propósito — sin esto, .agendar-cal se estira
+     (align-items:stretch, el valor normal de un grid) para igualar la
+     altura de .agendar-horas-col cuando ese día tiene muchas franjas,
+     dejando un hueco navy vacío debajo del propio calendario. Con
+     align-self:start, .agendar-cal siempre mide su alto real (el que
+     necesita su propio contenido — cuántas semanas tenga el mes), sin
+     que su vecino lo infle. Ese alto real es justo lo que
+     AgendarWidget mide con un ResizeObserver (ver agendar-widget.tsx)
+     para topar .agendar-horas-col al mismo tamaño — así "elegir hora"
+     siempre mide igual que "elegir día", con scroll propio si un día
+     tiene más franjas de las que caben (ver flex:1 + min-height:0 en
+     .agendar-horas-lista más abajo). */
+  .agendar-cal { align-self: start; }
+  .agendar-horas-col { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
   .agendar-horas-fecha { margin: 0 0 12px; font-size: 13px; font-weight: 700; text-transform: capitalize; }
   .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
   .agendar-hora {

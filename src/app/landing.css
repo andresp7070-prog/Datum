@@ -795,7 +795,15 @@
   /* Más grande que un h2 normal de la landing a propósito — Andrés la
      quería con peso de H1, no de descripción; se queda como <h2> en el
      HTML (el único <h1> real es el del hero) pero se ve tan grande. */
-  .agenda-texto h2 { font-size: clamp(32px, 4vw, 48px); line-height: 1.1; max-width: none; margin: 0 auto; }
+  /* nowrap + letra que se ajusta al ancho de la columna (2.9vw) para que
+     "Hablemos de tu negocio" quede siempre en 1 sola línea — con el
+     tamaño de antes (hasta 48px) no cabía en el 40% del grid y se
+     partía en 2. El media query de abajo relaja el nowrap en ventanas
+     angostas, mismo patrón que ya usa el encabezado del hero. */
+  .agenda-texto h2 { font-size: clamp(26px, 2.9vw, 48px); line-height: 1.1; max-width: none; margin: 0 auto; white-space: nowrap; }
+  @media (max-width: 1150px) {
+    .agenda-texto h2 { white-space: normal; }
+  }
   .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; }
   /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
      #precios y #ecosistema — ver el comentario grande sobre .hero más

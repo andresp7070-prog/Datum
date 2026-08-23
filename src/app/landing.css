@@ -196,8 +196,14 @@
 
   /* Columna izquierda: esfera + brújula, centradas dentro de su propia
      mitad (position:relative aparte de .hero para que el 50%/50% de
-     abajo centre contra esta columna, no contra el hero completo). */
-  .hero-grafico { position: relative; flex: 0 1 420px; max-width: 420px; height: min(42vw, 420px); min-width: 0; }
+     abajo centre contra esta columna, no contra el hero completo). Antes
+     tenía un ancho fijo (420px, lo justo para el compás) mientras el
+     texto se llevaba el resto — se veía centrada respecto al hero
+     completo, no respecto a "su" mitad izquierda. Ahora crece en
+     proporción (flex-grow 0.72 contra el 1 del texto, ~42%/58% del
+     espacio disponible) para que el compás quede centrado de verdad en
+     medio de la mitad izquierda. */
+  .hero-grafico { position: relative; flex: 0.72 1 0; max-width: 640px; height: min(42vw, 420px); min-width: 0; }
 
   /* Esfera de puntos en CSS 3D real (perspective + preserve-3d) — sin
      WebGL ni librerías. Gira sola todo el tiempo (ambiental) — ya no
@@ -250,18 +256,18 @@
   .hero-motif .needle .tail { opacity: 0.4; }
   .hero-motif .needle .tail-ridge { opacity: 0.55; }
 
-  /* Columna derecha: el texto. flex-basis más grande que .hero-grafico
-     (que ya tiene su propio tope en 420px, lo que de verdad necesita el
-     compás) para darle más aire al párrafo largo de abajo. */
+  /* Columna derecha: el texto. flex-grow mayor que .hero-grafico (ver
+     arriba) para quedarse con la mayor parte del espacio — el párrafo
+     largo de abajo lo necesita para caber en una sola línea. */
   .hero-texto {
-    position: relative; z-index: 3; flex: 1 1 640px;
-    max-width: 760px;
+    position: relative; z-index: 3; flex: 1 1 0;
+    max-width: 820px;
     text-align: left;
   }
   .hero-texto h1 {
     position: relative;
-    font-size: clamp(28px, 3vw, 46px);
-    line-height: 1.1;
+    font-size: clamp(34px, 4.4vw, 64px);
+    line-height: 1.08;
   }
   /* Encabezado partido a propósito en dos renglones fijos (.linea), no
      dejado a que el navegador decida dónde envolver — así siempre son

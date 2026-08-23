@@ -248,6 +248,23 @@ export function Landing() {
     }
     if (!reduceMotion) window.addEventListener("mousemove", onMouseMove);
 
+    // La esfera de puntos se generó con un radio fijo (200, ver arriba) —
+    // para que crezca junto con .hero-compas-wrap (que sí es responsive,
+    // en % de su columna — ver el comentario en landing.css) sin tener
+    // que regenerar los puntos, se le aplica un scale() calculado contra
+    // el tamaño real que ese compás termina midiendo. offsetWidth (no
+    // getBoundingClientRect) a propósito: no lo afecta el propio
+    // scale() de la animación de entrada del compás, así que mide el
+    // tamaño real en CSS aunque se llame apenas montado, a mitad de esa
+    // animación.
+    let escalaEsferaBase = 1;
+    function medirEscalaEsfera() {
+      const ancho = compasWrap!.offsetWidth;
+      escalaEsferaBase = ancho > 0 ? ancho / 420 : 1;
+    }
+    medirEscalaEsfera();
+    window.addEventListener("resize", medirEscalaEsfera);
+
     // Barra de progreso de lectura de toda la página (no solo el hero) —
     // se actualiza en cada scroll, sin ningún efecto sobre el hero mismo.
     function onScroll() {
@@ -288,7 +305,7 @@ export function Landing() {
       // el tiempo, de forma ambiental, igual antes o después de hacer
       // scroll.
       const giroBase = reduceMotion ? 0 : t * 11;
-      esfera!.style.transform = `rotateY(${giroBase}deg) rotateX(6deg)`;
+      esfera!.style.transform = `scale(${escalaEsferaBase}) rotateY(${giroBase}deg) rotateX(6deg)`;
       orbita!.style.opacity = String(introEase);
       orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15).toFixed(1)}px)`;
       actualizarPulsos(t);
@@ -310,6 +327,7 @@ export function Landing() {
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", medirEscalaEsfera);
     };
   }, []);
 

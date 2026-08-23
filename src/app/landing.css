@@ -169,14 +169,14 @@
      #precios (no reactivo al tema claro/oscuro del visitante), así el
      hero combina con lo que sigue en vez de quedar como un bloque suelto
      entre dos navys. */
-  /* Dos mitades reales de la pantalla, no de un contenedor centrado: sin
-     max-width, grid-template-columns: 1fr 1fr divide el hero exacto por
-     la mitad. La esfera vive centrada en la mitad izquierda; el texto
-     (bloque y letra) centrado en la mitad derecha — la misma regla para
-     las dos, en vez de una proporción distinta para cada una. */
+  /* 40% esfera / 60% texto de la pantalla, sin max-width propio (grid
+     de dos columnas reales, no de un contenedor centrado). La esfera
+     vive centrada en su 40%; el texto (bloque y letra) centrado en su
+     60% — cada quien centrado en su propia columna, aunque ya no sean
+     del mismo ancho. */
   .hero {
     position: relative; min-height: calc(100svh - 64px);
-    display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+    display: grid; grid-template-columns: 2fr 3fr; align-items: center;
     gap: clamp(24px, 3vw, 40px);
     padding: 64px clamp(24px, 4vw, 48px);
     background: #1a1b33;
@@ -199,7 +199,7 @@
      abajo centre contra esta columna — ahora literalmente la mitad
      izquierda de la pantalla, gracias al grid de arriba — no contra el
      hero completo). */
-  .hero-grafico { position: relative; height: min(42vw, 420px); min-width: 0; }
+  .hero-grafico { position: relative; height: min(48vw, 480px); min-width: 0; }
 
   /* Esfera de puntos en CSS 3D real (perspective + preserve-3d) — sin
      WebGL ni librerías. Gira sola todo el tiempo (ambiental) — ya no
@@ -233,10 +233,15 @@
   /* Dos capas separadas a propósito: .hero-compas-wrap solo maneja la
      entrada al cargar; .hero-compas-zoom no hace nada por su cuenta ahora
      que no hay scroll que la desvanezca, pero se deja igual para no tocar
-     el resto de la mecánica del compás. */
+     el resto de la mecánica del compás. Tamaño en % de su propio
+     contenedor (.hero-grafico, la columna del 40%) en vez de vw — así
+     crece más donde sobra espacio (columna ancha) y se queda conservador
+     donde no (columna angosta), sin tocar nunca el borde de su mitad. La
+     esfera de puntos (JS) se escala para hacer juego con este tamaño,
+     ver el comentario en landing.tsx. */
   .hero-compas-wrap {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: min(40vw, 420px); height: min(40vw, 420px);
+    width: min(94%, 480px); height: min(94%, 480px);
     display: flex; align-items: center; justify-content: center;
   }
   .hero-compas-zoom { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
@@ -298,17 +303,16 @@
     transition-delay: calc(var(--i, 0) * 0.045s);
   }
   .hero-texto h1.in .palabra { opacity: 1; filter: blur(0); transform: translateY(0); }
-  /* El párrafo descriptivo también se fuerza a 1 sola línea (nowrap) con
-     una letra que se ajusta al ancho disponible (clamp en vw) — a las
-     ~105 letras de este texto, dejarlo del mismo tamaño que un párrafo
-     normal no entra en media pantalla, así que queda más chico que antes
-     a propósito. Mismo media query de abajo relaja el nowrap en ventanas
-     angostas. */
+  /* Probando en 2 líneas en vez de 1 sola forzada — con más margen de
+     ancho (max-width en ch, no todo el ancho de la columna) y una letra
+     de tamaño normal, en vez de la muy chica que hacía falta para caber
+     en 1 sola línea. text-wrap:balance reparte las palabras entre las 2
+     líneas lo más parejo posible, en vez de una larga y una cortita. */
   .hero .lede {
     position: relative;
-    margin: 20px 0 0;
-    font-size: clamp(10.5px, 0.88vw, 15.5px); color: var(--ink-soft);
-    white-space: nowrap;
+    margin: 20px auto 0; max-width: 54ch;
+    font-size: clamp(15px, 1.1vw, 18px); color: var(--ink-soft);
+    text-wrap: balance;
   }
   .hero .more {
     position: relative; margin-top: 40px;
@@ -333,13 +337,14 @@
     background: #e3a748; pointer-events: none;
   }
 
-  /* Por debajo de este ancho, dos columnas + texto en una sola línea ya
-     no entran cómodos — se relaja el nowrap del encabezado y el párrafo
-     (vuelven a envolver como texto normal) en vez de desbordar. Cubre
-     tanto el escritorio angosto como el móvil apilado de abajo. */
+  /* Por debajo de este ancho, dos columnas + encabezado en 1 sola línea
+     por renglón ya no entran cómodos — se relaja el nowrap del
+     encabezado (vuelve a envolver como texto normal) en vez de
+     desbordar. Cubre tanto el escritorio angosto como el móvil apilado
+     de abajo. El párrafo (.lede) ya envuelve siempre por su cuenta
+     (max-width en ch), no necesita este ajuste. */
   @media (max-width: 1150px) {
     .hero-texto h1 .linea { white-space: normal; }
-    .hero .lede { white-space: normal; }
   }
 
   @media (max-width: 760px) {
@@ -348,6 +353,11 @@
       padding: 64px 24px 80px;
     }
     .hero-grafico { width: 100%; height: 280px; }
+    /* El tamaño en % de .hero-compas-wrap (arriba) se pensó para la
+       columna angosta del 40% en escritorio — en móvil, .hero-grafico
+       mide el 100% del ancho, así que ese mismo % lo haría enorme. Vuelve
+       a un tamaño en vw, como antes de ese cambio. */
+    .hero-compas-wrap { width: min(40vw, 200px); height: min(40vw, 200px); }
     .hero-texto { max-width: 480px; }
     .hero .lede { max-width: 46ch; }
   }

@@ -854,6 +854,12 @@
   .agendar-split { display: grid; grid-template-columns: 7fr 3fr; gap: 24px; }
   @media (max-width: 560px) {
     .agendar-split { grid-template-columns: 1fr; }
+    /* En una sola columna, calendario y horas ya no comparten fila —
+       flex:1 (ver .agendar-horas-lista más abajo) no tiene contra qué
+       igualar el alto, así que la lista podría crecer sin control con
+       un día de muchas franjas. Acá sí vuelve a necesitar un tope fijo
+       con scroll propio. */
+    .agendar-horas-lista { flex: none; max-height: 240px; }
   }
 
   .agendar-cal-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -889,11 +895,17 @@
   .agendar-cal-dia.activo { background: var(--accent) !important; color: #1a1b33 !important; }
   .agendar-cal-dia.activo::after { display: none; }
 
+  /* .agendar-horas-col ya se estira a la misma altura que .agendar-cal
+     por defecto (align-items:stretch, el valor normal de .agendar-split)
+     — lo que faltaba era que la lista de horas de adentro también
+     llenara ese alto en vez de quedarse en un tope fijo de 240px con un
+     hueco vacío debajo. flex:1 + min-height:0 (para que sí pueda
+     encogerse y activar su propio scroll, en vez de desbordar) hacen que
+     el alto de "elegir hora" quede siempre igual al de "elegir día",
+     sin importar cuántas semanas tenga el mes en pantalla. */
   .agendar-horas-col { display: flex; flex-direction: column; min-width: 0; }
   .agendar-horas-fecha { margin: 0 0 12px; font-size: 13px; font-weight: 700; text-transform: capitalize; }
-  /* Alto fijo con scroll propio, para que la tarjeta no crezca sin
-     control según cuántas franjas haya ese día. */
-  .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
+  .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
   .agendar-hora {
     padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: none; text-align: center;
     font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; cursor: pointer;

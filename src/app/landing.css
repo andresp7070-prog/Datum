@@ -199,7 +199,7 @@
      abajo centre contra esta columna — ahora literalmente la mitad
      izquierda de la pantalla, gracias al grid de arriba — no contra el
      hero completo). */
-  .hero-grafico { position: relative; height: min(42vw, 420px); min-width: 0; }
+  .hero-grafico { position: relative; height: min(48vw, 480px); min-width: 0; }
 
   /* Esfera de puntos en CSS 3D real (perspective + preserve-3d) — sin
      WebGL ni librerías. Gira sola todo el tiempo (ambiental) — ya no
@@ -233,10 +233,15 @@
   /* Dos capas separadas a propósito: .hero-compas-wrap solo maneja la
      entrada al cargar; .hero-compas-zoom no hace nada por su cuenta ahora
      que no hay scroll que la desvanezca, pero se deja igual para no tocar
-     el resto de la mecánica del compás. */
+     el resto de la mecánica del compás. Tamaño en % de su propio
+     contenedor (.hero-grafico, la columna del 40%) en vez de vw — así
+     crece más donde sobra espacio (columna ancha) y se queda conservador
+     donde no (columna angosta), sin tocar nunca el borde de su mitad. La
+     esfera de puntos (JS) se escala para hacer juego con este tamaño,
+     ver el comentario en landing.tsx. */
   .hero-compas-wrap {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: min(40vw, 420px); height: min(40vw, 420px);
+    width: min(94%, 480px); height: min(94%, 480px);
     display: flex; align-items: center; justify-content: center;
   }
   .hero-compas-zoom { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
@@ -348,6 +353,11 @@
       padding: 64px 24px 80px;
     }
     .hero-grafico { width: 100%; height: 280px; }
+    /* El tamaño en % de .hero-compas-wrap (arriba) se pensó para la
+       columna angosta del 40% en escritorio — en móvil, .hero-grafico
+       mide el 100% del ancho, así que ese mismo % lo haría enorme. Vuelve
+       a un tamaño en vw, como antes de ese cambio. */
+    .hero-compas-wrap { width: min(40vw, 200px); height: min(40vw, 200px); }
     .hero-texto { max-width: 480px; }
     .hero .lede { max-width: 46ch; }
   }

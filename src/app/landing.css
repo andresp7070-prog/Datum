@@ -847,8 +847,11 @@
 
   /* Panel dividido: calendario de mes a la izquierda, horas del día
      elegido a la derecha, los dos visibles siempre — mismo patrón que
-     Andrés aprobó del set de opciones (calendario mensual + lista). */
-  .agendar-split { display: grid; grid-template-columns: 1fr 1.05fr; gap: 24px; }
+     Andrés aprobó del set de opciones (calendario mensual + lista).
+     70%/30% a propósito — el calendario es lo que de verdad necesita
+     espacio (7 columnas de días); la lista de horas es solo una columna
+     angosta de botones, no necesita tanto como antes. */
+  .agendar-split { display: grid; grid-template-columns: 7fr 3fr; gap: 24px; }
   @media (max-width: 560px) {
     .agendar-split { grid-template-columns: 1fr; }
   }

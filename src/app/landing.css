@@ -882,21 +882,32 @@
     color: var(--ink-faint); padding-bottom: 6px;
   }
   .agendar-cal-dia {
-    aspect-ratio: 1; border: none; background: none; border-radius: 50%; position: relative;
+    aspect-ratio: 1; border: none; background: none; border-radius: 8px; position: relative;
     font-size: 12.5px; font-weight: 600; color: var(--ink-faint); font-variant-numeric: tabular-nums;
     cursor: default;
   }
   .agendar-cal-dia.vacio { visibility: hidden; }
+  /* Referencia que compartió Andrés: los días sin franjas (fin de semana,
+     ya pasados, o ya sin cupo) se ven tachados y apagados, no solo grises
+     — así se distingue de un vistazo sin necesitar el punto de abajo. */
+  .agendar-cal-dia:not(.disponible):not(.vacio) { text-decoration: line-through; opacity: 0.5; }
   .agendar-cal-dia.disponible {
     color: var(--ink); cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease;
   }
-  .agendar-cal-dia.disponible::after {
+  /* El punto ya no marca "disponible" (eso ahora lo dice el tachado de
+     arriba, sin necesitar un punto en cada día) — marca "hoy", como en
+     la referencia. */
+  .agendar-cal-dia.hoy::after {
     content: ""; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
     width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
   }
   .agendar-cal-dia.disponible:hover { background: rgba(243, 242, 238, 0.08); }
-  .agendar-cal-dia.activo { background: var(--accent) !important; color: #1a1b33 !important; }
+  /* Cuadro claro (--ink) con texto oscuro, no el naranja de marca —
+     mismo look monocromático blanco/negro de la referencia para el
+     estado seleccionado; el naranja se queda reservado para los botones
+     de acción (Continuar/Confirmar), no para estados de selección. */
+  .agendar-cal-dia.activo { background: var(--ink) !important; color: #1a1b33 !important; }
   .agendar-cal-dia.activo::after { display: none; }
 
   /* align-self:start a propósito — sin esto, .agendar-cal se estira
@@ -916,12 +927,15 @@
   .agendar-horas-fecha { margin: 0 0 12px; font-size: 13px; font-weight: 700; text-transform: capitalize; }
   .agendar-horas-lista { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
   .agendar-hora {
-    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: none; text-align: center;
+    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: rgba(243, 242, 238, 0.04); text-align: center;
     font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; cursor: pointer;
     transition: border-color 0.15s ease, background 0.15s ease;
   }
   .agendar-hora:hover { border-color: var(--ink-soft); }
-  .agendar-hora.activo { background: var(--accent); border-color: var(--accent); color: #1a1b33; }
+  /* Mismo cuadro claro que el día seleccionado, no el naranja de marca —
+     ver el comentario en .agendar-cal-dia.activo más arriba. */
+  .agendar-hora.activo { background: var(--ink); border-color: var(--ink); color: #1a1b33; }
 
   /* Barra de resumen + confirmación, siempre visible debajo del panel —
      mismo patrón de la referencia de Pinterest que Andrés compartió. */

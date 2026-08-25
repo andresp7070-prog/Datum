@@ -825,10 +825,21 @@
      todo el 60% de la columna (hasta ~760px de ancho en pantallas
      grandes), inflando cada celda del calendario a ~65px y haciéndolo
      ver gigante. Un calendario de agendamiento no necesita ocupar tanto
-     — se queda compacto y centrado en su columna, como la referencia. */
+     — se queda compacto y centrado en su columna, como la referencia.
+     560 (no 460) a propósito — el alto ya estaba bien con el calendario
+     angosto de antes; ensanchar la tarjeta entera sin tocar el alto
+     significaba darle ese espacio extra a la columna de horas, no a las
+     celdas del calendario (ver el ancho fijo en .agendar-split de abajo,
+     que mantiene el tamaño de celda igual). width:100% también a
+     propósito — con el calendario en ancho fijo (no fr), el navegador
+     dejó de "estirar" la tarjeta hasta max-width solo con margin:auto
+     (calculaba su ancho por el contenido, quedando en ~504px en vez de
+     560px); width:100% fuerza a llenar su columna, y ahí sí max-width
+     la topa en 560. */
   .agenda-formulario {
     min-width: 0;
-    max-width: 460px;
+    width: 100%;
+    max-width: 560px;
     margin: 0 auto;
     background: #1a1b33;
     border: 1px solid rgba(243, 242, 238, 0.14);
@@ -856,13 +867,12 @@
   }
   .agendar-nota-zona { text-transform: none; font-weight: 500; letter-spacing: normal; }
 
-  /* Panel dividido: calendario de mes a la izquierda, horas del día
-     elegido a la derecha, los dos visibles siempre — mismo patrón que
-     Andrés aprobó del set de opciones (calendario mensual + lista).
-     70%/30% a propósito — el calendario es lo que de verdad necesita
-     espacio (7 columnas de días); la lista de horas es solo una columna
-     angosta de botones, no necesita tanto como antes. */
-  .agendar-split { display: grid; grid-template-columns: 7fr 3fr; gap: 18px; }
+  /* Ancho fijo para el calendario (no una fracción del split) a
+     propósito — así, al ensanchar la tarjeta completa (.agenda-formulario
+     más arriba), el calendario mantiene el mismo tamaño de celda (~37px)
+     y el mismo alto de siempre; todo el ancho extra de la tarjeta se lo
+     lleva la columna de horas (1fr), que antes quedaba angosta. */
+  .agendar-split { display: grid; grid-template-columns: 280px 1fr; gap: 18px; }
   @media (max-width: 560px) {
     .agendar-split { grid-template-columns: 1fr; }
     /* En una sola columna, calendario y horas ya no comparten fila —

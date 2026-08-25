@@ -108,6 +108,10 @@ export function AgendarWidget() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [enlaceEvento, setEnlaceEvento] = useState<string | null>(null);
 
+  // Se computa una sola vez (el widget no vive abierto de un día para otro)
+  // — marca la celda de "hoy" en el calendario, como en la referencia.
+  const hoyClave = useMemo(() => claveDia(new Date().toISOString()), []);
+
   // El calendario manda: la lista de horas de al lado se topa a su mismo
   // alto (con scroll propio si un día tiene más franjas de las que
   // caben) en vez de al revés — sin esto, un día con muchas franjas
@@ -323,6 +327,7 @@ export function AgendarWidget() {
                       className={
                         "agendar-cal-dia" +
                         (disponible ? " disponible" : "") +
+                        (clave === hoyClave ? " hoy" : "") +
                         (clave === diaElegido ? " activo" : "")
                       }
                       disabled={!disponible}

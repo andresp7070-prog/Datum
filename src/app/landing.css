@@ -778,58 +778,48 @@
   .chapter-cta { text-align: center; margin-top: 32px; }
 
   /* --- Formulario de agendamiento (último segmento antes del footer) --- */
-  /* Ya no usa .wrap (max-width 1120px) — igual que el hero, es un grid
-     de dos columnas reales de la pantalla (sin max-width propio, con su
-     propio padding lateral), no un contenedor centrado angosto. 40% para
-     el texto, 60% para el calendario — el mismo patrón de proporciones
-     que el hero, aplicado acá. */
+  /* Ya no es un grid 40/60 fijo como el hero — con el calendario ahora
+     compacto (max-width 460px, ver .agenda-formulario más abajo), forzar
+     el texto a ocupar un 40% completo de la pantalla lo dejaba pegado al
+     borde izquierdo, con un vacío enorme entre el texto y la tarjeta.
+     Flex centrado en cambio: texto y calendario se tratan como un par de
+     ancho parecido, agrupados y centrados juntos en el medio de la
+     sección — se envuelven solos en pantallas angostas (flex-wrap), sin
+     necesitar el media query aparte que tenía el grid. */
   .agenda-grid {
-    display: grid; grid-template-columns: 2fr 3fr; gap: clamp(32px, 5vw, 64px);
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    gap: clamp(32px, 5vw, 64px);
     padding: 0 clamp(24px, 4vw, 56px);
-    /* Centrado contra la fila completa (la marca el calendario, más alto
-       que el texto) para que el bloque de texto quede a la altura de su
-       mitad, no pegado arriba. */
-    align-items: center;
   }
-  /* min-width:0 en las dos columnas — sin esto, si algo adentro empuja
-     un ancho mínimo más grande que su fr, el grid deja de repartir 40/60
-     de verdad (el mismo bug que ya se dio con el hero: ver el commit
-     "Hero: mitades reales de la pantalla"). */
-  /* padding lateral a propósito — el texto (h2 nowrap + párrafo)
-     técnicamente ya estaba centrado (text-align:center), pero llenaba
-     casi todo el ancho de la columna del 40% sin nada de aire a los
-     lados, así que el centrado no se notaba (se sentía "pegado" a los
-     dos bordes en vez de "flotando" en el medio) — más todavía al lado
-     de la tarjeta del calendario, que sí tiene su propio padding y se ve
-     contenida. Este padding le da el mismo margen visible. */
-  .agenda-texto { text-align: center; min-width: 0; padding: 0 clamp(20px, 3vw, 40px); }
+  /* Ancho propio (no todo el 40% de antes) para que quede del mismo
+     orden de tamaño que la tarjeta del calendario — un par visualmente
+     equilibrado, no un bloque de texto angosto contra una columna ancha
+     vacía. min-width:0 dejar que se achique si hace falta (mismo motivo
+     que antes: sin esto, el h2 empuja el ancho mínimo). */
+  .agenda-texto { text-align: center; flex: 1 1 420px; max-width: 460px; min-width: 0; padding: 0 clamp(20px, 3vw, 40px); }
   /* Más grande que un h2 normal de la landing a propósito — Andrés la
      quería con peso de H1, no de descripción; se queda como <h2> en el
-     HTML (el único <h1> real es el del hero) pero se ve tan grande. */
-  /* nowrap + letra que se ajusta al ancho disponible para que "Hablemos
-     de tu negocio" quede siempre en 1 sola línea, con margen visible a
-     los lados (ver el padding de arriba). El media query de abajo relaja
-     el nowrap en ventanas angostas, mismo patrón que ya usa el
-     encabezado del hero. */
-  .agenda-texto h2 { font-size: clamp(22px, 2.5vw, 42px); line-height: 1.1; max-width: none; margin: 0 auto; white-space: nowrap; }
-  @media (max-width: 1150px) {
-    .agenda-texto h2 { white-space: normal; }
-  }
+     HTML (el único <h1> real es el del hero) pero se ve tan grande.
+     Ya no fuerza una sola línea (white-space:nowrap) — con el ancho fijo
+     de acá arriba, forzar 1 línea a un tamaño de letra grande la hacía
+     desbordar; 2 líneas centradas se ven bien igual. */
+  .agenda-texto h2 { font-size: clamp(22px, 2.5vw, 42px); line-height: 1.1; max-width: none; margin: 0 auto; }
   .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; }
   /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
      #precios y #ecosistema — ver el comentario grande sobre .hero más
      arriba) en vez del --card claro genérico: así combina con la
      referencia que aprobó Andrés (calendario + lista de horas sobre
      fondo oscuro) sin importar el tema claro/oscuro del visitante. */
-  /* max-width + margin:auto a propósito — sin tope, la tarjeta llenaba
-     todo el 60% de la columna (hasta ~760px de ancho en pantallas
-     grandes), inflando cada celda del calendario a ~65px y haciéndolo
-     ver gigante. Un calendario de agendamiento no necesita ocupar tanto
-     — se queda compacto y centrado en su columna, como la referencia. */
+  /* max-width a propósito — sin tope, la tarjeta llenaba todo el 60% de
+     la columna que tenía el grid de antes (hasta ~760px de ancho en
+     pantallas grandes), inflando cada celda del calendario a ~65px y
+     haciéndolo ver gigante. Un calendario de agendamiento no necesita
+     ocupar tanto — se queda compacto (el justify-content:center de
+     .agenda-grid ya lo centra como parte del par texto+calendario, no
+     hace falta margin:auto acá). */
   .agenda-formulario {
     min-width: 0;
     max-width: 460px;
-    margin: 0 auto;
     background: #1a1b33;
     border: 1px solid rgba(243, 242, 238, 0.14);
     border-radius: 20px;
@@ -842,9 +832,6 @@
     --accent: #e3a748;
     --good: #6fbf94;
     color: var(--ink);
-  }
-  @media (max-width: 760px) {
-    .agenda-grid { grid-template-columns: 1fr; }
   }
 
   .agendar-estado { text-align: center; color: var(--ink-soft); }

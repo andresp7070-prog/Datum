@@ -702,9 +702,8 @@ export function Landing() {
           <div className="agenda-texto">
             <h2>Hablemos de tu negocio</h2>
             <p className="sub">
-              Agendemos una conversación de 20 minutos sin costo — elige el horario que mejor te
-              sirva y quedas agendado al instante, con la invitación y el link de la
-              videollamada directo a tu correo.
+              Agendemos una conversación de 20 minutos sin costo y descubre todo lo que puedes
+              hacer con Datum.
             </p>
           </div>
           <div className="agenda-formulario">
@@ -740,6 +739,13 @@ export function Landing() {
         </button>
         {popupOrigen && (
           <div className="agenda-formulario">
+            <div className="agenda-dialog-texto">
+              <h2>Hablemos de tu negocio</h2>
+              <p className="sub">
+                Agendemos una conversación de 20 minutos sin costo y descubre todo lo que puedes
+                hacer con Datum.
+              </p>
+            </div>
             <AgendarWidget key={popupOrigen} origen={popupOrigen} />
           </div>
         )}

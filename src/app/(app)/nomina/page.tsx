@@ -4,8 +4,11 @@ import Link from "next/link";
 import { requerirModulo } from "@/lib/empresa";
 import { NominaTabs } from "./nomina-tabs";
 
-function formatoMoneda(valor: number) {
-  return valor.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+// numeric de Postgres llega como texto vía Supabase (para no perder precisión
+// con decimales) — hay que convertirlo antes de formatear, si no, toLocaleString
+// se ejecuta sobre el string y lo deja tal cual, sin darle forma de plata.
+function formatoMoneda(valor: number | string) {
+  return Number(valor).toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 }
 
 export default async function NominaPage() {

@@ -27,6 +27,7 @@ export async function crearCliente(input: {
   nombreEmpresa: string;
   modulosActivos: string[];
   crmModo: string;
+  nominaFrecuenciaPago: string;
   horaApertura: string;
   horaCierre: string;
   diasAtencion: string[];
@@ -56,6 +57,9 @@ export async function crearCliente(input: {
   }
   if (input.crmModo !== "ventas" && input.crmModo !== "leads") {
     return { ok: false, error: "Elige un modo de CRM válido." };
+  }
+  if (input.nominaFrecuenciaPago !== "mensual" && input.nominaFrecuenciaPago !== "quincenal") {
+    return { ok: false, error: "Elige una frecuencia de pago de nómina válida." };
   }
   if (!input.diasAtencion.every((d) => (DIAS_VALIDOS as readonly string[]).includes(d))) {
     return { ok: false, error: "Uno de los días de atención no es válido." };
@@ -101,6 +105,7 @@ export async function crearCliente(input: {
       nombre: nombreEmpresa,
       modulos_activos: input.modulosActivos,
       crm_modo: input.crmModo,
+      nomina_frecuencia_pago: input.nominaFrecuenciaPago,
       hora_apertura: input.horaApertura || null,
       hora_cierre: input.horaCierre || null,
       dias_atencion: input.diasAtencion.length > 0 ? input.diasAtencion : null,

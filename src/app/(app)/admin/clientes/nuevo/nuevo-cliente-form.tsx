@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CampoMoneda } from "@/components/campo-moneda";
 import { crearCliente } from "./actions";
 
 const MODULOS = [
@@ -37,6 +38,7 @@ export function NuevoClienteForm() {
   const [nombreEmpresa, setNombreEmpresa] = useState("");
   const [modulosActivos, setModulosActivos] = useState<string[]>([]);
   const [crmModo, setCrmModo] = useState("ventas");
+  const [nominaFrecuenciaPago, setNominaFrecuenciaPago] = useState("mensual");
   const [horaApertura, setHoraApertura] = useState("");
   const [horaCierre, setHoraCierre] = useState("");
   const [diasAtencion, setDiasAtencion] = useState<string[]>([]);
@@ -84,6 +86,7 @@ export function NuevoClienteForm() {
         nombreEmpresa,
         modulosActivos,
         crmModo,
+        nominaFrecuenciaPago,
         horaApertura,
         horaCierre,
         diasAtencion,
@@ -101,6 +104,7 @@ export function NuevoClienteForm() {
       setNombreEmpresa("");
       setModulosActivos([]);
       setCrmModo("ventas");
+      setNominaFrecuenciaPago("mensual");
       setHoraApertura("");
       setHoraCierre("");
       setDiasAtencion([]);
@@ -168,6 +172,21 @@ export function NuevoClienteForm() {
           </select>
           <p className="mt-1 text-xs text-gray-400">
             Solo aplica si activas el módulo CRM, pero queda guardado desde ya.
+          </p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Frecuencia de pago de nómina</label>
+          <select
+            value={nominaFrecuenciaPago}
+            onChange={(e) => setNominaFrecuenciaPago(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          >
+            <option value="mensual">Mensual (paga el salario completo cada período)</option>
+            <option value="quincenal">Quincenal (paga el 50% del salario cada período)</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-400">
+            Solo aplica si activas el módulo Nómina, pero queda guardado desde ya.
           </p>
         </div>
 
@@ -241,15 +260,7 @@ export function NuevoClienteForm() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Monto mensual</label>
-            <input
-              type="number"
-              value={montoMensual}
-              onChange={(e) => setMontoMensual(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-            />
-          </div>
+          <CampoMoneda id="montoMensual" label="Monto mensual" value={montoMensual} onChange={setMontoMensual} />
         </div>
 
         <div>

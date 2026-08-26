@@ -314,9 +314,20 @@
     font-size: clamp(15px, 1.1vw, 18px); color: var(--ink-soft);
     text-wrap: balance;
   }
+  /* Mismo botón que Ecosistema/Cómo funciona/Precios (.precios-cta), acá
+     entre el texto descriptivo y la flecha de "ver más abajo" — position
+     relative + z-index para quedar encima de la esfera de puntos del
+     hero (que se anima libre por detrás de .hero-texto). */
+  .hero .hero-cta { position: relative; z-index: 1; margin-top: 28px; }
+  /* display:flex (no inline-flex) + margin:auto a propósito — como
+     elemento inline, se acomodaba en la misma línea que el botón de
+     arriba (los dos son inline-level, dentro de un contenedor
+     text-align:center), quedando lado a lado en vez de uno debajo del
+     otro. Como bloque propio con ancho fijo (40px) + margin horizontal
+     auto, cae en su propia línea, debajo del botón, centrado igual. */
   .hero .more {
-    position: relative; margin-top: 40px;
-    display: inline-flex; align-items: center; justify-content: center;
+    position: relative; margin: 24px auto 0;
+    display: flex; align-items: center; justify-content: center;
     width: 40px; height: 40px; border-radius: 50%; color: var(--ink-soft);
     transition: color 0.15s ease, border-color 0.15s ease;
     border: 1px solid var(--line-strong);
@@ -487,15 +498,21 @@
   }
 
   .precios-cta-row { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 24px; justify-items: center; }
+  /* .precios-cta se usa en las 3 secciones navy de la landing (hero,
+     ecosistema, precios) — blanco/hueso sólido con letra navy siempre
+     (no solo en hover), para que las 4 apariciones del botón "Solicita
+     tu prueba gratis" (hero + ecosistema + los 3 de precios) se vean
+     exactamente igual. var(--ink), no un blanco fijo, porque en las 3
+     secciones ya está sobreescrito al mismo tono hueso (#f3f2ee). */
   .precios-cta {
     display: inline-flex; align-items: center; justify-content: center;
     padding: 10px 16px; border-radius: 999px;
-    border: 1px solid var(--line-strong); color: var(--ink-soft);
+    border: 1px solid var(--ink); background: var(--ink); color: #1a1b33;
     font-family: var(--font-public-sans), sans-serif; font-size: 13.5px; font-weight: 600;
     text-align: center; white-space: nowrap;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
-  .precios-cta:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .precios-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(20, 21, 31, 0.35); }
 
   /* Precios también en navy — el dorado pasa a un tono más claro (el mismo
      que ya usa este archivo para modo oscuro) para que se lea bien encima,
@@ -517,7 +534,6 @@
   #precios.chapter-oscuro .billing-btn.is-active { color: #14151f; }
   #precios.chapter-oscuro .plan.destacado { background: rgba(243, 242, 238, 0.07); }
   #precios.chapter-oscuro .plan-flag { color: #1a1b33; }
-  #precios.chapter-oscuro .precios-cta:hover { color: #1a1b33; }
 
   /* Ecosistema también en navy, para que combine con el hero y Precios. */
   #ecosistema.chapter-oscuro {

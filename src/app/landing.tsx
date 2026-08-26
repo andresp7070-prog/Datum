@@ -480,6 +480,16 @@ export function Landing() {
               Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
               crecimiento de tu empresa.
             </p>
+            <a
+              className="precios-cta hero-cta"
+              href="#contacto"
+              onClick={(e) => {
+                e.preventDefault();
+                setPopupOrigen("Inicio");
+              }}
+            >
+              Solicita tu prueba gratis de 15 días
+            </a>
             <a className="more" href="#ecosistema" aria-label="Ver más abajo">
               <svg viewBox="0 0 12 12" fill="none">
                 <path
@@ -508,7 +518,7 @@ export function Landing() {
           </div>
           <div className="chapter-cta">
             <a
-              className="btn"
+              className="precios-cta"
               href="#contacto"
               onClick={(e) => {
                 e.preventDefault();

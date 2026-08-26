@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { CampoMoneda } from "@/components/campo-moneda";
 import { crearEmpleado } from "../actions";
 
 function hoyIso() {
@@ -97,17 +98,7 @@ export function NuevoEmpleadoForm() {
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Salario mensual *</label>
-          <input
-            type="number"
-            min={0}
-            value={salarioBase}
-            onChange={(e) => setSalarioBase(e.target.value)}
-            placeholder="Ej. 1462000"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-          />
-        </div>
+        <CampoMoneda id="salarioBase" label="Salario mensual" required value={salarioBase} onChange={setSalarioBase} />
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Fecha de ingreso *</label>

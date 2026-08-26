@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CampoMoneda } from "@/components/campo-moneda";
 import { crearCliente } from "./actions";
 
 const MODULOS = [
@@ -259,15 +260,7 @@ export function NuevoClienteForm() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Monto mensual</label>
-            <input
-              type="number"
-              value={montoMensual}
-              onChange={(e) => setMontoMensual(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-            />
-          </div>
+          <CampoMoneda id="montoMensual" label="Monto mensual" value={montoMensual} onChange={setMontoMensual} />
         </div>
 
         <div>

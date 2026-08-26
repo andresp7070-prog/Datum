@@ -3924,3 +3924,14 @@ begin
   );
 end;
 $$;
+
+-- ============================================================
+-- LEADS PÚBLICOS: origen del CTA — agregado 2026-08-26. Antes no había
+-- forma de saber si un lead vino del botón "Solicita tu prueba gratis" de
+-- Ecosistema, de Cómo funciona, o de un plan específico de Precios — todos
+-- caían en el mismo formulario sin dejar rastro de qué le interesaba a la
+-- persona. Nullable a propósito: el formulario de "Agregar lead" a mano
+-- (/admin/leads/nuevo) no lo llena — es exclusivo del formulario público
+-- de la landing (src/lib/agendar.ts).
+-- ============================================================
+alter table datum_leads add column if not exists origen text;

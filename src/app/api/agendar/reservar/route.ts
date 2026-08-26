@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     nota: typeof b.nota === "string" ? b.nota : "",
     horarioISO: typeof b.horarioISO === "string" ? b.horarioISO : "",
     trampa: typeof b.trampa === "string" ? b.trampa : "",
+    origen: typeof b.origen === "string" ? b.origen : "",
   });
 
   if ("error" in resultado) {

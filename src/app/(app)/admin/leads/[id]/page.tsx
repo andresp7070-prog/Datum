@@ -44,7 +44,7 @@ export default async function FichaLeadPage({
     supabase
       .from("datum_leads")
       .select(
-        "id, nombre, empresa, telefono, email, etapa_id, valor_venta, notas, campos_etapa, valor_estimado, prioridad, modulos_interes, responsable_id, created_at, responsable:responsable_id ( nombre )",
+        "id, nombre, empresa, telefono, email, etapa_id, valor_venta, notas, campos_etapa, valor_estimado, prioridad, modulos_interes, responsable_id, origen, created_at, responsable:responsable_id ( nombre )",
       )
       .eq("id", id)
       .single(),
@@ -184,6 +184,7 @@ export default async function FichaLeadPage({
             valorEstimado={lead.valor_estimado}
             prioridad={lead.prioridad}
             fechaLead={lead.created_at}
+            origen={lead.origen}
             modulosInteres={lead.modulos_interes ?? []}
             serviciosDisponibles={
               serviciosDisponibles

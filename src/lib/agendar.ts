@@ -167,6 +167,7 @@ export async function reservarReunion(input: {
   nota: string;
   horarioISO: string;
   trampa: string;
+  origen: string;
 }): Promise<{ ok: true; link: string | null; meetLink: string | null } | { error: string }> {
   // Campo trampa (honeypot): un visitante real nunca lo llena porque está
   // oculto — si llega con algo, es un bot rellenando el formulario entero.
@@ -222,6 +223,7 @@ export async function reservarReunion(input: {
       telefono: input.telefono,
       email: input.correo,
       notas: input.nota || null,
+      origen: input.origen || null,
     })
     .select("id")
     .single();

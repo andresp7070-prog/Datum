@@ -433,6 +433,48 @@
   .dialog-close:hover { color: var(--ink); border-color: var(--ink-soft); }
   .dialog-close svg { width: 14px; height: 14px; }
 
+  /* Mismo molde que .legal-dialog (margin:auto, backdrop), pero sin
+     padding — adentro va .agenda-formulario, que ya trae su propio
+     fondo navy, padding y max-width (560px, ver más abajo) calculados
+     para verse bien solo. Sin padding acá, el único "marco" visible es
+     el border de 1px de abajo (un filo, no una franja blanca gruesa) —
+     .agenda-formulario queda prácticamente pegado al borde del diálogo.
+     Mismo border-radius que .agenda-formulario (20px, no 22px) para que
+     las esquinas de las dos tarjetas calcen exactas, sin escalón entre
+     una curva y la otra. position:relative para que .dialog-close (ver
+     más abajo) se pueda anclar a la esquina de ESTE marco con su propio
+     margen, sin depender de ningún padding. */
+  /* 562px (no 600px) a propósito — .agenda-formulario adentro tiene
+     max-width:560px; con el diálogo más ancho que eso, quedaba un
+     sobrante de espacio claro repartido a los lados (el "borde grueso"
+     que se veía) aunque el padding ya fuera 0. Con el diálogo del mismo
+     ancho que la tarjeta (+2px para el border de 1px a cada lado), no
+     queda ningún sobrante — el border de 1px es la única línea visible. */
+  .agenda-dialog {
+    position: relative;
+    margin: auto;
+    width: min(562px, 92vw); max-height: 90vh; padding: 0;
+    border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--ink);
+    box-shadow: 0 24px 64px -16px rgba(20, 21, 31, 0.3);
+    overflow-y: auto;
+  }
+  .agenda-dialog::backdrop { background: rgba(20, 21, 31, 0.5); backdrop-filter: blur(2px); }
+  /* Sin margin:0 acá a propósito — .agenda-formulario ya trae margin:0
+     auto de su regla base (pensada para centrarlo en la columna del
+     60% de la sección de abajo); con el diálogo ya del mismo ancho que
+     la tarjeta (ver arriba), ese margin:auto no reparte nada, pero se
+     deja igual por si el diálogo alguna vez queda más ancho que 562px. */
+  /* .dialog-close normalmente usa sticky+float, apoyado en el padding del
+     diálogo que lo contiene — acá el diálogo ya no tiene padding propio
+     (ver arriba), así que se ancla aparte con position:absolute. Ya no
+     flota sobre ningún marco blanco (ese marco desapareció a propósito,
+     ver arriba) — se mete varios px hacia adentro para caer dentro del
+     propio padding navy de .agenda-formulario (22px), con aire alrededor
+     contra el fondo oscuro de la tarjeta en vez de contra un marco claro. */
+  .agenda-dialog .dialog-close {
+    position: absolute; top: 12px; right: 12px; margin-left: 0; float: none;
+  }
+
 
   .precios-table { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong); }
   .precios-table .plan { position: relative; min-width: 0; padding: 40px 28px; border-left: 1.5px solid var(--line-strong); text-align: center; }

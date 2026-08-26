@@ -98,7 +98,7 @@ function sumarMes(
   return { anio, mes };
 }
 
-export function AgendarWidget() {
+export function AgendarWidget({ origen = "" }: { origen?: string }) {
   const [fase, setFase] = useState<Fase>("cargando");
   const [franjas, setFranjas] = useState<string[]>([]);
   const [mensajeError, setMensajeError] = useState("");
@@ -215,7 +215,7 @@ export function AgendarWidget() {
       const res = await fetch("/api/agendar/reservar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...datos, horarioISO: horarioElegido }),
+        body: JSON.stringify({ ...datos, horarioISO: horarioElegido, origen }),
       });
       const data: { ok?: true; link?: string | null; error?: string } =
         await res.json();

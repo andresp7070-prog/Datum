@@ -32,6 +32,7 @@ export function DetallesLead({
   valorEstimado,
   prioridad,
   fechaLead,
+  origen,
   modulosInteres,
   serviciosDisponibles,
   responsableNombre,
@@ -41,6 +42,7 @@ export function DetallesLead({
   valorEstimado: number | null;
   prioridad: number | null;
   fechaLead: string;
+  origen: string | null;
   modulosInteres: string[];
   serviciosDisponibles: { value: string; label: string }[] | null;
   responsableNombre: string | null;
@@ -176,6 +178,13 @@ export function DetallesLead({
           <span className="text-gray-400">Fecha de lead</span>
           <span className="text-gray-700">{new Date(fechaLead).toLocaleDateString("es-CO")}</span>
         </div>
+
+        {origen && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-gray-400">Vino de</span>
+            <span className="text-gray-700">{origen}</span>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-gray-400">Módulos de interés</span>

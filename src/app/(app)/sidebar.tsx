@@ -34,11 +34,12 @@ const modulos = [
 ];
 
 // Mismo orden que "modulos" (el menú genérico que ve cualquier cliente),
-// para que no se sienta como una experiencia distinta — "Panel" (propio de
-// admin, sin equivalente de cliente) va primero, y "Enviar bienvenida"/
-// "Probar correos" (también exclusivos de admin) al final.
+// para que no se sienta como una experiencia distinta, con los exclusivos de
+// admin agrupados en las puntas — "Panel" y "Crear cliente" (sin equivalente
+// de cliente) primero, "Enviar bienvenida"/"Probar correos" al final.
 const enlacesAdmin = [
   { nombre: "Panel", href: "/admin" },
+  { nombre: "Crear cliente", href: "/admin/clientes/nuevo" },
   { nombre: "Ventas", href: "/ventas" },
   { nombre: "CRM", href: "/admin/leads" },
   { nombre: "Inventario", href: "/inventario" },

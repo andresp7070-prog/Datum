@@ -20,7 +20,7 @@ export async function enviarBienvenida(input: {
     .eq("id", user.id)
     .single();
 
-  if (perfil?.rol !== "admin") {
+  if (perfil?.rol !== "admin" && perfil?.rol !== "super_admin") {
     return { error: "Solo un administrador puede enviar este correo." };
   }
 

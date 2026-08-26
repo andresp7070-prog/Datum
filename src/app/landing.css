@@ -433,6 +433,22 @@
   .dialog-close:hover { color: var(--ink); border-color: var(--ink-soft); }
   .dialog-close svg { width: 14px; height: 14px; }
 
+  /* Mismo molde que .legal-dialog (margin:auto, tarjeta clara, backdrop),
+     pero con menos padding y sin tope de alto propio — adentro va
+     .agenda-formulario, que ya trae su propio fondo navy, padding y
+     max-width (560px, ver más abajo) calculados para verse bien solo;
+     acá solo se le da el marco claro + el botón de cerrar alrededor,
+     como una tarjeta dentro de otra. */
+  .agenda-dialog {
+    margin: auto;
+    width: min(600px, 92vw); max-height: 90vh; padding: 20px;
+    border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: var(--ink);
+    box-shadow: 0 24px 64px -16px rgba(20, 21, 31, 0.3);
+    overflow-y: auto;
+  }
+  .agenda-dialog::backdrop { background: rgba(20, 21, 31, 0.5); backdrop-filter: blur(2px); }
+  .agenda-dialog .agenda-formulario { margin: 0; }
+
 
   .precios-table { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong); }
   .precios-table .plan { position: relative; min-width: 0; padding: 40px 28px; border-left: 1.5px solid var(--line-strong); text-align: center; }

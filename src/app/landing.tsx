@@ -65,9 +65,22 @@ export function Landing() {
   const dialogNosotrosRef = useRef<HTMLDialogElement>(null);
   const dialogTerminosRef = useRef<HTMLDialogElement>(null);
   const dialogPrivacidadRef = useRef<HTMLDialogElement>(null);
+  const dialogAgendaRef = useRef<HTMLDialogElement>(null);
 
   const [billing, setBilling] = useState<"mensual" | "anual">("mensual");
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // Qué botón abrió el pop-up de agendamiento ("Ecosistema", "Cómo
+  // funciona", "Plan Pyme", etc.) — viaja como AgendarWidget.origen y
+  // queda guardado en datum_leads.origen, para saber qué le interesaba a
+  // la persona sin tener que preguntárselo en el formulario. null =
+  // pop-up cerrado; se usa también para que AgendarWidget se desmonte y
+  // vuelva a arrancar en blanco cada vez que se abre (key={popupOrigen}
+  // más abajo), en vez de conservar el día/hora ya elegidos de una
+  // apertura anterior.
+  const [popupOrigen, setPopupOrigen] = useState<string | null>(null);
+  useEffect(() => {
+    if (popupOrigen) dialogAgendaRef.current?.showModal();
+  }, [popupOrigen]);
   // Switch momentáneo para revisar la versión móvil sin cambiar de
   // dispositivo — muestra la misma página dentro de un iframe angosto,
   // así sí disparan los media queries reales (a diferencia de solo
@@ -494,7 +507,14 @@ export function Landing() {
             <EcosistemaDemo />
           </div>
           <div className="chapter-cta">
-            <a className="btn" href="#contacto">
+            <a
+              className="btn"
+              href="#contacto"
+              onClick={(e) => {
+                e.preventDefault();
+                setPopupOrigen("Ecosistema");
+              }}
+            >
               Solicita tu prueba gratis de 15 días
             </a>
           </div>
@@ -525,7 +545,14 @@ export function Landing() {
             </div>
           </div>
           <div className="chapter-cta">
-            <a className="btn" href="#contacto">
+            <a
+              className="btn"
+              href="#contacto"
+              onClick={(e) => {
+                e.preventDefault();
+                setPopupOrigen("Cómo funciona");
+              }}
+            >
               Solicita tu prueba gratis de 15 días
             </a>
           </div>
@@ -601,7 +628,15 @@ export function Landing() {
 
           <div className="precios-cta-row">
             {PLANES.map((plan) => (
-              <a key={plan.nombre} className="precios-cta" href="#contacto">
+              <a
+                key={plan.nombre}
+                className="precios-cta"
+                href="#contacto"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPopupOrigen(`Plan ${plan.nombre}`);
+                }}
+              >
                 Solicita tu prueba gratis de 15 días
               </a>
             ))}
@@ -667,6 +702,38 @@ export function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Mismo AgendarWidget de la sección de arriba, en un pop-up — para
+          que los botones "Solicita tu prueba gratis" de Ecosistema, Cómo
+          funciona y Precios no salten de golpe hasta el final de la
+          página. La sección #contacto de arriba se queda igual, para
+          quien llegue ahí bajando normal. key={popupOrigen}: cada vez que
+          se abre es un origen (botón) distinto, así que arranca en blanco
+          en vez de conservar el día/hora de una apertura anterior. */}
+      <dialog
+        className="agenda-dialog"
+        ref={dialogAgendaRef}
+        onClick={(e) => {
+          if (e.target === dialogAgendaRef.current) dialogAgendaRef.current?.close();
+        }}
+        onClose={() => setPopupOrigen(null)}
+      >
+        <button
+          type="button"
+          className="dialog-close"
+          aria-label="Cerrar"
+          onClick={() => dialogAgendaRef.current?.close()}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+          </svg>
+        </button>
+        {popupOrigen && (
+          <div className="agenda-formulario">
+            <AgendarWidget key={popupOrigen} origen={popupOrigen} />
+          </div>
+        )}
+      </dialog>
 
       <dialog
         className="legal-dialog"

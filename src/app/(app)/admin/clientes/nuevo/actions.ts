@@ -4,7 +4,8 @@ import { requerirAdmin } from "@/lib/empresa";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enviarCorreoBienvenida } from "@/lib/email";
 
-const PAGINAS_ENTRADA = ["ventas", "crm", "inventario", "pyg", "insights"] as const;
+const DIAS_VALIDOS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
+const PLANES_VALIDOS = ["startup", "pyme", "enterprise"] as const;
 
 function correoValido(correo: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
@@ -25,7 +26,13 @@ function generarContrasenaTemporal(): string {
 export async function crearCliente(input: {
   nombreEmpresa: string;
   modulosActivos: string[];
-  paginaEntrada: string;
+  crmModo: string;
+  horaApertura: string;
+  horaCierre: string;
+  diasAtencion: string[];
+  plan: string;
+  montoMensual: string;
+  diaPago: string;
   nombreCliente: string;
   correoCliente: string;
 }): Promise<
@@ -47,8 +54,25 @@ export async function crearCliente(input: {
   if (input.modulosActivos.length === 0) {
     return { ok: false, error: "Elige al menos un módulo." };
   }
-  if (!PAGINAS_ENTRADA.includes(input.paginaEntrada as (typeof PAGINAS_ENTRADA)[number])) {
-    return { ok: false, error: "Elige una página de entrada válida." };
+  if (input.crmModo !== "ventas" && input.crmModo !== "leads") {
+    return { ok: false, error: "Elige un modo de CRM válido." };
+  }
+  if (!input.diasAtencion.every((d) => (DIAS_VALIDOS as readonly string[]).includes(d))) {
+    return { ok: false, error: "Uno de los días de atención no es válido." };
+  }
+  if (!PLANES_VALIDOS.includes(input.plan as (typeof PLANES_VALIDOS)[number])) {
+    return { ok: false, error: "Elige un plan válido." };
+  }
+  const montoMensual = Number(input.montoMensual);
+  if (!Number.isFinite(montoMensual) || montoMensual <= 0) {
+    return { ok: false, error: "El monto mensual no es válido." };
+  }
+  let diaPago: number | null = null;
+  if (input.diaPago.trim()) {
+    diaPago = Number(input.diaPago);
+    if (!Number.isInteger(diaPago) || diaPago < 1 || diaPago > 31) {
+      return { ok: false, error: "El día de pago debe ser un número entre 1 y 31." };
+    }
   }
 
   const supabase = createAdminClient();
@@ -76,7 +100,11 @@ export async function crearCliente(input: {
     .insert({
       nombre: nombreEmpresa,
       modulos_activos: input.modulosActivos,
-      pagina_entrada: input.paginaEntrada,
+      crm_modo: input.crmModo,
+      hora_apertura: input.horaApertura || null,
+      hora_cierre: input.horaCierre || null,
+      dias_atencion: input.diasAtencion.length > 0 ? input.diasAtencion : null,
+      monto_mensual: montoMensual,
     })
     .select("id")
     .single();
@@ -101,7 +129,24 @@ export async function crearCliente(input: {
     return { ok: false, error: `No se pudo crear el perfil: ${errorPerfil.message}` };
   }
 
-  // 4. Correo de bienvenida — si falla, la cuenta ya quedó creada y
+  // 4. Suscripción — plan, monto y día de pago acordados, y arranca en
+  // 'prueba' (fecha_fin_prueba usa su default de 15 días calendario, la
+  // misma prueba gratuita del contrato). El cobro sigue siendo manual por
+  // ahora (ver sección "Cobros" en CLAUDE.md); esto es solo el dato para
+  // saber cuánto y cuándo cobrarle.
+  const { error: errorSuscripcion } = await supabase.from("suscripciones").insert({
+    empresa_id: empresaCreada.id,
+    monto_mensual: montoMensual,
+    plan: input.plan,
+    dia_pago: diaPago,
+  });
+  if (errorSuscripcion) {
+    await supabase.auth.admin.deleteUser(usuarioId);
+    await supabase.from("empresas").delete().eq("id", empresaCreada.id);
+    return { ok: false, error: `No se pudo crear la suscripción: ${errorSuscripcion.message}` };
+  }
+
+  // 5. Correo de bienvenida — si falla, la cuenta ya quedó creada y
   // funcionando igual (no se deshace nada); se devuelve la contraseña para
   // que quede visible en pantalla y se pueda mandar por otro medio.
   const resultadoCorreo = await enviarCorreoBienvenida({

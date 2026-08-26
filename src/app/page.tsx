@@ -20,6 +20,7 @@ export default async function RootPage() {
     redirect("/ventas");
   }
 
-  const paginaEntrada = perfil.empresas?.pagina_entrada;
-  redirect(paginaEntrada ? `/${paginaEntrada}` : "/resumen");
+  // La página de entrada siempre es el resumen — ya no varía por empresa
+  // (antes lo decidía empresas.pagina_entrada).
+  redirect("/resumen");
 }

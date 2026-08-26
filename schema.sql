@@ -33,8 +33,6 @@ create table empresas (
     )),
   plan_id uuid references planes(id),
   modulos_activos text[] default '{}',        -- ajuste manual sobre el plan
-  pagina_entrada text not null default 'ventas'
-    check (pagina_entrada in ('ventas','crm','inventario','pyg','insights')),  -- en qué módulo aterriza al iniciar sesión; lo decide el diagnóstico, no el cliente
   -- 'ventas': el CRM se comporta como siempre — embudo fijo de 4 etapas, sin
   -- pantalla de configuración, contactos que nacen casi todos ya cerrados
   -- porque vienen de una venta (ej. Aseo Total, Café Mensajero). 'leads':
@@ -56,6 +54,13 @@ create table empresas (
   hora_apertura time,
   hora_cierre time,
   atiende_festivos boolean not null default true,
+  -- Qué días de la semana atiende — mismos valores que proveedores.dia_semana_pago
+  -- ('lunes'..'domingo'). Sin configurar (null, el default), Panel de control
+  -- asume que atiende todos los días, igual que hora_apertura/hora_cierre sin
+  -- configurar asume que atiende todo el horario. Se activa a mano, mismo
+  -- criterio que crm_modo.
+  dias_atencion text[]
+    check (dias_atencion is null or dias_atencion <@ array['lunes','martes','miercoles','jueves','viernes','sabado','domingo']::text[]),
   -- Cómo paga nómina esta empresa — solo aplica si tiene el módulo 'nomina'
   -- activo en modulos_activos; esto define el cómo, no el si.
   nomina_frecuencia_pago text not null default 'mensual' check (nomina_frecuencia_pago in ('mensual','quincenal')),
@@ -170,12 +175,20 @@ create table suscripciones (
   estado text not null default 'prueba'
     check (estado in ('prueba','activa','vencida','cancelada')),
   fecha_inicio_prueba timestamptz not null default now(),
-  fecha_fin_prueba timestamptz not null default (now() + interval '30 days'),
+  -- 15 días calendario (Cláusula 5.1 del contrato — bajó de 30 a 15 el
+  -- 2026-08-10; este default se corrigió junto con esa cláusula).
+  fecha_fin_prueba timestamptz not null default (now() + interval '15 days'),
   fecha_proximo_cobro timestamptz,
   -- Precio congelado de esta empresa al momento de suscribirse — mismo
   -- criterio que ventas_items.precio_unitario: si el plan sube de precio
   -- después, esta empresa no cambia hasta que se renegocie.
   monto_mensual numeric(12,2) not null,
+  -- Plan elegido, y qué día del mes cae el pago — hoy es solo un dato para el
+  -- cobro manual (transferencia), no dispara nada solo. El día que haya
+  -- cobro automático (ver sección "Cobros" en CLAUDE.md), dia_pago pasa a
+  -- decidir cuándo se intenta el cobro real.
+  plan text check (plan is null or plan in ('startup','pyme','enterprise')),
+  dia_pago integer check (dia_pago is null or dia_pago between 1 and 31),
   proveedor_pago text check (proveedor_pago is null or proveedor_pago in ('wompi','bold')),
   atributos jsonb not null default '{}',
   created_at timestamptz default now()

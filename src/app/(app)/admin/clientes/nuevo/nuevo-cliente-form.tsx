@@ -13,12 +13,20 @@ const MODULOS = [
   { value: "insights", label: "Panel de control" },
 ];
 
-const PAGINAS_ENTRADA = [
-  { value: "ventas", label: "Ventas" },
-  { value: "crm", label: "CRM" },
-  { value: "inventario", label: "Inventario" },
-  { value: "pyg", label: "Estado P y G" },
-  { value: "insights", label: "Panel de control" },
+const DIAS = [
+  { value: "lunes", label: "Lun" },
+  { value: "martes", label: "Mar" },
+  { value: "miercoles", label: "Mié" },
+  { value: "jueves", label: "Jue" },
+  { value: "viernes", label: "Vie" },
+  { value: "sabado", label: "Sáb" },
+  { value: "domingo", label: "Dom" },
+];
+
+const PLANES = [
+  { value: "startup", label: "Startup — $99.900/mes" },
+  { value: "pyme", label: "Pyme — $199.900/mes" },
+  { value: "enterprise", label: "Enterprise — $349.900/mes" },
 ];
 
 type Resultado =
@@ -28,7 +36,13 @@ type Resultado =
 export function NuevoClienteForm() {
   const [nombreEmpresa, setNombreEmpresa] = useState("");
   const [modulosActivos, setModulosActivos] = useState<string[]>([]);
-  const [paginaEntrada, setPaginaEntrada] = useState("ventas");
+  const [crmModo, setCrmModo] = useState("ventas");
+  const [horaApertura, setHoraApertura] = useState("");
+  const [horaCierre, setHoraCierre] = useState("");
+  const [diasAtencion, setDiasAtencion] = useState<string[]>([]);
+  const [plan, setPlan] = useState("startup");
+  const [montoMensual, setMontoMensual] = useState("99900");
+  const [diaPago, setDiaPago] = useState("");
   const [nombreCliente, setNombreCliente] = useState("");
   const [correoCliente, setCorreoCliente] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -38,6 +52,12 @@ export function NuevoClienteForm() {
   function alternarModulo(valor: string) {
     setModulosActivos((actuales) =>
       actuales.includes(valor) ? actuales.filter((m) => m !== valor) : [...actuales, valor],
+    );
+  }
+
+  function alternarDia(valor: string) {
+    setDiasAtencion((actuales) =>
+      actuales.includes(valor) ? actuales.filter((d) => d !== valor) : [...actuales, valor],
     );
   }
 
@@ -53,13 +73,23 @@ export function NuevoClienteForm() {
       setError("Elige al menos un módulo.");
       return;
     }
+    if (!montoMensual.trim()) {
+      setError("Completa el monto mensual.");
+      return;
+    }
 
     setEnviando(true);
     try {
       const res = await crearCliente({
         nombreEmpresa,
         modulosActivos,
-        paginaEntrada,
+        crmModo,
+        horaApertura,
+        horaCierre,
+        diasAtencion,
+        plan,
+        montoMensual,
+        diaPago,
         nombreCliente,
         correoCliente,
       });
@@ -70,7 +100,13 @@ export function NuevoClienteForm() {
       setResultado(res);
       setNombreEmpresa("");
       setModulosActivos([]);
-      setPaginaEntrada("ventas");
+      setCrmModo("ventas");
+      setHoraApertura("");
+      setHoraCierre("");
+      setDiasAtencion([]);
+      setPlan("startup");
+      setMontoMensual("99900");
+      setDiaPago("");
       setNombreCliente("");
       setCorreoCliente("");
     } finally {
@@ -82,8 +118,8 @@ export function NuevoClienteForm() {
     <div className="max-w-md">
       <h1 className="mb-1 text-lg font-semibold text-gray-900">Crear cliente</h1>
       <p className="mb-6 text-sm text-gray-500">
-        Crea el usuario, la empresa y el perfil de un cliente nuevo en un solo paso, y le manda
-        el correo de bienvenida con sus datos de acceso.
+        Crea el usuario, la empresa, el perfil y la suscripción de un cliente nuevo en un solo
+        paso, y le manda el correo de bienvenida con sus datos de acceso.
       </p>
 
       <div className="space-y-4">
@@ -120,20 +156,118 @@ export function NuevoClienteForm() {
           </div>
         </div>
 
+        {modulosActivos.includes("crm") && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Modo de CRM</label>
+            <select
+              value={crmModo}
+              onChange={(e) => setCrmModo(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            >
+              <option value="ventas">Ventas (embudo fijo, contactos que nacen de una venta)</option>
+              <option value="leads">Leads (cotiza o negocia antes de vender, embudo configurable)</option>
+            </select>
+          </div>
+        )}
+
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Página de entrada</label>
-          <select
-            value={paginaEntrada}
-            onChange={(e) => setPaginaEntrada(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-          >
-            {PAGINAS_ENTRADA.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-gray-400">A dónde llega esta empresa al iniciar sesión.</p>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Horario de atención <span className="font-normal text-gray-400">(opcional)</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="time"
+              value={horaApertura}
+              onChange={(e) => setHoraApertura(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+            <input
+              type="time"
+              value={horaCierre}
+              onChange={(e) => setHoraCierre(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Días de atención <span className="font-normal text-gray-400">(opcional)</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {DIAS.map((d) => {
+              const activo = diasAtencion.includes(d.value);
+              return (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => alternarDia(d.value)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    activo
+                      ? "border-gray-900 bg-gray-900 text-white"
+                      : "border-gray-300 text-gray-600 hover:border-gray-400"
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-gray-400">
+            Sin elegir ninguno, se asume que atiende todos los días.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Plan</label>
+            <select
+              value={plan}
+              onChange={(e) => {
+                const nuevoPlan = e.target.value;
+                setPlan(nuevoPlan);
+                const sugerido = PLANES.find((p) => p.value === nuevoPlan);
+                if (sugerido && nuevoPlan === "startup") setMontoMensual("99900");
+                if (sugerido && nuevoPlan === "pyme") setMontoMensual("199900");
+                if (sugerido && nuevoPlan === "enterprise") setMontoMensual("349900");
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            >
+              {PLANES.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Monto mensual</label>
+            <input
+              type="number"
+              value={montoMensual}
+              onChange={(e) => setMontoMensual(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Día de pago del mes <span className="font-normal text-gray-400">(opcional)</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={31}
+            value={diaPago}
+            onChange={(e) => setDiaPago(e.target.value)}
+            placeholder="Ej. 5"
+            className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            Solo para saber cuándo recordarle el pago manual — el cobro sigue siendo por
+            transferencia, no hay pasarela conectada todavía.
+          </p>
         </div>
 
         <div>

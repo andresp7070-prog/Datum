@@ -375,6 +375,23 @@ Autoservicio real, al estilo Calendly: el visitante ve horarios libres de verdad
 - **Cambiar contraseña desde Mi cuenta** (agregado 2026-08-12, `/cuenta` → `cambiarPassword()`): mismo flujo que "Recuperar contraseña" pero con sesión ya activa — solo pide la contraseña nueva dos veces, no la actual. Al guardar, cierra la sesión de ese dispositivo (`supabase.auth.signOut()`) y redirige a `/login`, así que hay que iniciar sesión de nuevo con la contraseña nueva. Aplica igual a toda empresa/rol, sin relación con `crm_modo`. Ojo: esto solo cierra la sesión en el dispositivo donde se hizo el cambio — cerrar sesión en todos los dispositivos a la vez requeriría la llave de servicio de Supabase, que esta app no usa desde el cliente (principio de portabilidad).
 - **Aviso de actualizaciones**: pop-up que se muestra una sola vez, en el siguiente inicio de sesión después de agregar una fila a la tabla `actualizaciones` (título + contenido). Cada perfil recuerda cuál fue la última que ya cerró (`perfiles.ultima_actualizacion_vista_id`), así que no se repite. No hay pantalla propia para crearlas todavía — se agregan a mano desde la tabla de Supabase, igual que `festivos`. Hoy la tabla está vacía a propósito, así que no le sale a nadie.
 
+## Pendientes (lista para revisar de vez en cuando)
+A diferencia de "Ideas futuras" (cosas que no se han pedido todavía), esto son cabos sueltos de cosas que YA se construyeron o ya se decidieron, pero les falta un paso para quedar completas. Se va marcando como resuelto (o se borra) a medida que se cierra cada uno — no es un historial, es la lista de "qué falta ajustar hoy".
+
+- **Correo de bienvenida no le llega a clientes reales todavía** (2026-08-26): Resend está en modo de prueba, así que solo puede mandar correos a `andresp7070@gmail.com`. Falta comprar un dominio propio, verificarlo en resend.com/domains, y configurar `RESEND_FROM_EMAIL` en Vercel con una dirección de ese dominio. Mientras tanto, "Crear cliente" sigue funcionando bien — solo que hay que mandar la contraseña generada por otro medio (queda visible en pantalla).
+- **Cadencia de los correos automáticos — falta terminar de definir cuáles se mandan solos y cuándo**: hoy en `src/lib/email.ts` hay 4 plantillas, pero no todas están conectadas a un disparador automático.
+  - `enviarCorreoBienvenida` — ✅ automático, se dispara al crear el cliente.
+  - `enviarCorreoResumenSemanal` — ✅ automático, cron todos los lunes 8am Colombia (`vercel.json` + `/api/cron/resumen-semanal`).
+  - `enviarCorreoFinDePrueba` — ⏳ la plantilla ya existe, pero solo se puede mandar a mano desde `/admin/correos`. Falta un cron parecido al del resumen semanal que la dispare sola cuando se acerque `suscripciones.fecha_fin_prueba` — y decidir con cuántos días de anticipación (¿3? ¿5?).
+  - `enviarCorreoPagoFallido` — ⏳ la plantilla existe pero no puede dispararse de verdad todavía: depende de tener una pasarela de pagos conectada (ver más abajo) para que exista un "pago fallido" real que la dispare.
+- **WhatsApp automático de bienvenida** — pedido explícitamente, pospuesto a propósito hasta terminar el correo primero.
+- **Elegir pasarela de pago (Wompi vs. Bold)** — bloquea el cobro recurrente autogestionable y el paso de "registrar método de pago" en el primer inicio de sesión (ver sección "Cobros").
+- **Nómina: agregar columna de correo a `empleados`** — para poder mandar el desprendible de pago por correo automáticamente (hoy es deliberadamente manual).
+- **Facturación electrónica: cotizar con 2-3 proveedores** (Factus, Alanube, Bilidox) — es lo último de la lista de construcción a propósito, no adelantarlo.
+- **Los dos documentos legales (contrato, política de datos) son borradores** — falta que un abogado colombiano habilitado los revise antes de usarlos con un cliente real. También falta confirmar la región de hosting de Supabase/Vercel para cerrar la Política de Tratamiento de Datos, y elegir un proveedor de firma electrónica para el contrato.
+- **Definir cómo se cotiza el desarrollo a la medida** (por horas, por alcance fijo, etc.) — hoy solo se sabe que se cobra aparte de la suscripción.
+- **IVA**: si en el futuro se supera el umbral de No responsable de IVA, falta decidir si los precios actuales se mantienen como precio final o se les suma el IVA aparte.
+
 ## Ideas futuras (anotadas, no construir todavía)
 Mismo criterio que "domicilios" en Ventas: quedan escritas para no perderlas, pero no se construyen hasta que haya un caso real (un cliente que de verdad lo necesite), no antes.
 

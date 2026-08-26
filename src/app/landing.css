@@ -488,12 +488,12 @@
 
   /* Mismo título/subtítulo que la sección #contacto de abajo — para que
      quien abre el pop-up desde un botón (sin ver esa sección) tenga el
-     mismo contexto de qué está agendando. Izquierda, no centrado como
-     en #contacto — centrado a este ancho el texto pasaba justo por
-     debajo de la X (top:12/right:12 más arriba), y font-size mucho más
-     chico que el h2 de la landing (acá es un pop-up compacto, no un
-     encabezado de sección). */
-  .agenda-dialog-texto { text-align: left; margin: 0 0 18px; padding-right: 36px; }
+     mismo contexto de qué está agendando. Centrado, igual que en
+     #contacto; font-size mucho más chico que el h2 de la landing (acá es
+     un pop-up compacto, no un encabezado de sección) — a este tamaño no
+     llega a chocar con la X de cerrar. margin-bottom más grande (28px,
+     no 18px) para separarlo del calendario de abajo. */
+  .agenda-dialog-texto { text-align: center; margin: 0 0 28px; }
   .agenda-dialog-texto h2 {
     font-family: var(--font-fraunces), serif; font-size: 19px; font-weight: 600;
     line-height: 1.25; margin: 0 0 6px;

@@ -434,20 +434,33 @@
   .dialog-close svg { width: 14px; height: 14px; }
 
   /* Mismo molde que .legal-dialog (margin:auto, tarjeta clara, backdrop),
-     pero con menos padding y sin tope de alto propio — adentro va
+     pero con mucho menos padding y sin tope de alto propio — adentro va
      .agenda-formulario, que ya trae su propio fondo navy, padding y
      max-width (560px, ver más abajo) calculados para verse bien solo;
-     acá solo se le da el marco claro + el botón de cerrar alrededor,
-     como una tarjeta dentro de otra. */
+     acá solo se le da un marco claro fino + el botón de cerrar alrededor,
+     como una tarjeta dentro de otra. padding chico (8px, no 20px) a
+     propósito — con más, el marco blanco se veía como un borde grueso en
+     vez de un filo delgado. position:relative para que .dialog-close
+     (ver más abajo) se pueda anclar a la esquina de ESTE marco con su
+     propio margen, en vez de depender de este padding ya chico. */
   .agenda-dialog {
+    position: relative;
     margin: auto;
-    width: min(600px, 92vw); max-height: 90vh; padding: 20px;
+    width: min(600px, 92vw); max-height: 90vh; padding: 8px;
     border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: var(--ink);
     box-shadow: 0 24px 64px -16px rgba(20, 21, 31, 0.3);
     overflow-y: auto;
   }
   .agenda-dialog::backdrop { background: rgba(20, 21, 31, 0.5); backdrop-filter: blur(2px); }
   .agenda-dialog .agenda-formulario { margin: 0; }
+  /* .dialog-close normalmente usa sticky+float, apoyado en el padding del
+     diálogo que lo contiene — acá ese padding es demasiado chico (8px)
+     para que el botón quede a una distancia cómoda de la esquina, así
+     que se ancla aparte con position:absolute + su propio margen (14px),
+     sin depender del padding fino de arriba. */
+  .agenda-dialog .dialog-close {
+    position: absolute; top: 14px; right: 14px; margin-left: 0; float: none;
+  }
 
 
   .precios-table { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong); }

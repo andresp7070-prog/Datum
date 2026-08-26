@@ -486,6 +486,23 @@
     position: absolute; top: 12px; right: 12px; margin-left: 0; float: none;
   }
 
+  /* Mismo título/subtítulo que la sección #contacto de abajo — para que
+     quien abre el pop-up desde un botón (sin ver esa sección) tenga el
+     mismo contexto de qué está agendando. Centrado, igual que en
+     #contacto; font-size mucho más chico que el h2 de la landing (acá es
+     un pop-up compacto, no un encabezado de sección) — a este tamaño no
+     llega a chocar con la X de cerrar. margin-bottom más grande (28px,
+     no 18px) para separarlo del calendario de abajo. */
+  .agenda-dialog-texto { text-align: center; margin: 0 0 28px; }
+  .agenda-dialog-texto h2 {
+    font-family: var(--font-fraunces), serif; font-size: 19px; font-weight: 600;
+    line-height: 1.25; margin: 0 0 6px;
+  }
+  /* text-wrap:balance (mismo recurso que ya usa .hero .lede) — sin esto,
+     el párrafo se cortaba donde alcanzara el ancho de la línea, dejando
+     una primera línea larga y una segunda cortita en vez de parejas. */
+  .agenda-dialog-texto .sub { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-soft); text-wrap: balance; }
+
 
   .precios-table { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong); }
   .precios-table .plan { position: relative; min-width: 0; padding: 40px 28px; border-left: 1.5px solid var(--line-strong); text-align: center; }
@@ -873,7 +890,7 @@
   @media (max-width: 1150px) {
     .agenda-texto h2 { white-space: normal; }
   }
-  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; }
+  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; text-wrap: balance; }
   /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
      #precios y #ecosistema — ver el comentario grande sobre .hero más
      arriba) en vez del --card claro genérico: así combina con la

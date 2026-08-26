@@ -156,19 +156,20 @@ export function NuevoClienteForm() {
           </div>
         </div>
 
-        {modulosActivos.includes("crm") && (
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Modo de CRM</label>
-            <select
-              value={crmModo}
-              onChange={(e) => setCrmModo(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-            >
-              <option value="ventas">Ventas (embudo fijo, contactos que nacen de una venta)</option>
-              <option value="leads">Leads (cotiza o negocia antes de vender, embudo configurable)</option>
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Modo de CRM</label>
+          <select
+            value={crmModo}
+            onChange={(e) => setCrmModo(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          >
+            <option value="ventas">Ventas (embudo fijo, contactos que nacen de una venta)</option>
+            <option value="leads">Leads (cotiza o negocia antes de vender, embudo configurable)</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-400">
+            Solo aplica si activas el módulo CRM, pero queda guardado desde ya.
+          </p>
+        </div>
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">

@@ -314,8 +314,13 @@
     font-size: clamp(15px, 1.1vw, 18px); color: var(--ink-soft);
     text-wrap: balance;
   }
+  /* Mismo botón que Ecosistema/Cómo funciona/Precios (.precios-cta), acá
+     entre el texto descriptivo y la flecha de "ver más abajo" — position
+     relative + z-index para quedar encima de la esfera de puntos del
+     hero (que se anima libre por detrás de .hero-texto). */
+  .hero .hero-cta { position: relative; z-index: 1; margin-top: 28px; }
   .hero .more {
-    position: relative; margin-top: 40px;
+    position: relative; margin-top: 24px;
     display: inline-flex; align-items: center; justify-content: center;
     width: 40px; height: 40px; border-radius: 50%; color: var(--ink-soft);
     transition: color 0.15s ease, border-color 0.15s ease;
@@ -517,6 +522,14 @@
   #precios.chapter-oscuro .billing-btn.is-active { color: #14151f; }
   #precios.chapter-oscuro .plan.destacado { background: rgba(243, 242, 238, 0.07); }
   #precios.chapter-oscuro .plan-flag { color: #1a1b33; }
+  /* .precios-cta:hover pone el fondo en var(--ink) y el texto en
+     var(--bg) — en las 3 secciones navy (hero, ecosistema, precios)
+     --ink queda sobreescrito a un tono claro, pero --bg se queda en el
+     beige/crema de toda la página (nunca se sobreescribe), así que sin
+     este fix el texto en hover quedaba casi invisible (beige sobre
+     beige). Mismo fix en las 3, no solo en precios. */
+  .hero .precios-cta:hover,
+  #ecosistema.chapter-oscuro .precios-cta:hover,
   #precios.chapter-oscuro .precios-cta:hover { color: #1a1b33; }
 
   /* Ecosistema también en navy, para que combine con el hero y Precios. */

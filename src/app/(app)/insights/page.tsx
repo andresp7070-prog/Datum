@@ -225,6 +225,18 @@ const ABREVIATURA_DIA: Record<string, string> = {
   Sábado: "Sáb",
   Domingo: "Dom",
 };
+// empresas.dias_atencion guarda las mismas claves que proveedores.dia_semana_pago
+// (minúscula, sin tilde) — este mapa las conecta con ORDEN_DIAS, que sigue el
+// formato de vista_ventas_por_dia (capitalizado, con tilde).
+const DIA_A_CLAVE: Record<string, string> = {
+  Lunes: "lunes",
+  Martes: "martes",
+  Miércoles: "miercoles",
+  Jueves: "jueves",
+  Viernes: "viernes",
+  Sábado: "sabado",
+  Domingo: "domingo",
+};
 const UMBRAL_DESVIACION_DIA = 0.2; // 20%
 const UMBRAL_MARGEN_BAJO = 15; // %
 
@@ -345,7 +357,11 @@ async function ContenidoInsights({
   // consistente con Ventas, Inventario y P y G.
   const [{ data: empresaHorario }, { puntoSeleccionado: puntoVentaFiltro }, { data: productosData }] =
     await Promise.all([
-      supabase.from("empresas").select("hora_apertura, hora_cierre, atiende_festivos").eq("id", empresaId).single(),
+      supabase
+        .from("empresas")
+        .select("hora_apertura, hora_cierre, atiende_festivos, dias_atencion")
+        .eq("id", empresaId)
+        .single(),
       obtenerContextoPunto(supabase, empresaId, perfil.punto_venta_id),
       supabase.from("inventario_items").select("id, nombre").eq("empresa_id", empresaId).order("nombre"),
     ]);
@@ -357,6 +373,12 @@ async function ContenidoInsights({
     ? Number(empresaHorario.hora_cierre.slice(0, 2))
     : null;
   const atiendeFestivos = empresaHorario?.atiende_festivos ?? true;
+  // Sin configurar (null, el default), se asume que atiende todos los días —
+  // mismo criterio que hora_apertura/hora_cierre sin configurar.
+  const diasAtencion = (empresaHorario?.dias_atencion ?? null) as string[] | null;
+  const diasVisibles = ORDEN_DIAS.filter(
+    (dia) => diasAtencion === null || diasAtencion.includes(DIA_A_CLAVE[dia]),
+  );
 
   const productos = (productosData ?? []) as { id: string; nombre: string }[];
 
@@ -510,7 +532,7 @@ async function ContenidoInsights({
   }
 
   // ---- Agregados para el resumen general ----
-  const porDiaSemana = ORDEN_DIAS.map((dia) => {
+  const porDiaSemana = diasVisibles.map((dia) => {
     const filas = ventasPorDia.filter((f) => f.dia_semana === dia);
     const totalVendido = filas.reduce((s, f) => s + f.total_vendido, 0);
     const promedio = filas.length > 0 ? totalVendido / filas.length : 0;
@@ -538,7 +560,7 @@ async function ContenidoInsights({
 
   // Festivo vs. normal, día de semana por día de semana — para responder
   // directamente "lunes vs. lunes festivo, martes vs. martes festivo...".
-  const festivosPorDiaSemana = ORDEN_DIAS.map((dia) => {
+  const festivosPorDiaSemana = diasVisibles.map((dia) => {
     const normales = ventasPorDia.filter((f) => f.dia_semana === dia && !f.es_festivo);
     const festivosDia = ventasPorDia.filter((f) => f.dia_semana === dia && f.es_festivo);
     const promedioNormalDia = normales.length > 0 ? normales.reduce((s, f) => s + f.total_vendido, 0) / normales.length : null;

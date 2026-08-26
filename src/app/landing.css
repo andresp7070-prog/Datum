@@ -498,7 +498,10 @@
     font-family: var(--font-fraunces), serif; font-size: 19px; font-weight: 600;
     line-height: 1.25; margin: 0 0 6px;
   }
-  .agenda-dialog-texto .sub { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-soft); }
+  /* text-wrap:balance (mismo recurso que ya usa .hero .lede) — sin esto,
+     el párrafo se cortaba donde alcanzara el ancho de la línea, dejando
+     una primera línea larga y una segunda cortita en vez de parejas. */
+  .agenda-dialog-texto .sub { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-soft); text-wrap: balance; }
 
 
   .precios-table { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong); }
@@ -887,7 +890,7 @@
   @media (max-width: 1150px) {
     .agenda-texto h2 { white-space: normal; }
   }
-  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; }
+  .agenda-texto .sub { color: var(--ink-soft); font-size: 17px; max-width: 60ch; margin: 18px auto 0; text-wrap: balance; }
   /* El widget vive en su propio navy fijo (mismo #1a1b33 que el hero,
      #precios y #ecosistema — ver el comentario grande sobre .hero más
      arriba) en vez del --card claro genérico: así combina con la

@@ -452,14 +452,22 @@
     overflow-y: auto;
   }
   .agenda-dialog::backdrop { background: rgba(20, 21, 31, 0.5); backdrop-filter: blur(2px); }
-  .agenda-dialog .agenda-formulario { margin: 0; }
+  /* Sin margin:0 acá a propósito — .agenda-formulario ya trae margin:0
+     auto de su regla base (pensada para centrarlo en la columna del
+     60% de la sección de abajo). Un margin:0 puesto encima de eso lo
+     dejaba pegado a la izquierda del marco en vez de centrado, así que
+     el filo blanco se veía más grueso a la derecha que a la izquierda
+     (todo el sobrante de ancho se iba para ese lado). Dejando el
+     margin:auto heredado, ese sobrante se reparte igual a los dos
+     lados y el marco queda parejo. */
   /* .dialog-close normalmente usa sticky+float, apoyado en el padding del
      diálogo que lo contiene — acá ese padding es demasiado chico (8px)
      para que el botón quede a una distancia cómoda de la esquina, así
-     que se ancla aparte con position:absolute + su propio margen (14px),
-     sin depender del padding fino de arriba. */
+     que se ancla aparte con position:absolute + su propio margen, sin
+     depender del padding fino de arriba. right:22px (no 14px) para que
+     quede más adentro, más lejos de la curva de la esquina. */
   .agenda-dialog .dialog-close {
-    position: absolute; top: 14px; right: 14px; margin-left: 0; float: none;
+    position: absolute; top: 14px; right: 22px; margin-left: 0; float: none;
   }
 
 

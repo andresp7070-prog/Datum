@@ -40,6 +40,14 @@ const MONTO_SUGERIDO_POR_PLAN: Record<string, string> = {
   enterprise: "449900",
 };
 
+// Mismo descuento que DESCUENTO_ANUAL en landing.tsx — no se guarda el total
+// anual aparte, solo se muestra acá como referencia para saber qué cobrarle.
+const DESCUENTO_ANUAL = 0.15;
+
+function formatoCOP(valor: number) {
+  return "$" + Math.round(valor).toLocaleString("es-CO");
+}
+
 type Resultado =
   | { ok: true; contrasena: string; correoEnviado: boolean; errorCorreo: string | null }
   | { ok: false; error: string };
@@ -54,6 +62,7 @@ export function NuevoClienteForm() {
   const [diasAtencion, setDiasAtencion] = useState<string[]>([]);
   const [plan, setPlan] = useState("basic");
   const [montoMensual, setMontoMensual] = useState("99900");
+  const [facturacion, setFacturacion] = useState("mensual");
   const [diaPago, setDiaPago] = useState("");
   const [nombreCliente, setNombreCliente] = useState("");
   const [correoCliente, setCorreoCliente] = useState("");
@@ -102,6 +111,7 @@ export function NuevoClienteForm() {
         diasAtencion,
         plan,
         montoMensual,
+        facturacion,
         diaPago,
         nombreCliente,
         correoCliente,
@@ -120,6 +130,7 @@ export function NuevoClienteForm() {
       setDiasAtencion([]);
       setPlan("basic");
       setMontoMensual("99900");
+      setFacturacion("mensual");
       setDiaPago("");
       setNombreCliente("");
       setCorreoCliente("");
@@ -268,6 +279,41 @@ export function NuevoClienteForm() {
             </select>
           </div>
           <CampoMoneda id="montoMensual" label="Monto mensual" value={montoMensual} onChange={setMontoMensual} />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Frecuencia de pago</label>
+          <div className="flex gap-2">
+            {[
+              { value: "mensual", label: "Mensual" },
+              { value: "anual", label: "Anual (-15%)" },
+            ].map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFacturacion(f.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  facturacion === f.value
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {facturacion === "anual" &&
+            (() => {
+              const base = Number(montoMensual) || 0;
+              const totalSinDescuento = base * 12;
+              const totalConDescuento = totalSinDescuento * (1 - DESCUENTO_ANUAL);
+              return (
+                <p className="mt-1 text-xs text-gray-400">
+                  Se le cobra una sola vez al año: {formatoCOP(totalConDescuento)} (ahorra{" "}
+                  {formatoCOP(totalSinDescuento - totalConDescuento)} frente a pagar mes a mes).
+                </p>
+              );
+            })()}
         </div>
 
         <div>

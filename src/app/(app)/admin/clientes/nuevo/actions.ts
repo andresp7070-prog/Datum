@@ -33,6 +33,7 @@ export async function crearCliente(input: {
   diasAtencion: string[];
   plan: string;
   montoMensual: string;
+  facturacion: string;
   diaPago: string;
   nombreCliente: string;
   correoCliente: string;
@@ -70,6 +71,9 @@ export async function crearCliente(input: {
   const montoMensual = Number(input.montoMensual);
   if (!Number.isFinite(montoMensual) || montoMensual <= 0) {
     return { ok: false, error: "El monto mensual no es válido." };
+  }
+  if (input.facturacion !== "mensual" && input.facturacion !== "anual") {
+    return { ok: false, error: "Elige una frecuencia de facturación válida." };
   }
   let diaPago: number | null = null;
   if (input.diaPago.trim()) {
@@ -136,15 +140,16 @@ export async function crearCliente(input: {
     return { ok: false, error: `No se pudo crear el perfil: ${errorPerfil.message}` };
   }
 
-  // 4. Suscripción — plan, monto y día de pago acordados, y arranca en
-  // 'prueba' (fecha_fin_prueba usa su default de 15 días calendario, la
-  // misma prueba gratuita del contrato). El cobro sigue siendo manual por
-  // ahora (ver sección "Cobros" en CLAUDE.md); esto es solo el dato para
-  // saber cuánto y cuándo cobrarle.
+  // 4. Suscripción — plan, monto, si se factura mensual o anual, y día de
+  // pago acordados, y arranca en 'prueba' (fecha_fin_prueba usa su default
+  // de 15 días calendario, la misma prueba gratuita del contrato). El cobro
+  // sigue siendo manual por ahora (ver sección "Cobros" en CLAUDE.md); esto
+  // es solo el dato para saber cuánto y cuándo cobrarle.
   const { error: errorSuscripcion } = await supabase.from("suscripciones").insert({
     empresa_id: empresaCreada.id,
     monto_mensual: montoMensual,
     plan: input.plan,
+    facturacion: input.facturacion,
     dia_pago: diaPago,
   });
   if (errorSuscripcion) {

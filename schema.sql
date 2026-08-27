@@ -188,6 +188,12 @@ create table suscripciones (
   -- cobro automático (ver sección "Cobros" en CLAUDE.md), dia_pago pasa a
   -- decidir cuándo se intenta el cobro real.
   plan text check (plan is null or plan in ('basic','startup','pyme','enterprise')),
+  -- 'mensual': se cobra monto_mensual cada mes. 'anual': se cobra una sola
+  -- vez al año, con el 15% de descuento (DESCUENTO_ANUAL en landing.tsx)
+  -- sobre monto_mensual * 12 — ese total no se guarda aparte, se calcula
+  -- cuando haga falta, monto_mensual sigue siendo el valor mensual de
+  -- referencia en los dos casos.
+  facturacion text not null default 'mensual' check (facturacion in ('mensual','anual')),
   dia_pago integer check (dia_pago is null or dia_pago between 1 and 31),
   proveedor_pago text check (proveedor_pago is null or proveedor_pago in ('wompi','bold')),
   atributos jsonb not null default '{}',

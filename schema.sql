@@ -187,7 +187,7 @@ create table suscripciones (
   -- cobro manual (transferencia), no dispara nada solo. El día que haya
   -- cobro automático (ver sección "Cobros" en CLAUDE.md), dia_pago pasa a
   -- decidir cuándo se intenta el cobro real.
-  plan text check (plan is null or plan in ('startup','pyme','enterprise')),
+  plan text check (plan is null or plan in ('basic','startup','pyme','enterprise')),
   dia_pago integer check (dia_pago is null or dia_pago between 1 and 31),
   proveedor_pago text check (proveedor_pago is null or proveedor_pago in ('wompi','bold')),
   atributos jsonb not null default '{}',

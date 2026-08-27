@@ -4,6 +4,9 @@ import { useState } from "react";
 import { CampoMoneda } from "@/components/campo-moneda";
 import { crearCliente } from "./actions";
 
+// Panel de control (insights) no está en esta lista a propósito — es
+// siempre gratis y no ocupa cupo del plan, así que se agrega solo en
+// crearCliente(), sin que la persona tenga que elegirlo.
 const MODULOS = [
   { value: "ventas", label: "Ventas" },
   { value: "crm", label: "CRM" },
@@ -11,7 +14,6 @@ const MODULOS = [
   { value: "pyg", label: "Estado P y G" },
   { value: "nomina", label: "Nómina" },
   { value: "promociones", label: "Promociones" },
-  { value: "insights", label: "Panel de control" },
 ];
 
 const DIAS = [
@@ -25,10 +27,18 @@ const DIAS = [
 ];
 
 const PLANES = [
-  { value: "startup", label: "Startup — $99.900/mes" },
-  { value: "pyme", label: "Pyme — $199.900/mes" },
-  { value: "enterprise", label: "Enterprise — $349.900/mes" },
+  { value: "basic", label: "Basic — $99.900/mes (1 módulo)" },
+  { value: "startup", label: "Startup — $269.900/mes (hasta 3 módulos)" },
+  { value: "pyme", label: "Pyme — $399.900/mes (hasta 5 módulos)" },
+  { value: "enterprise", label: "Enterprise — $449.900/mes (todos los módulos)" },
 ];
+
+const MONTO_SUGERIDO_POR_PLAN: Record<string, string> = {
+  basic: "99900",
+  startup: "269900",
+  pyme: "399900",
+  enterprise: "449900",
+};
 
 type Resultado =
   | { ok: true; contrasena: string; correoEnviado: boolean; errorCorreo: string | null }
@@ -42,7 +52,7 @@ export function NuevoClienteForm() {
   const [horaApertura, setHoraApertura] = useState("");
   const [horaCierre, setHoraCierre] = useState("");
   const [diasAtencion, setDiasAtencion] = useState<string[]>([]);
-  const [plan, setPlan] = useState("startup");
+  const [plan, setPlan] = useState("basic");
   const [montoMensual, setMontoMensual] = useState("99900");
   const [diaPago, setDiaPago] = useState("");
   const [nombreCliente, setNombreCliente] = useState("");
@@ -108,7 +118,7 @@ export function NuevoClienteForm() {
       setHoraApertura("");
       setHoraCierre("");
       setDiasAtencion([]);
-      setPlan("startup");
+      setPlan("basic");
       setMontoMensual("99900");
       setDiaPago("");
       setNombreCliente("");
@@ -246,10 +256,7 @@ export function NuevoClienteForm() {
               onChange={(e) => {
                 const nuevoPlan = e.target.value;
                 setPlan(nuevoPlan);
-                const sugerido = PLANES.find((p) => p.value === nuevoPlan);
-                if (sugerido && nuevoPlan === "startup") setMontoMensual("99900");
-                if (sugerido && nuevoPlan === "pyme") setMontoMensual("199900");
-                if (sugerido && nuevoPlan === "enterprise") setMontoMensual("349900");
+                setMontoMensual(MONTO_SUGERIDO_POR_PLAN[nuevoPlan] ?? montoMensual);
               }}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
             >

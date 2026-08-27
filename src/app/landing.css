@@ -838,14 +838,16 @@
   }
   .plan-price .full[hidden] { display: none; }
   .plan-price .num {
-    font-family: var(--font-fraunces), serif; font-size: clamp(32px, 3.8vw, 42px); font-weight: 680;
+    display: block;
+    font-family: var(--font-fraunces), serif; font-size: clamp(24px, 2.4vw, 32px); font-weight: 680;
     line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
     transition: font-size 0.15s ease;
   }
-  .plan-price.es-anual .num { font-size: clamp(26px, 2.9vw, 32px); }
+  .plan-price.es-anual .num { font-size: clamp(20px, 2vw, 26px); }
   .plan-price .per {
-    font-family: var(--font-public-sans), sans-serif; font-size: 14px; font-weight: 600;
-    color: var(--ink-faint); margin-left: 6px; white-space: nowrap;
+    display: block;
+    font-family: var(--font-public-sans), sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--ink-faint); margin-top: 3px; white-space: nowrap;
   }
   .plan-save { font-size: 13px; color: var(--good); font-weight: 600; margin: 0 0 6px; }
   .plan-save[hidden] { display: none; }

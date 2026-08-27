@@ -514,8 +514,8 @@
   .agenda-dialog-texto .sub { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-soft); text-wrap: balance; }
 
 
-  .precios-table { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong); }
-  .precios-table .plan { position: relative; min-width: 0; padding: 40px 28px; border-left: 1.5px solid var(--line-strong); text-align: center; }
+  .precios-table { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1.5px solid var(--line-strong); border-bottom: 1.5px solid var(--line-strong); }
+  .precios-table .plan { position: relative; min-width: 0; padding: 40px 20px; border-left: 1.5px solid var(--line-strong); text-align: center; }
   .precios-table .plan:first-child { border-left: none; }
   .precios-table .plan.destacado { background: var(--bg-alt); }
   @media (max-width: 760px) {
@@ -524,7 +524,7 @@
     .precios-table .plan:first-child { border-top: none; }
   }
 
-  .precios-cta-row { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 24px; justify-items: center; }
+  .precios-cta-row { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 24px; justify-items: center; }
   /* .precios-cta se usa en las 3 secciones navy de la landing (hero,
      ecosistema, precios) — blanco/hueso sólido con letra navy siempre
      (no solo en hover), para que las 4 apariciones del botón "Solicita

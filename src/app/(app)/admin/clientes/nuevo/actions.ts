@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { enviarCorreoBienvenida } from "@/lib/email";
 
 const DIAS_VALIDOS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-const PLANES_VALIDOS = ["startup", "pyme", "enterprise"] as const;
+const PLANES_VALIDOS = ["basic", "startup", "pyme", "enterprise"] as const;
 
 function correoValido(correo: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
@@ -103,7 +103,9 @@ export async function crearCliente(input: {
     .from("empresas")
     .insert({
       nombre: nombreEmpresa,
-      modulos_activos: input.modulosActivos,
+      // "insights" (Panel de control) siempre va incluido y gratis, sin
+      // ocupar cupo del plan — no lo pide el formulario, se agrega acá.
+      modulos_activos: [...input.modulosActivos, "insights"],
       crm_modo: input.crmModo,
       nomina_frecuencia_pago: input.nominaFrecuenciaPago,
       hora_apertura: input.horaApertura || null,

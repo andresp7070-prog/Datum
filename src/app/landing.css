@@ -830,7 +830,7 @@
   }
   .plan-flag svg { width: 11px; height: 11px; }
   .plan-name { display: block; font-family: var(--font-fraunces), serif; font-size: clamp(20px, 2vw, 22px); font-weight: 600; color: var(--ink-soft); }
-  .plan-price { margin: 14px 0 8px; }
+  .plan-price { margin: 14px 0 8px; white-space: nowrap; }
   .plan-price .full {
     display: block; text-align: center;
     font-family: var(--font-public-sans), sans-serif; font-size: 15px; font-weight: 600;
@@ -838,16 +838,14 @@
   }
   .plan-price .full[hidden] { display: none; }
   .plan-price .num {
-    display: block;
-    font-family: var(--font-fraunces), serif; font-size: clamp(24px, 2.4vw, 32px); font-weight: 680;
+    font-family: var(--font-fraunces), serif; font-size: clamp(19px, 1.9vw, 25px); font-weight: 680;
     line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
     transition: font-size 0.15s ease;
   }
-  .plan-price.es-anual .num { font-size: clamp(20px, 2vw, 26px); }
+  .plan-price.es-anual .num { font-size: clamp(16px, 1.5vw, 20px); }
   .plan-price .per {
-    display: block;
-    font-family: var(--font-public-sans), sans-serif; font-size: 13px; font-weight: 600;
-    color: var(--ink-faint); margin-top: 3px; white-space: nowrap;
+    font-family: var(--font-public-sans), sans-serif; font-size: 12px; font-weight: 600;
+    color: var(--ink-faint); margin-left: 5px; white-space: nowrap;
   }
   .plan-save { font-size: 13px; color: var(--good); font-weight: 600; margin: 0 0 6px; }
   .plan-save[hidden] { display: none; }

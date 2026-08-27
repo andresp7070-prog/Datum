@@ -654,7 +654,7 @@ export function Landing() {
                   setPopupOrigen(`Plan ${plan.nombre}`);
                 }}
               >
-                Prueba gratis de 15 días
+                Prueba gratis por 15 días
               </a>
             ))}
           </div>

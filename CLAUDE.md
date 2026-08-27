@@ -80,6 +80,24 @@ Tomado literalmente de la sección "Cobros" de este archivo:
 
 **Si se termina usando Nequi como destino del dinero (con cualquiera de las dos pasarelas)**: pendiente antes de lanzar Datum confirmar que esa cuenta de Nequi ya esté como "cuenta de ahorros" y no como "depósito de bajo monto" — el modo bajo monto tiene un tope de ~$11.024.727 COP en movimientos por mes (cifra 2026, ligada a la UVT), que se podría alcanzar rápido si varios clientes pagan el mismo mes; pasar a cuenta de ahorros quita ese tope y se hace gratis desde la misma app de Nequi.
 
+**Comparación de comisiones (cotizado 2026-08-27, Wompi Plan Avanzado vs. Bold — cifra de Bold confirmada con su propio simulador de cobro, así que ya se sabe que su tarifa mostrada incluye IVA)**: Wompi cobra 2,65% + $700 + IVA por transacción exitosa con tarjeta; Bold cobra 3,59% + $900, IVA ya incluido. Sobre los 3 planes actuales:
+
+| Plan | Precio | Recibes con Wompi | Recibes con Bold | Diferencia |
+|---|---|---|---|---|
+| Startup | $99.900 | $95.917 | $95.414 | +$503 a favor de Wompi |
+| Pyme | $199.900 | $192.763 | $191.824 | +$940 a favor de Wompi |
+| Enterprise | $349.900 | $338.033 | $336.439 | +$1.594 a favor de Wompi |
+
+Proyectado a 10/100/500 clientes en el mismo plan (una mezcla real de planes cae entre estas cifras) — diferencia mensual total (Wompi menos Bold):
+
+| Plan | 10 clientes | 100 clientes | 500 clientes |
+|---|---|---|---|
+| Startup | $5.031 | $50.306 | $251.530 |
+| Pyme | $9.396 | $93.956 | $469.782 |
+| Enterprise | $15.944 | $159.440 | $797.202 |
+
+Wompi siempre deja un poco más de plata (~0,5% del monto), y la ventaja crece con el volumen pero no cambia de orden de magnitud — no es, por sí sola, razón suficiente para descartar a Bold frente a su ventaja en flexibilidad de desembolso (ver arriba).
+
 Tomado literalmente de la sección "Planes y precios" de este archivo (cargos únicos fuera de la suscripción):
 
 > **Desarrollo específico para un cliente se cobra aparte, fuera de la suscripción.** Si una empresa cabe en la plataforma tal como está — usando `atributos` (JSON) para lo que varía por su tipo de negocio, sin tocar el esquema ni el código — no hay ningún cobro adicional, la suscripción mensual ya lo cubre. Pero si un cliente de verdad necesita algo que requiere código nuevo (una tabla propia, una integración, una función de negocio a la medida — el mismo criterio que ya usa este archivo para decidir cuándo algo amerita tabla propia en vez de `atributos`), ese trabajo se cotiza y se cobra aparte, como un proyecto puntual. Todavía falta definir cómo se cotiza ese trabajo a la medida (por horas, por alcance fijo, etc.) — no asumas una tarifa ni un formato hasta que yo lo confirme.
@@ -356,6 +374,24 @@ Por ahora, manuales (transferencia + factura de venta simple). No integrar ningu
 **Comparación Wompi vs. Bold para cobro recurrente (investigado 2026-08-27, ninguna cuenta creada todavía — sigue sin decidirse)**: las dos SÍ pueden hacer cobro recurrente — ambas tienen checkout hospedado (los datos de tarjeta nunca tocan los servidores de Datum, cumple PCI) y permiten guardar el método de pago del cliente para cobrarle después vía API. La diferencia es de qué tan empaquetado viene: Wompi ya tiene un producto de "suscripciones" en su API (tokeniza y crea la suscripción con monto/frecuencia en pocos llamados); con Bold hay que armar esa parte a mano (guardar el token, y un proceso propio — como el cron que ya usa el resumen semanal — que llame su API cada mes), aunque eso de todas formas coincide con el principio de portabilidad de este documento (la decisión de cuándo cobrar vive en código propio, no en la pasarela). En cambio, en el desembolso del dinero **Bold es más flexible**: te da automáticamente una cuenta de ahorros propia (Cuenta Bold) desde la que transfieres gratis a cualquier banco, incluyendo Nequi — Wompi, en su modelo Agregador, solo desembolsa a una cuenta de Bancolombia o a Nequi (y esto último solo si te registras como persona natural). **Sigue sin decidirse cuál de las dos, y sigue pendiente para la próxima reunión/cotización.**
 
 **Si se termina usando Nequi como destino del dinero (con cualquiera de las dos pasarelas)**: pendiente antes de lanzar Datum confirmar que esa cuenta de Nequi ya esté como "cuenta de ahorros" y no como "depósito de bajo monto" — el modo bajo monto tiene un tope de ~$11.024.727 COP en movimientos por mes (cifra 2026, ligada a la UVT), que se podría alcanzar rápido si varios clientes pagan el mismo mes; pasar a cuenta de ahorros quita ese tope y se hace gratis desde la misma app de Nequi.
+
+**Comparación de comisiones (cotizado 2026-08-27, Wompi Plan Avanzado vs. Bold — cifra de Bold confirmada con su propio simulador de cobro, así que ya se sabe que su tarifa mostrada incluye IVA)**: Wompi cobra 2,65% + $700 + IVA por transacción exitosa con tarjeta; Bold cobra 3,59% + $900, IVA ya incluido. Sobre los 3 planes actuales:
+
+| Plan | Precio | Recibes con Wompi | Recibes con Bold | Diferencia |
+|---|---|---|---|---|
+| Startup | $99.900 | $95.917 | $95.414 | +$503 a favor de Wompi |
+| Pyme | $199.900 | $192.763 | $191.824 | +$940 a favor de Wompi |
+| Enterprise | $349.900 | $338.033 | $336.439 | +$1.594 a favor de Wompi |
+
+Proyectado a 10/100/500 clientes en el mismo plan (una mezcla real de planes cae entre estas cifras) — diferencia mensual total (Wompi menos Bold):
+
+| Plan | 10 clientes | 100 clientes | 500 clientes |
+|---|---|---|---|
+| Startup | $5.031 | $50.306 | $251.530 |
+| Pyme | $9.396 | $93.956 | $469.782 |
+| Enterprise | $15.944 | $159.440 | $797.202 |
+
+Wompi siempre deja un poco más de plata (~0,5% del monto), y la ventaja crece con el volumen pero no cambia de orden de magnitud — no es, por sí sola, razón suficiente para descartar a Bold frente a su ventaja en flexibilidad de desembolso (ver arriba).
 
 **Plan, monto y día de pago se capturan desde ya** (agregado 2026-08-26, `suscripciones.plan`/`.monto_mensual`/`.dia_pago`, se llenan al crear el cliente en `/admin/clientes/nuevo`) — hoy son solo un dato de referencia para saber cuánto y cuándo pedirle la transferencia manual a cada cliente, no disparan ningún cobro. `empresas.monto_mensual` (ya existía) se llena con el mismo valor.
 

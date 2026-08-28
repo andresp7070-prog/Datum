@@ -789,11 +789,13 @@
   .demo-nomina-totales .val { display: block; font-weight: 700; font-size: 13px; }
   .demo-nota-verde { color: var(--good); font-size: 11.5px; }
 
-  /* Color estándar (--ink-soft, el mismo texto secundario que usa el
-     resto de la landing) en vez de un rgba a mano — y 2px menos en todo
-     el clamp, quedaba grande de más para ser una frase de transición
-     hacia el botón, no un subtítulo. */
-  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: clamp(17px, 1.8vw, 22px); color: var(--ink); }
+  /* Color claro fijo (#f3f2ee, igual que .demo-tab-modulo) en vez de
+     var(--ink) — este texto vive dentro de .demo-wrap, que reescala
+     --ink a oscuro para el mockup de la app, así que var(--ink) acá
+     se veía navy en vez de blanco contra el fondo navy de la sección.
+     2px menos en todo el clamp, quedaba grande de más para ser una
+     frase de transición hacia el botón, no un subtítulo. */
+  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: clamp(17px, 1.8vw, 22px); color: #f3f2ee; }
 
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 

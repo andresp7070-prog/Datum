@@ -175,10 +175,10 @@
      60% — cada quien centrado en su propia columna, aunque ya no sean
      del mismo ancho. */
   .hero {
-    position: relative; min-height: calc(100svh - 64px);
+    position: relative; min-height: calc(88svh - 64px);
     display: grid; grid-template-columns: 2fr 3fr; align-items: center;
     gap: clamp(24px, 3vw, 40px);
-    padding: 64px clamp(24px, 4vw, 48px);
+    padding: 48px clamp(24px, 4vw, 48px);
     background: #1a1b33;
     --ink: #f3f2ee;
     --ink-soft: #c3c2d6;

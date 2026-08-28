@@ -830,7 +830,7 @@
     font-family: var(--font-public-sans), sans-serif; font-size: 11px; font-weight: 700;
     letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
   }
-  .plan-flag svg { width: 11px; height: 11px; }
+  .plan-flag svg { width: 16px; height: 16px; }
   .plan-name { display: block; font-family: var(--font-fraunces), serif; font-size: clamp(20px, 2vw, 22px); font-weight: 600; color: var(--ink-soft); }
   .plan-price { margin: 14px 0 8px; white-space: nowrap; }
   .plan-price .full {

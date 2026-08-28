@@ -9,22 +9,22 @@ Contexto del proyecto para Claude Code. Este archivo se actualiza a medida que e
 ### 1. Planes y precios vigentes
 Tomado literalmente de la sección "Planes y precios" de este archivo:
 
-> **La estructura ya está decidida: suscripción mensual pura, sin ningún cobro inicial de implementación.** Los montos de la tabla de abajo son los vigentes desde 2026-08-27 (antes eran 3 planes a $99.900/$199.900/$349.900; se agregó un cuarto plan de entrada y se subieron los otros tres, calibrados para que el precio por módulo baje mientras más grande el plan). Un cambio futuro de montos sigue siendo posible, pero esta es la tabla vigente hasta que se diga lo contrario.
+> **La estructura ya está decidida: suscripción mensual pura, sin ningún cobro inicial de implementación.** Los montos de la tabla de abajo son los vigentes desde 2026-08-28. Antes (2026-08-27) eran $99.900/$269.900/$399.900/$449.900 — se subieron para que ya vengan con la comisión estimada de Bold (3,59% + $900 por transacción) incluida, así que cuando de verdad se conecte una pasarela de pagos, lo que quede después de esa comisión sea igual al precio que se tenía antes de este ajuste. A propósito no incluyen el 19% de IVA — eso se dejó afuera adrede, para no subir el precio por un impuesto que hoy no aplica.
 >
 > **Los planes NO son paquetes fijos de módulos — el cliente elige cuáles quiere, hasta el límite de su plan. Panel de control (Insights) es la excepción: siempre viene gratis en cualquier plan, sin ocupar cupo.**
 
 | Plan | Módulos permitidos | Mensual |
 |---|---|---|
-| Basic | 1 módulo | $99.900 COP/mes |
-| Startup | Hasta 3 módulos, a elección del cliente | $269.900 COP/mes |
-| Pyme | Hasta 5 módulos, a elección del cliente | $399.900 COP/mes |
-| Enterprise | Todos los módulos disponibles | $449.900 COP/mes |
+| Basic | 1 módulo | $125.500 COP/mes |
+| Startup | Hasta 3 módulos, a elección del cliente | $280.900 COP/mes |
+| Pyme | Hasta 5 módulos, a elección del cliente | $415.700 COP/mes |
+| Enterprise | Todos los módulos disponibles | $466.700 COP/mes |
 
-> Estos son los nombres y precios que ya están publicados en la landing (`src/app/landing.tsx`, constante `PLANES`), en el formulario "Crear cliente" (`/admin/clientes/nuevo`) y en el Anexo No. 1 del contrato de prestación de servicios (`Contrato_Datum_Prestacion_Servicios_SaaS.docx`) — las tres fuentes ya dicen lo mismo (actualizado 2026-08-27).
+> Estos son los nombres y precios que ya están publicados en la landing (`src/app/landing.tsx`, constante `PLANES`), en el formulario "Crear cliente" (`/admin/clientes/nuevo`) y en el Anexo No. 1 del contrato de prestación de servicios (`Contrato_Datum_Prestacion_Servicios_SaaS.docx`) — las tres fuentes ya dicen lo mismo (actualizado 2026-08-28).
 
 > Como el cliente elige libremente sus módulos dentro del límite de su plan, ningún módulo de pago del catálogo (Ventas, CRM, Inventario, Estado de Resultados, Nómina, Promociones) necesita asignación especial a un plan — todos están disponibles para elegir en los cuatro planes, la única diferencia es cuántos. Facturación electrónica no aparece en esa lista porque todavía no existe como funcionalidad; Devoluciones y garantías tampoco, porque vive dentro de Ventas, no como módulo aparte. Panel de control tampoco aparece porque no cuenta contra ningún límite — va incluido gratis siempre.
 
-> **Los precios de hoy no incluyen IVA — actualmente eres No responsable de IVA (código 49 en el RUT), así que no se cobra ni se declara.** Si en el futuro cambia esa condición (por ejemplo, al superar el umbral de 3.500 UVT/año en ingresos), queda pendiente decidir si $99.900 (y los demás precios de la tabla) se mantienen como precio final absorbiendo el IVA desde tu margen, o si se ajustan a $99.900 + IVA para que el cliente asuma el incremento y tu margen neto no cambie. No asumas ninguna de las dos hasta que yo lo confirme — solo queda anotado acá para retomarlo cuando llegue el momento.
+> **Los precios de hoy no incluyen IVA — actualmente eres No responsable de IVA (código 49 en el RUT), así que no se cobra ni se declara.** Si en el futuro cambia esa condición (por ejemplo, al superar el umbral de 3.500 UVT/año en ingresos), queda pendiente decidir si $125.500 (y los demás precios de la tabla) se mantienen como precio final absorbiendo el IVA desde tu margen, o si se ajustan a $125.500 + IVA para que el cliente asuma el incremento y tu margen neto no cambie. No asumas ninguna de las dos hasta que yo lo confirme — solo queda anotado acá para retomarlo cuando llegue el momento.
 
 ### 1.1. Período de prueba gratuita y vigencia (contrato)
 Tomado literalmente del `Contrato_Datum_Prestacion_Servicios_SaaS.docx` (Cláusula Primera, literal h; Cláusula Quinta; Cláusula Sexta):
@@ -81,23 +81,23 @@ Tomado literalmente de la sección "Cobros" de este archivo:
 
 **Si se termina usando Nequi como destino del dinero (con cualquiera de las dos pasarelas)**: pendiente antes de lanzar Datum confirmar que esa cuenta de Nequi ya esté como "cuenta de ahorros" y no como "depósito de bajo monto" — el modo bajo monto tiene un tope de ~$11.024.727 COP en movimientos por mes (cifra 2026, ligada a la UVT), que se podría alcanzar rápido si varios clientes pagan el mismo mes; pasar a cuenta de ahorros quita ese tope y se hace gratis desde la misma app de Nequi.
 
-**Comparación de comisiones (cotizado 2026-08-27, Wompi Plan Avanzado vs. Bold — cifra de Bold confirmada con su propio simulador de cobro, así que ya se sabe que su tarifa mostrada incluye IVA)**: Wompi cobra 2,65% + $700 + IVA por transacción exitosa con tarjeta; Bold cobra 3,59% + $900, IVA ya incluido. Sobre los 4 planes actuales (recalculado 2026-08-27 tras agregar el plan Basic y subir los otros tres):
+**Comparación de comisiones (cotizado 2026-08-27, Wompi Plan Avanzado vs. Bold — cifra de Bold confirmada con su propio simulador de cobro, así que ya se sabe que su tarifa mostrada incluye IVA)**: Wompi cobra 2,65% + $700 + IVA por transacción exitosa con tarjeta; Bold cobra 3,59% + $900, IVA ya incluido. **Recalculado 2026-08-28** con los precios que ya incluyen la comisión de Bold (ver "Planes y precios" arriba) — por diseño, lo que Bold te deja de estos precios nuevos reproduce casi exacto los precios viejos ($99.900/$269.900/$399.900/$449.900); si en cambio se usa Wompi, al ser más barata, te queda un poco más de margen del que se buscaba, no menos:
 
 | Plan | Precio | Recibes con Wompi | Recibes con Bold | Diferencia |
 |---|---|---|---|---|
-| Basic | $99.900 | $95.917 | $95.414 | +$503 a favor de Wompi |
-| Startup | $269.900 | $260.556 | $259.311 | +$1.245 a favor de Wompi |
-| Pyme | $399.900 | $386.456 | $384.644 | +$1.813 a favor de Wompi |
-| Enterprise | $449.900 | $434.879 | $432.849 | +$2.031 a favor de Wompi |
+| Basic | $125.500 | $120.709 | $120.095 | +$615 a favor de Wompi |
+| Startup | $280.900 | $271.209 | $269.916 | +$1.293 a favor de Wompi |
+| Pyme | $415.700 | $401.758 | $399.876 | +$1.882 a favor de Wompi |
+| Enterprise | $466.700 | $451.150 | $449.045 | +$2.104 a favor de Wompi |
 
 Proyectado a 10/100/500 clientes en el mismo plan (una mezcla real de planes cae entre estas cifras) — diferencia mensual total (Wompi menos Bold):
 
 | Plan | 10 clientes | 100 clientes | 500 clientes |
 |---|---|---|---|
-| Basic | $5.031 | $50.306 | $251.530 |
-| Startup | $12.451 | $124.511 | $622.555 |
-| Pyme | $18.127 | $181.266 | $906.330 |
-| Enterprise | $20.308 | $203.081 | $1.015.405 |
+| Basic | $6.148 | $61.481 | $307.405 |
+| Startup | $12.931 | $129.313 | $646.565 |
+| Pyme | $18.815 | $188.153 | $940.765 |
+| Enterprise | $21.042 | $210.415 | $1.052.075 |
 
 Wompi siempre deja un poco más de plata (~0,5% del monto), y la ventaja crece con el volumen pero no cambia de orden de magnitud — no es, por sí sola, razón suficiente para descartar a Bold frente a su ventaja en flexibilidad de desembolso (ver arriba).
 
@@ -353,18 +353,18 @@ Un solo flujo para los dos casos (el cliente se arrepintió, o el producto vino 
 No adelantes fases sin que yo lo pida. Prefiero un módulo bien hecho que cinco a medias. Dentro de cada fase, primero la lógica y los datos correctos, las gráficas y visualizaciones van al final.
 
 ## Planes y precios (para decidir qué módulo mostrarle a cada empresa)
-**La estructura ya está decidida: suscripción mensual pura, sin ningún cobro inicial de implementación.** Los montos de la tabla de abajo son los vigentes desde 2026-08-27 — antes había 3 planes (Startup/Pyme/Enterprise, $99.900/$199.900/$349.900); se agregó un cuarto plan de entrada (Basic, 1 solo módulo) y se subieron los otros tres. Los montos se calibraron para que el precio por módulo baje mientras más grande el plan (Basic $99.900/módulo → Enterprise $74.983/módulo), y así incentivar subir de plan por eficiencia real, no solo por necesidad — igual que el resto de esta sección, un cambio futuro de montos sigue siendo posible, pero ya no se trata como "sin decidir": es la tabla vigente hasta que se diga lo contrario.
+**La estructura ya está decidida: suscripción mensual pura, sin ningún cobro inicial de implementación.** Los montos de la tabla de abajo son los vigentes desde 2026-08-28. Antes (2026-08-27) eran $99.900/$269.900/$399.900/$449.900 — se subieron para que ya vengan con la comisión estimada de Bold (3,59% + $900 por transacción) incluida, así que cuando de verdad se conecte una pasarela de pagos, lo que quede después de esa comisión sea igual al precio que se tenía antes de este ajuste (verificado: de $125.500 Bold se lleva ≈$5.405, quedan ≈$120.095 ≈ el $120.000 que se buscaba). **A propósito no incluyen el 19% de IVA** — esa parte se decidió dejarla afuera por ahora, para no subir el precio por un impuesto que hoy no aplica (sigue siendo No responsable de IVA); si algún día se vuelve obligatorio, ese ajuste queda pendiente aparte (ver sección de IVA más abajo). Los montos se siguen calibrando para que el precio por módulo baje mientras más grande el plan, y así incentivar subir de plan por eficiencia real, no solo por necesidad — un cambio futuro de montos sigue siendo posible, pero esta es la tabla vigente hasta que se diga lo contrario.
 
 **Los planes NO son paquetes fijos de módulos — el cliente elige cuáles quiere, hasta el límite de su plan.** Todo módulo de pago del catálogo (Ventas, CRM, Inventario, Estado de Resultados, Nómina, Promociones) está disponible para elegir en los cuatro planes; la única diferencia es cuántos puede activar cada uno. **Panel de control (Insights) es la excepción: siempre viene incluido gratis en cualquier plan, sin ocupar cupo del límite de módulos** — `crearCliente()` lo agrega solo a `modulos_activos`, no se elige en el formulario.
 
 | Plan | Módulos permitidos | Mensual | Precio por módulo (al tope del plan) |
 |---|---|---|---|
-| Basic | 1 módulo | $99.900 COP/mes | $99.900 |
-| Startup | Hasta 3 módulos, a elección del cliente | $269.900 COP/mes | $89.967 |
-| Pyme | Hasta 5 módulos, a elección del cliente | $399.900 COP/mes | $79.980 |
-| Enterprise | Todos los módulos disponibles (6 de pago + Panel de control gratis) | $449.900 COP/mes | $74.983 |
+| Basic | 1 módulo | $125.500 COP/mes | $125.500 |
+| Startup | Hasta 3 módulos, a elección del cliente | $280.900 COP/mes | $93.633 |
+| Pyme | Hasta 5 módulos, a elección del cliente | $415.700 COP/mes | $83.140 |
+| Enterprise | Todos los módulos disponibles (6 de pago + Panel de control gratis) | $466.700 COP/mes | $77.783 |
 
-Estos son los nombres y precios que ya están publicados en la landing (`src/app/landing.tsx`), en el formulario "Crear cliente" (`/admin/clientes/nuevo`) y en el Anexo No. 1 del contrato de prestación de servicios (`Contrato_Datum_Prestacion_Servicios_SaaS.docx`) — las tres fuentes ya dicen lo mismo (actualizado 2026-08-27).
+Estos son los nombres y precios que ya están publicados en la landing (`src/app/landing.tsx`), en el formulario "Crear cliente" (`/admin/clientes/nuevo`) y en el Anexo No. 1 del contrato de prestación de servicios (`Contrato_Datum_Prestacion_Servicios_SaaS.docx`) — las tres fuentes ya dicen lo mismo (actualizado 2026-08-28).
 
 **Los precios de hoy no incluyen IVA — actualmente eres No responsable de IVA (código 49 en el RUT), así que no se cobra ni se declara.** Si en el futuro cambia esa condición (por ejemplo, al superar el umbral de 3.500 UVT/año en ingresos), queda pendiente decidir si $99.900 (y los demás precios de la tabla) se mantienen como precio final absorbiendo el IVA desde tu margen, o si se ajustan a $99.900 + IVA para que el cliente asuma el incremento y tu margen neto no cambie. No asumas ninguna de las dos hasta que yo lo confirme — solo queda anotado acá para retomarlo cuando llegue el momento.
 
@@ -379,23 +379,23 @@ Por ahora, manuales (transferencia + factura de venta simple). No integrar ningu
 
 **Si se termina usando Nequi como destino del dinero (con cualquiera de las dos pasarelas)**: pendiente antes de lanzar Datum confirmar que esa cuenta de Nequi ya esté como "cuenta de ahorros" y no como "depósito de bajo monto" — el modo bajo monto tiene un tope de ~$11.024.727 COP en movimientos por mes (cifra 2026, ligada a la UVT), que se podría alcanzar rápido si varios clientes pagan el mismo mes; pasar a cuenta de ahorros quita ese tope y se hace gratis desde la misma app de Nequi.
 
-**Comparación de comisiones (cotizado 2026-08-27, Wompi Plan Avanzado vs. Bold — cifra de Bold confirmada con su propio simulador de cobro, así que ya se sabe que su tarifa mostrada incluye IVA)**: Wompi cobra 2,65% + $700 + IVA por transacción exitosa con tarjeta; Bold cobra 3,59% + $900, IVA ya incluido. Sobre los 4 planes actuales (recalculado 2026-08-27 tras agregar el plan Basic y subir los otros tres):
+**Comparación de comisiones (cotizado 2026-08-27, Wompi Plan Avanzado vs. Bold — cifra de Bold confirmada con su propio simulador de cobro, así que ya se sabe que su tarifa mostrada incluye IVA)**: Wompi cobra 2,65% + $700 + IVA por transacción exitosa con tarjeta; Bold cobra 3,59% + $900, IVA ya incluido. **Recalculado 2026-08-28** con los precios que ya incluyen la comisión de Bold (ver "Planes y precios" arriba) — por diseño, lo que Bold te deja de estos precios nuevos reproduce casi exacto los precios viejos ($99.900/$269.900/$399.900/$449.900); si en cambio se usa Wompi, al ser más barata, te queda un poco más de margen del que se buscaba, no menos:
 
 | Plan | Precio | Recibes con Wompi | Recibes con Bold | Diferencia |
 |---|---|---|---|---|
-| Basic | $99.900 | $95.917 | $95.414 | +$503 a favor de Wompi |
-| Startup | $269.900 | $260.556 | $259.311 | +$1.245 a favor de Wompi |
-| Pyme | $399.900 | $386.456 | $384.644 | +$1.813 a favor de Wompi |
-| Enterprise | $449.900 | $434.879 | $432.849 | +$2.031 a favor de Wompi |
+| Basic | $125.500 | $120.709 | $120.095 | +$615 a favor de Wompi |
+| Startup | $280.900 | $271.209 | $269.916 | +$1.293 a favor de Wompi |
+| Pyme | $415.700 | $401.758 | $399.876 | +$1.882 a favor de Wompi |
+| Enterprise | $466.700 | $451.150 | $449.045 | +$2.104 a favor de Wompi |
 
 Proyectado a 10/100/500 clientes en el mismo plan (una mezcla real de planes cae entre estas cifras) — diferencia mensual total (Wompi menos Bold):
 
 | Plan | 10 clientes | 100 clientes | 500 clientes |
 |---|---|---|---|
-| Basic | $5.031 | $50.306 | $251.530 |
-| Startup | $12.451 | $124.511 | $622.555 |
-| Pyme | $18.127 | $181.266 | $906.330 |
-| Enterprise | $20.308 | $203.081 | $1.015.405 |
+| Basic | $6.148 | $61.481 | $307.405 |
+| Startup | $12.931 | $129.313 | $646.565 |
+| Pyme | $18.815 | $188.153 | $940.765 |
+| Enterprise | $21.042 | $210.415 | $1.052.075 |
 
 Wompi siempre deja un poco más de plata (~0,5% del monto), y la ventaja crece con el volumen pero no cambia de orden de magnitud — no es, por sí sola, razón suficiente para descartar a Bold frente a su ventaja en flexibilidad de desembolso (ver arriba).
 

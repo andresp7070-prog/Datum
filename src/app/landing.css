@@ -793,7 +793,7 @@
      resto de la landing) en vez de un rgba a mano — y 2px menos en todo
      el clamp, quedaba grande de más para ser una frase de transición
      hacia el botón, no un subtítulo. */
-  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: clamp(17px, 1.8vw, 22px); color: var(--ink-soft); }
+  .demo-highlights { text-align: center; margin: 18px 0 0; font-family: var(--font-public-sans), sans-serif; font-size: clamp(17px, 1.8vw, 22px); color: var(--ink); }
 
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 

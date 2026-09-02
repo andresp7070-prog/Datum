@@ -585,7 +585,7 @@ function FormularioDatos({
         className="agendar-btn-confirmar"
         disabled={disabled}
       >
-        {disabled ? "Agendando…" : "Confirmar reunión"}
+        {disabled ? "Agendando…" : "Confirmar reunión virtual"}
       </button>
     </form>
   );

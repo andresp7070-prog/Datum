@@ -911,6 +911,13 @@
        mitad, no pegado arriba. */
     align-items: center;
   }
+  /* Una vez la reunión queda agendada, .agenda-texto ya no se renderiza
+     (ver landing.tsx) — sin esto, la tarjeta de confirmación se quedaría
+     encogida en la columna angosta (2fr) pensada para el texto, con un
+     hueco vacío al lado en la columna de 3fr. */
+  .agenda-grid.agenda-grid-confirmado {
+    grid-template-columns: 1fr; justify-items: center;
+  }
   /* min-width:0 en las dos columnas — sin esto, si algo adentro empuja
      un ancho mínimo más grande que su fr, el grid deja de repartir 40/60
      de verdad (el mismo bug que ya se dio con el hero: ver el commit

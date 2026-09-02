@@ -86,9 +86,25 @@ export function Landing() {
   // más abajo), en vez de conservar el día/hora ya elegidos de una
   // apertura anterior.
   const [popupOrigen, setPopupOrigen] = useState<string | null>(null);
+  // "Hablemos de tu negocio / Agendemos una conversación..." ya no tiene
+  // sentido una vez la reunión quedó agendada (AgendarWidget pasa a su
+  // propia pantalla de confirmación) — se oculta en cuanto eso pasa.
+  // Aparte para cada instancia: el pop-up se remonta con key={popupOrigen}
+  // en cada apertura, pero este estado vive en el padre y no se resetea
+  // solo, así que se apaga junto con el resto del efecto de abajo cada
+  // vez que se abre.
+  const [contactoConfirmado, setContactoConfirmado] = useState(false);
+  const [popupConfirmado, setPopupConfirmado] = useState(false);
   useEffect(() => {
     if (popupOrigen) dialogAgendaRef.current?.showModal();
   }, [popupOrigen]);
+  // Abre el pop-up y reinicia su propio "ya confirmó" — sin esto, si ya
+  // se agendó una reunión con este pop-up y se abre de nuevo con otro
+  // origen, el texto de arriba seguiría oculto desde la vez anterior.
+  function abrirPopupAgenda(origenBoton: string) {
+    setPopupConfirmado(false);
+    setPopupOrigen(origenBoton);
+  }
   // Switch momentáneo para revisar la versión móvil sin cambiar de
   // dispositivo — muestra la misma página dentro de un iframe angosto,
   // así sí disparan los media queries reales (a diferencia de solo
@@ -540,7 +556,7 @@ export function Landing() {
               href="#contacto"
               onClick={(e) => {
                 e.preventDefault();
-                setPopupOrigen("Inicio");
+                abrirPopupAgenda("Inicio");
               }}
             >
               Solicita tu prueba gratis de 15 días
@@ -577,7 +593,7 @@ export function Landing() {
               href="#contacto"
               onClick={(e) => {
                 e.preventDefault();
-                setPopupOrigen("Ecosistema");
+                abrirPopupAgenda("Ecosistema");
               }}
             >
               Solicita tu prueba gratis de 15 días
@@ -615,7 +631,7 @@ export function Landing() {
               href="#contacto"
               onClick={(e) => {
                 e.preventDefault();
-                setPopupOrigen("Cómo funciona");
+                abrirPopupAgenda("Cómo funciona");
               }}
             >
               Solicita tu prueba gratis de 15 días
@@ -702,7 +718,7 @@ export function Landing() {
               href="#contacto"
               onClick={(e) => {
                 e.preventDefault();
-                setPopupOrigen("Precios");
+                abrirPopupAgenda("Precios");
               }}
             >
               Solicita tu prueba gratis de 15 días
@@ -755,16 +771,22 @@ export function Landing() {
       </dialog>
 
       <section className="chapter alt agenda-layout" id="contacto">
-        <div className="agenda-grid reveal">
-          <div className="agenda-texto">
-            <h2>Hablemos de tu negocio</h2>
-            <p className="sub">
-              Agendemos una conversación de 20 minutos sin costo y descubre todo lo que puedes
-              hacer con Datum.
-            </p>
-          </div>
+        <div
+          className={
+            "agenda-grid reveal" + (contactoConfirmado ? " agenda-grid-confirmado" : "")
+          }
+        >
+          {!contactoConfirmado && (
+            <div className="agenda-texto">
+              <h2>Hablemos de tu negocio</h2>
+              <p className="sub">
+                Agendemos una conversación de 20 minutos sin costo y descubre todo lo que puedes
+                hacer con Datum.
+              </p>
+            </div>
+          )}
           <div className="agenda-formulario">
-            <AgendarWidget />
+            <AgendarWidget onConfirmado={() => setContactoConfirmado(true)} />
           </div>
         </div>
       </section>
@@ -796,14 +818,20 @@ export function Landing() {
         </button>
         {popupOrigen && (
           <div className="agenda-formulario">
-            <div className="agenda-dialog-texto">
-              <h2>Hablemos de tu negocio</h2>
-              <p className="sub">
-                Agendemos una conversación de 20 minutos sin costo y descubre todo lo que puedes
-                hacer con Datum.
-              </p>
-            </div>
-            <AgendarWidget key={popupOrigen} origen={popupOrigen} />
+            {!popupConfirmado && (
+              <div className="agenda-dialog-texto">
+                <h2>Hablemos de tu negocio</h2>
+                <p className="sub">
+                  Agendemos una conversación de 20 minutos sin costo y descubre todo lo que
+                  puedes hacer con Datum.
+                </p>
+              </div>
+            )}
+            <AgendarWidget
+              key={popupOrigen}
+              origen={popupOrigen}
+              onConfirmado={() => setPopupConfirmado(true)}
+            />
           </div>
         )}
       </dialog>

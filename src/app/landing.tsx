@@ -692,19 +692,16 @@ export function Landing() {
           </div>
 
           <div className="precios-cta-row">
-            {PLANES.map((plan) => (
-              <a
-                key={plan.nombre}
-                className="precios-cta"
-                href="#contacto"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setPopupOrigen(`Plan ${plan.nombre}`);
-                }}
-              >
-                Prueba gratis por 15 días
-              </a>
-            ))}
+            <a
+              className="precios-cta"
+              href="#contacto"
+              onClick={(e) => {
+                e.preventDefault();
+                setPopupOrigen("Precios");
+              }}
+            >
+              Solicita tu prueba gratis de 15 días
+            </a>
           </div>
         </div>
       </section>

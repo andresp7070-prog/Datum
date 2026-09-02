@@ -543,7 +543,7 @@
     .precios-table .plan:first-child { border-top: none; }
   }
 
-  .precios-cta-row { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 24px; justify-items: center; }
+  .precios-cta-row { text-align: center; margin-top: 24px; }
   /* .precios-cta se usa en las 3 secciones navy de la landing (hero,
      ecosistema, precios) — blanco/hueso sólido con letra navy siempre
      (no solo en hover), para que las 4 apariciones del botón "Solicita
@@ -826,9 +826,6 @@
     .demo-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; }
     .demo-nav-list { display: none; }
     .demo-stat-cards, .demo-field-grid.three, .demo-pyg-grid, .demo-perfil-grid, .demo-nomina-totales { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 760px) {
-    .precios-cta-row { grid-template-columns: 1fr; gap: 14px; margin-top: 20px; }
   }
 
   .billing-toggle-wrap { text-align: center; margin: 0 0 48px; }

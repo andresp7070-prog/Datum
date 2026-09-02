@@ -35,6 +35,20 @@ const MESES = [
 ];
 const DOW_CORTO = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
 
+// Mismos 6 módulos de pago del catálogo que ya se ofrecen en "Crear
+// cliente" (ver CLAUDE.md, sección "Planes y precios") — Panel de control
+// no aparece porque siempre es gratis, y Facturación electrónica va
+// aparte (FE_VALOR) porque todavía no es un módulo real del producto.
+const MODULOS_INTERES = [
+  "Ventas",
+  "CRM",
+  "Inventario",
+  "Estado de resultados",
+  "Nómina",
+  "Promociones",
+];
+const FE_VALOR = "Facturación electrónica";
+
 const FORMATO_DIA_LARGO = new Intl.DateTimeFormat("es-CO", {
   weekday: "long",
   day: "numeric",
@@ -205,7 +219,7 @@ export function AgendarWidget({ origen = "" }: { origen?: string }) {
     correo: string;
     telefono: string;
     empresa: string;
-    nota: string;
+    modulosInteres: string[];
     trampa: string;
   }) {
     if (!horarioElegido) return;
@@ -431,6 +445,14 @@ export function AgendarWidget({ origen = "" }: { origen?: string }) {
   );
 }
 
+function IconoCheck() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+      <path d="M4 12l5 5L20 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function FormularioDatos({
   disabled,
   error,
@@ -443,10 +465,22 @@ function FormularioDatos({
     correo: string;
     telefono: string;
     empresa: string;
-    nota: string;
+    modulosInteres: string[];
     trampa: string;
   }) => void;
 }) {
+  const [modulosSeleccionados, setModulosSeleccionados] = useState<string[]>(
+    [],
+  );
+
+  function alternarModulo(valor: string) {
+    setModulosSeleccionados((prev) =>
+      prev.includes(valor)
+        ? prev.filter((v) => v !== valor)
+        : [...prev, valor],
+    );
+  }
+
   return (
     <form
       className="agendar-form"
@@ -458,7 +492,7 @@ function FormularioDatos({
           correo: String(form.get("correo") ?? ""),
           telefono: String(form.get("telefono") ?? ""),
           empresa: String(form.get("empresa") ?? ""),
-          nota: String(form.get("nota") ?? ""),
+          modulosInteres: modulosSeleccionados,
           trampa: String(form.get("sitio_web") ?? ""),
         });
       }}
@@ -493,12 +527,49 @@ function FormularioDatos({
         required
         disabled={disabled}
       />
-      <textarea
-        name="nota"
-        placeholder="Cuéntanos qué te gustaría ver de Datum (Opcional)"
-        rows={3}
-        disabled={disabled}
-      />
+
+      <div className="agendar-campo-grupo">
+        <span className="agendar-campo-etiqueta">
+          ¿Qué módulos te interesan? <span className="opcional">(Opcional)</span>
+        </span>
+        <div className="agendar-modulos-grid">
+          {MODULOS_INTERES.map((modulo) => (
+            <button
+              key={modulo}
+              type="button"
+              className={
+                "agendar-chip" +
+                (modulosSeleccionados.includes(modulo) ? " activo" : "")
+              }
+              disabled={disabled}
+              onClick={() => alternarModulo(modulo)}
+            >
+              <span className="agendar-chip-check">
+                <IconoCheck />
+              </span>
+              {modulo}
+            </button>
+          ))}
+        </div>
+
+        <div className="agendar-fe-separador">
+          <button
+            type="button"
+            className={
+              "agendar-chip agendar-chip-fe" +
+              (modulosSeleccionados.includes(FE_VALOR) ? " activo" : "")
+            }
+            disabled={disabled}
+            onClick={() => alternarModulo(FE_VALOR)}
+          >
+            <span className="agendar-chip-check">
+              <IconoCheck />
+            </span>
+            Necesito facturación electrónica ante la DIAN
+          </button>
+        </div>
+      </div>
+
       {/* Campo trampa: oculto para una persona real, los bots suelen llenar todo. */}
       <input
         name="sitio_web"

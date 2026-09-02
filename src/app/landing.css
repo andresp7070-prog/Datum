@@ -1106,17 +1106,55 @@
 
   .agendar-form { display: flex; flex-direction: column; gap: 12px; }
   .agendar-form-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .agendar-form input,
-  .agendar-form textarea {
+  .agendar-form input {
     width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
     background: rgba(243, 242, 238, 0.05); color: var(--ink); font-family: inherit; font-size: 14.5px;
     transition: border-color 0.15s ease;
   }
-  .agendar-form input::placeholder,
-  .agendar-form textarea::placeholder { color: var(--ink-faint); }
-  .agendar-form input:focus,
-  .agendar-form textarea:focus { outline: none; border-color: var(--accent); }
-  .agendar-form textarea { resize: vertical; min-height: 72px; }
+  .agendar-form input::placeholder { color: var(--ink-faint); }
+  .agendar-form input:focus { outline: none; border-color: var(--accent); }
+
+  /* Reemplaza al textarea de texto libre que había antes — ver
+     CLAUDE.md, sección "Formulario de agendamiento". Mismo lenguaje
+     visual (cuadro claro = elegido) que ya usan .agendar-cal-dia.activo
+     y .agendar-hora.activo en el resto del widget. */
+  .agendar-campo-grupo { display: flex; flex-direction: column; gap: 10px; }
+  .agendar-campo-etiqueta { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+  .agendar-campo-etiqueta .opcional { font-weight: 500; color: var(--ink-faint); }
+  .agendar-modulos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .agendar-chip {
+    display: flex; align-items: center; gap: 9px;
+    padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: rgba(243, 242, 238, 0.04); cursor: pointer; text-align: left;
+    font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink);
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .agendar-chip:hover:not(:disabled) { border-color: var(--ink-soft); }
+  .agendar-chip:disabled { opacity: 0.6; cursor: not-allowed; }
+  .agendar-chip-check {
+    flex: none; width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid var(--ink-faint);
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .agendar-chip-check svg {
+    width: 11px; height: 11px; opacity: 0; transform: scale(0.6);
+    transition: opacity 0.1s ease, transform 0.1s ease;
+  }
+  .agendar-chip.activo { border-color: var(--ink); background: rgba(243, 242, 238, 0.09); }
+  .agendar-chip.activo .agendar-chip-check { background: var(--ink); border-color: var(--ink); }
+  .agendar-chip.activo .agendar-chip-check svg { opacity: 1; transform: scale(1); color: #1a1b33; }
+  /* Facturación electrónica se separa con línea punteada + el dorado de
+     acento — mismo criterio que .fe-titulo-bloque en Precios: es un tema
+     aparte, todavía no un módulo real del catálogo. */
+  .agendar-fe-separador { margin-top: 4px; padding-top: 14px; border-top: 1px dashed var(--line); }
+  .agendar-chip-fe { width: 100%; }
+  .agendar-chip-fe .agendar-chip-check { border-radius: 50%; }
+  .agendar-chip-fe.activo { border-color: var(--accent); background: rgba(227, 167, 72, 0.12); }
+  .agendar-chip-fe.activo .agendar-chip-check { background: var(--accent); border-color: var(--accent); }
+  @media (max-width: 420px) {
+    .agendar-modulos-grid { grid-template-columns: 1fr; }
+  }
+
   .agendar-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .agendar-form-error { margin: 0; color: #e8998c; font-size: 13.5px; }
   .agendar-btn-confirmar {

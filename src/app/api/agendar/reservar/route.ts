@@ -19,7 +19,9 @@ export async function POST(request: NextRequest) {
     correo: typeof b.correo === "string" ? b.correo : "",
     telefono: typeof b.telefono === "string" ? b.telefono : "",
     empresa: typeof b.empresa === "string" ? b.empresa : "",
-    nota: typeof b.nota === "string" ? b.nota : "",
+    modulosInteres: Array.isArray(b.modulosInteres)
+      ? b.modulosInteres.filter((m): m is string => typeof m === "string")
+      : [],
     horarioISO: typeof b.horarioISO === "string" ? b.horarioISO : "",
     trampa: typeof b.trampa === "string" ? b.trampa : "",
     origen: typeof b.origen === "string" ? b.origen : "",

@@ -178,6 +178,14 @@ export function Landing() {
     const ioHero = new IntersectionObserver(
       (entries) => {
         heroVisible = entries[0]?.isIntersecting ?? true;
+        // El giro de la esfera es CSS puro (@keyframes girar-esfera en
+        // landing.css) — a diferencia del bucle de JS, el navegador no lo
+        // pausa solo por estar fuera de pantalla, sigue animando ~190
+        // elementos en 3D todo el tiempo. Eso compite por el compositor
+        // gráfico justo cuando el navegador necesita pintar contenido
+        // nuevo durante el scroll. Se pausa con animation-play-state,
+        // igual que el resto del hero.
+        esfera!.style.animationPlayState = heroVisible ? "running" : "paused";
         if (heroVisible && raf === 0) {
           ultimoT = (performance.now() - inicio) / 1000;
           raf = requestAnimationFrame(animar);

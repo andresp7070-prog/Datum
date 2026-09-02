@@ -111,6 +111,13 @@ export function Landing() {
     if (!els || els.length === 0) return;
 
     if ("IntersectionObserver" in window) {
+      // threshold bajo + rootMargin positivo abajo: dispara apenas la
+      // sección se ACERCA por debajo del viewport (hasta 200px antes de
+      // ser visible de verdad), no cuando ya lleva un buen tramo adentro.
+      // Con threshold alto, una sección larga (como Ecosistema, con el
+      // demo embebido) tardaba en cruzar ese % y se veía un tramo de
+      // fondo navy sólido sin nada, seguido de un fundido que ya no
+      // alcanzaba a completarse antes de que el scroll la dejara atrás.
       const io = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
@@ -120,7 +127,7 @@ export function Landing() {
             }
           });
         },
-        { threshold: 0.12 },
+        { threshold: 0, rootMargin: "0px 0px 200px 0px" },
       );
       els.forEach((el) => io.observe(el));
       return () => io.disconnect();

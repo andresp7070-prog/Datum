@@ -682,15 +682,26 @@ export function EcosistemaDemo() {
   const { indiceModulo, cuadro } = estado;
   const reduceMotionRef = useRef(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [cursor, setCursor] = useState<CursorState>({ x: 0, y: 0, visible: false, clic: false });
 
   useEffect(() => {
     reduceMotionRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }, []);
 
+  // El avance automático (y todo lo que dispara: el clic simulado, el
+  // typewriter, los contadores) se pausa por completo mientras el demo
+  // no está en pantalla — sin esto, seguía corriendo desde que carga la
+  // página aunque nadie lo viera, compitiendo por el hilo principal justo
+  // cuando el navegador necesita pintar contenido nuevo durante el scroll
+  // (mismo problema que ya se resolvió para el hero más arriba en la
+  // landing). Se retoma solo, desde donde iba, al volver a estar visible.
   useEffect(() => {
     if (reduceMotionRef.current) return;
-    const intervalo = setInterval(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    let intervalo = 0;
+    function avanzar() {
       setEstado(({ indiceModulo: iActual, cuadro: cActual }) => {
         const modulo = MODULOS[iActual];
         if (cActual < modulo.totalCuadros - 1) {
@@ -700,8 +711,24 @@ export function EcosistemaDemo() {
         // automáticamente se ajusta más adelante.
         return { indiceModulo: iActual, cuadro: 0, revelado: false };
       });
-    }, MS_POR_CUADRO);
-    return () => clearInterval(intervalo);
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries[0]?.isIntersecting ?? true;
+        if (visible && !intervalo) {
+          intervalo = window.setInterval(avanzar, MS_POR_CUADRO);
+        } else if (!visible && intervalo) {
+          clearInterval(intervalo);
+          intervalo = 0;
+        }
+      },
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      clearInterval(intervalo);
+    };
   }, []);
 
   const modulo = MODULOS[indiceModulo];
@@ -743,7 +770,7 @@ export function EcosistemaDemo() {
   }
 
   return (
-    <div className="demo-wrap">
+    <div className="demo-wrap" ref={wrapRef}>
       <div className="demo-tabs-modulos" role="tablist" aria-label="Módulos de Datum">
         {MODULOS.map((m, i) => (
           <button

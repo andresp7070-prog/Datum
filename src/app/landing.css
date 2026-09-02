@@ -204,9 +204,28 @@
   /* Esfera de puntos en CSS 3D real (perspective + preserve-3d) — sin
      WebGL ni librerías. Gira sola todo el tiempo (ambiental) — ya no
      crece ni se activa con el scroll, el logo se queda siempre en su
-     tamaño estándar. */
+     tamaño estándar.
+
+     El giro es una animación CSS pura (no JS por frame) para que corra
+     en el hilo de composición del navegador — así sigue girando fluida
+     mientras se hace scroll, en vez de competir por el hilo principal
+     con el trabajo de scroll (donde antes se notaba una pausa/tartamudeo,
+     más marcado en celular). El tamaño responsivo (escalaEsferaBase) sí
+     lo sigue poniendo JS, pero en un wrapper aparte (.hero-esfera-escala)
+     que solo se actualiza al redimensionar, no en cada frame. */
   .hero-orbita { position: absolute; left: 50%; top: 50%; width: 1px; height: 1px; perspective: 900px; }
-  .hero-esfera { position: relative; width: 1px; height: 1px; transform-style: preserve-3d; }
+  .hero-esfera-escala { width: 1px; height: 1px; }
+  .hero-esfera {
+    position: relative; width: 1px; height: 1px; transform-style: preserve-3d;
+    animation: girar-esfera 32.7273s linear infinite;
+  }
+  @keyframes girar-esfera {
+    from { transform: rotateX(6deg) rotateY(0deg); }
+    to { transform: rotateX(6deg) rotateY(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-esfera { animation: none; transform: rotateX(6deg); }
+  }
   .hero-esfera .punto {
     position: absolute; top: 0; left: 0; width: 4px; height: 4px; margin: -2px 0 0 -2px;
     border-radius: 50%; background: #e3a748; opacity: 0.75;

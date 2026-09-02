@@ -560,6 +560,19 @@
   }
   .precios-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(20, 21, 31, 0.35); }
 
+  /* Título de facturación electrónica, debajo de los planes y ANTES del
+     botón — para que el único CTA de la sección quede al final de todo
+     (planes + este texto) y se sienta como un solo cierre, no dos
+     bloques separados cada uno con su propia línea divisoria. */
+  .fe-titulo-bloque { margin-top: 48px; padding-top: 40px; border-top: 1px solid var(--line-strong); text-align: center; }
+  .fe-titulo-bloque h3 { font-size: clamp(18px, 2.15vw, 28px); line-height: 1.2; color: var(--ink); white-space: nowrap; }
+  .fe-titulo-bloque p { margin: 14px auto 0; max-width: 560px; font-size: 15.5px; line-height: 1.6; color: var(--ink-soft); }
+  /* En pantallas angostas nowrap desborda — se deja partir en dos líneas
+     igual que el resto de la landing en ese ancho. */
+  @media (max-width: 760px) {
+    .fe-titulo-bloque h3 { white-space: normal; font-size: clamp(20px, 5.5vw, 26px); }
+  }
+
   /* Precios también en navy — el dorado pasa a un tono más claro (el mismo
      que ya usa este archivo para modo oscuro) para que se lea bien encima,
      y el plan recomendado se resalta con un navy más claro en vez del beige

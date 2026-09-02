@@ -691,6 +691,11 @@ export function Landing() {
             })}
           </div>
 
+          <div className="fe-titulo-bloque">
+            <h3>¿Tu negocio necesita facturación electrónica ante la DIAN?</h3>
+            <p>Vincúlate con un proveedor autorizado por la DIAN para que factures, valida y gestiona tus documentos electrónicos sin salir de Datum.</p>
+          </div>
+
           <div className="precios-cta-row">
             <a
               className="precios-cta"

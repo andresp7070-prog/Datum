@@ -63,6 +63,7 @@ export function Landing() {
   const heroRef = useRef<HTMLElement>(null);
   const needleRef = useRef<SVGGElement>(null);
   const esferaRef = useRef<HTMLDivElement>(null);
+  const esferaEscalaRef = useRef<HTMLDivElement>(null);
   const orbitaRef = useRef<HTMLDivElement>(null);
   const compasWrapRef = useRef<HTMLDivElement>(null);
   const compasZoomRef = useRef<HTMLDivElement>(null);
@@ -139,6 +140,7 @@ export function Landing() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const needle = needleRef.current;
     const esfera = esferaRef.current;
+    const esferaEscala = esferaEscalaRef.current;
     const orbita = orbitaRef.current;
     const compasWrap = compasWrapRef.current;
     const compasZoom = compasZoomRef.current;
@@ -146,7 +148,7 @@ export function Landing() {
     const progresoScrollEl = progresoScrollRef.current;
     const heroTexto = heroTextoRef.current;
     if (
-      !needle || !esfera || !orbita || !compasWrap || !compasZoom || !h1 ||
+      !needle || !esfera || !esferaEscala || !orbita || !compasWrap || !compasZoom || !h1 ||
       !progresoScrollEl || !heroTexto
     ) {
       return;
@@ -277,10 +279,15 @@ export function Landing() {
     // scale() de la animación de entrada del compás, así que mide el
     // tamaño real en CSS aunque se llame apenas montado, a mitad de esa
     // animación.
-    let escalaEsferaBase = 1;
+    // El giro en sí ya no lo pone este efecto — es una animación CSS pura
+    // en .hero-esfera (ver landing.css) para que no compita con el scroll
+    // por el hilo principal. Acá solo queda la escala responsiva, aplicada
+    // a un wrapper aparte (.hero-esfera-escala) para no pisar el transform
+    // que ya controla la animación.
     function medirEscalaEsfera() {
       const ancho = compasWrap!.offsetWidth;
-      escalaEsferaBase = ancho > 0 ? ancho / 420 : 1;
+      const escalaEsferaBase = ancho > 0 ? ancho / 420 : 1;
+      esferaEscala!.style.transform = `scale(${escalaEsferaBase})`;
     }
     medirEscalaEsfera();
     window.addEventListener("resize", medirEscalaEsfera);
@@ -321,11 +328,6 @@ export function Landing() {
       compasZoom!.style.opacity = String(introEase);
       heroTexto!.style.opacity = String(introEase);
 
-      // La esfera ya no crece ni se apaga con el scroll — gira sola todo
-      // el tiempo, de forma ambiental, igual antes o después de hacer
-      // scroll.
-      const giroBase = reduceMotion ? 0 : t * 11;
-      esfera!.style.transform = `scale(${escalaEsferaBase}) rotateY(${giroBase}deg) rotateX(6deg)`;
       orbita!.style.opacity = String(introEase);
       orbita!.style.transform = `translate(${(smNX * 20).toFixed(1)}px, ${(smNY * 15).toFixed(1)}px)`;
       actualizarPulsos(t);
@@ -441,7 +443,9 @@ export function Landing() {
         <header className="hero" id="hero" ref={heroRef}>
           <div className="hero-grafico">
             <div className="hero-orbita" ref={orbitaRef}>
-              <div className="hero-esfera" ref={esferaRef} />
+              <div className="hero-esfera-escala" ref={esferaEscalaRef}>
+                <div className="hero-esfera" ref={esferaRef} />
+              </div>
             </div>
 
             <div className="hero-compas-wrap" ref={compasWrapRef}>

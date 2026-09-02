@@ -512,8 +512,8 @@ export function Landing() {
         </header>
       </div>
 
-      <section className="chapter chapter-oscuro reveal reveal-sin-deslizar" id="ecosistema">
-        <div className="wrap">
+      <section className="chapter chapter-oscuro" id="ecosistema">
+        <div className="wrap reveal reveal-sin-deslizar">
           <div className="chapter-head">
             <h2>Nuestro ecosistema</h2>
             <p className="subtitle">
@@ -538,8 +538,8 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="chapter alt chapter-pasos reveal" id="como-funciona">
-        <div className="wrap">
+      <section className="chapter alt chapter-pasos" id="como-funciona">
+        <div className="wrap reveal">
           <div className="chapter-head">
             <p className="tag-label">Cómo funciona</p>
             <h2>Empieza en días, no en meses</h2>
@@ -576,8 +576,8 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="chapter chapter-oscuro reveal" id="precios">
-        <div className="wrap">
+      <section className="chapter chapter-oscuro" id="precios">
+        <div className="wrap reveal">
           <div className="chapter-head">
             <h2>Nos adaptamos a lo que necesitas</h2>
             <p className="subtitle">Elige tu plan.</p>
@@ -704,8 +704,8 @@ export function Landing() {
         </div>
       </dialog>
 
-      <section className="chapter alt agenda-layout reveal" id="contacto">
-        <div className="agenda-grid">
+      <section className="chapter alt agenda-layout" id="contacto">
+        <div className="agenda-grid reveal">
           <div className="agenda-texto">
             <h2>Hablemos de tu negocio</h2>
             <p className="sub">

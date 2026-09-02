@@ -35,7 +35,14 @@ export function MultiSelector({
     return () => document.removeEventListener("mousedown", alHacerClicAfuera);
   }, [abierto]);
 
-  const etiquetas = opciones.filter((o) => seleccionados.includes(o.value)).map((o) => o.label);
+  // Si un valor guardado no está entre las opciones (ej. un lead que
+  // llegó del formulario público de la landing, donde los módulos son
+  // texto plano en vez de ids del catálogo real de Datum), se muestra tal
+  // cual en vez de desaparecer en silencio — mejor un texto sin traducir
+  // que un "Sin elegir" engañoso cuando sí hay algo guardado.
+  const etiquetas = seleccionados.map(
+    (valor) => opciones.find((o) => o.value === valor)?.label ?? valor,
+  );
 
   function alternar(value: string) {
     if (seleccionados.includes(value)) {

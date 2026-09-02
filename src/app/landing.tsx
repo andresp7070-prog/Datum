@@ -154,12 +154,38 @@ export function Landing() {
     const h1 = h1Ref.current;
     const progresoScrollEl = progresoScrollRef.current;
     const heroTexto = heroTextoRef.current;
+    const heroEl = heroRef.current;
     if (
       !needle || !esfera || !esferaEscala || !orbita || !compasWrap || !compasZoom || !h1 ||
-      !progresoScrollEl || !heroTexto
+      !progresoScrollEl || !heroTexto || !heroEl
     ) {
       return;
     }
+
+    // Mientras el hero esté fuera de pantalla (mucho más abajo en el
+    // scroll), ni el paralaje del mouse ni el bucle de animación tienen
+    // ningún efecto visible — pero seguían corriendo igual. onMouseMove
+    // lee compasWrap.getBoundingClientRect() en cada movimiento del mouse,
+    // y el bucle de animación escribe transform/opacity en 5 elementos
+    // cada frame: esa combinación (escribir estilos + leer layout) fuerza
+    // al navegador a recalcular el layout de TODA la página en cada
+    // movimiento de mouse, compitiendo con el trabajo de scroll — se
+    // sentía como que el resto de la página (el destello beige, el demo
+    // de Ecosistema) no terminaba de pintarse hasta que el scroll se
+    // detenía. Se pausa todo esto por completo cuando el hero no está
+    // visible, y se retoma solo cuando vuelve a estarlo.
+    let heroVisible = true;
+    const ioHero = new IntersectionObserver(
+      (entries) => {
+        heroVisible = entries[0]?.isIntersecting ?? true;
+        if (heroVisible && raf === 0) {
+          ultimoT = (performance.now() - inicio) / 1000;
+          raf = requestAnimationFrame(animar);
+        }
+      },
+      { threshold: 0 },
+    );
+    ioHero.observe(heroEl);
 
     function shortestDelta(d: number) {
       return ((d % 360) + 540) % 360 - 180;
@@ -266,6 +292,7 @@ export function Landing() {
     let targetDeg = 0, currentDeg = 0, velDeg = 0, lastX = 0, lastY = 0;
     let mouseNX = 0, mouseNY = 0, smNX = 0, smNY = 0;
     function onMouseMove(e: MouseEvent) {
+      if (!heroVisible) return;
       lastX = e.clientX;
       lastY = e.clientY;
       const rect = compasWrap!.getBoundingClientRect();
@@ -314,6 +341,7 @@ export function Landing() {
     let ultimoT = 0;
     let tituloActivado = false;
     function animar() {
+      if (!heroVisible) { raf = 0; return; }
       raf = requestAnimationFrame(animar);
       const t = (performance.now() - inicio) / 1000;
       const dt = Math.min(0.05, Math.max(0, t - ultimoT));
@@ -354,6 +382,7 @@ export function Landing() {
 
     return () => {
       cancelAnimationFrame(raf);
+      ioHero.disconnect();
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", medirEscalaEsfera);

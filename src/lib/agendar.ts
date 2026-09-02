@@ -164,7 +164,7 @@ export async function reservarReunion(input: {
   correo: string;
   telefono: string;
   empresa: string;
-  nota: string;
+  modulosInteres: string[];
   horarioISO: string;
   trampa: string;
   origen: string;
@@ -202,9 +202,10 @@ export async function reservarReunion(input: {
   const superAdminId = process.env.SUPER_ADMIN_USER_ID!;
   const supabase = createAdminClient();
 
-  const descripcionPartes = [input.empresa ? `Empresa: ${input.empresa}` : null, input.nota || null].filter(
-    (p): p is string => Boolean(p),
-  );
+  const descripcionPartes = [
+    input.empresa ? `Empresa: ${input.empresa}` : null,
+    input.modulosInteres.length > 0 ? `Interesado en: ${input.modulosInteres.join(", ")}` : null,
+  ].filter((p): p is string => Boolean(p));
 
   const evento = await crearEventoCalendarConToken(accessToken, {
     titulo: `Reunión con ${input.nombre} — Datum`,
@@ -222,7 +223,7 @@ export async function reservarReunion(input: {
       empresa: input.empresa || null,
       telefono: input.telefono,
       email: input.correo,
-      notas: input.nota || null,
+      modulos_interes: input.modulosInteres.length > 0 ? input.modulosInteres : null,
       origen: input.origen || null,
     })
     .select("id")

@@ -112,7 +112,13 @@ function sumarMes(
   return { anio, mes };
 }
 
-export function AgendarWidget({ origen = "" }: { origen?: string }) {
+export function AgendarWidget({
+  origen = "",
+  onConfirmado,
+}: {
+  origen?: string;
+  onConfirmado?: () => void;
+}) {
   const [fase, setFase] = useState<Fase>("cargando");
   const [franjas, setFranjas] = useState<string[]>([]);
   const [mensajeError, setMensajeError] = useState("");
@@ -240,6 +246,7 @@ export function AgendarWidget({ origen = "" }: { origen?: string }) {
       }
       setEnlaceEvento(data.link ?? null);
       setFase("confirmado");
+      onConfirmado?.();
     } catch {
       setMensajeError("No se pudo agendar la reunión — intenta de nuevo.");
       setFase("eligiendo");

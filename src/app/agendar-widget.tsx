@@ -49,6 +49,25 @@ const MODULOS_INTERES = [
 ];
 const FE_VALOR = "Facturación electrónica";
 
+// Colombia primero (la inmensa mayoría de quienes llenan este
+// formulario) — el resto son los países de Latinoamérica más comunes
+// más España y Estados Unidos, para no dejar fuera a alguien que
+// escriba desde otro lado. Sin librería externa (principio de
+// portabilidad) — es un <select> nativo con el indicativo ya incluido.
+const PAISES_TELEFONO = [
+  { value: "+57", label: "🇨🇴 Colombia +57" },
+  { value: "+52", label: "🇲🇽 México +52" },
+  { value: "+54", label: "🇦🇷 Argentina +54" },
+  { value: "+56", label: "🇨🇱 Chile +56" },
+  { value: "+51", label: "🇵🇪 Perú +51" },
+  { value: "+593", label: "🇪🇨 Ecuador +593" },
+  { value: "+58", label: "🇻🇪 Venezuela +58" },
+  { value: "+507", label: "🇵🇦 Panamá +507" },
+  { value: "+506", label: "🇨🇷 Costa Rica +506" },
+  { value: "+34", label: "🇪🇸 España +34" },
+  { value: "+1", label: "🇺🇸 Estados Unidos +1" },
+];
+
 const FORMATO_DIA_LARGO = new Intl.DateTimeFormat("es-CO", {
   weekday: "long",
   day: "numeric",
@@ -479,6 +498,8 @@ function FormularioDatos({
   const [modulosSeleccionados, setModulosSeleccionados] = useState<string[]>(
     [],
   );
+  const [codigoPais, setCodigoPais] = useState(PAISES_TELEFONO[0].value);
+  const [telefono, setTelefono] = useState("");
 
   function alternarModulo(valor: string) {
     setModulosSeleccionados((prev) =>
@@ -497,7 +518,7 @@ function FormularioDatos({
         onConfirmar({
           nombre: String(form.get("nombre") ?? ""),
           correo: String(form.get("correo") ?? ""),
-          telefono: String(form.get("telefono") ?? ""),
+          telefono: telefono ? `${codigoPais} ${telefono}` : "",
           empresa: String(form.get("empresa") ?? ""),
           modulosInteres: modulosSeleccionados,
           trampa: String(form.get("sitio_web") ?? ""),
@@ -513,20 +534,39 @@ function FormularioDatos({
           disabled={disabled}
         />
         <input
-          name="telefono"
-          type="tel"
-          placeholder="Teléfono *"
+          name="correo"
+          type="email"
+          placeholder="Correo *"
           required
           disabled={disabled}
         />
       </div>
-      <input
-        name="correo"
-        type="email"
-        placeholder="Correo *"
-        required
-        disabled={disabled}
-      />
+
+      <div className="agendar-telefono-fila">
+        <select
+          className="agendar-select-pais"
+          value={codigoPais}
+          onChange={(e) => setCodigoPais(e.target.value)}
+          disabled={disabled}
+          aria-label="País"
+        >
+          {PAISES_TELEFONO.map((pais) => (
+            <option key={pais.value} value={pais.value}>
+              {pais.label}
+            </option>
+          ))}
+        </select>
+        <input
+          type="tel"
+          inputMode="numeric"
+          placeholder="Celular *"
+          required
+          disabled={disabled}
+          value={telefono}
+          onChange={(e) => setTelefono(e.target.value.replace(/\D/g, ""))}
+        />
+      </div>
+
       <input
         name="empresa"
         type="text"

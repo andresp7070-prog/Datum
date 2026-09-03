@@ -54,11 +54,17 @@ export function MultiSelector({
 
   return (
     <div className="relative" ref={contenedorRef}>
+      {/* whitespace-normal (no truncate) a propósito — con varios valores
+          elegidos, el texto combinado (ej. "Ventas, Estado de resultados,
+          Facturación electrónica") fácilmente pasaba el ancho fijo y el
+          corte con "…" se comía el final de la lista en silencio, aunque
+          el dato sí estuviera guardado. Ahora el botón crece hacia abajo
+          en vez de recortar. */}
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
         disabled={deshabilitado}
-        className="max-w-[220px] truncate rounded-lg border border-gray-300 px-2 py-1 text-left text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        className="max-w-[220px] whitespace-normal break-words rounded-lg border border-gray-300 px-2 py-1 text-left text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50"
       >
         {etiquetas.length > 0 ? etiquetas.join(", ") : placeholder}
       </button>

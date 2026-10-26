@@ -16,10 +16,10 @@
 export const VERSION_CONTRATO = "2026-10-26";
 
 export const PLANES_VIGENTES = [
-  { value: "basic", nombre: "Basic", modulos: "1 módulo, a elección de EL CLIENTE", precio: 125500 },
-  { value: "startup", nombre: "Startup", modulos: "Hasta 3 módulos, a elección de EL CLIENTE", precio: 280900 },
-  { value: "pyme", nombre: "Pyme", modulos: "Hasta 5 módulos, a elección de EL CLIENTE", precio: 415700 },
-  { value: "enterprise", nombre: "Enterprise", modulos: "Todos los módulos disponibles en la Plataforma", precio: 466700 },
+  { value: "basic", nombre: "Basic", modulos: "1 módulo, a elección de EL CLIENTE", precio: 199000 },
+  { value: "startup", nombre: "Startup", modulos: "Hasta 3 módulos, a elección de EL CLIENTE", precio: 409000 },
+  { value: "pyme", nombre: "Pyme", modulos: "Hasta 5 módulos, a elección de EL CLIENTE", precio: 649000 },
+  { value: "enterprise", nombre: "Enterprise", modulos: "Todos los módulos disponibles en la Plataforma", precio: 799000 },
 ] as const;
 
 export const MODULOS_CONTRATO = [

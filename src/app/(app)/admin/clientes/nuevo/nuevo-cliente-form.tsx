@@ -27,17 +27,17 @@ const DIAS = [
 ];
 
 const PLANES = [
-  { value: "basic", label: "Basic — $125.500/mes (1 módulo)" },
-  { value: "startup", label: "Startup — $280.900/mes (hasta 3 módulos)" },
-  { value: "pyme", label: "Pyme — $415.700/mes (hasta 5 módulos)" },
-  { value: "enterprise", label: "Enterprise — $466.700/mes (todos los módulos)" },
+  { value: "basic", label: "Basic — $199.000/mes (1 módulo)" },
+  { value: "startup", label: "Startup — $409.000/mes (hasta 3 módulos)" },
+  { value: "pyme", label: "Pyme — $649.000/mes (hasta 5 módulos)" },
+  { value: "enterprise", label: "Enterprise — $799.000/mes (todos los módulos)" },
 ];
 
 const MONTO_SUGERIDO_POR_PLAN: Record<string, string> = {
-  basic: "125500",
-  startup: "280900",
-  pyme: "415700",
-  enterprise: "466700",
+  basic: "199000",
+  startup: "409000",
+  pyme: "649000",
+  enterprise: "799000",
 };
 
 // Mismo descuento que DESCUENTO_ANUAL en landing.tsx — no se guarda el total
@@ -61,7 +61,7 @@ export function NuevoClienteForm() {
   const [horaCierre, setHoraCierre] = useState("");
   const [diasAtencion, setDiasAtencion] = useState<string[]>([]);
   const [plan, setPlan] = useState("basic");
-  const [montoMensual, setMontoMensual] = useState("125500");
+  const [montoMensual, setMontoMensual] = useState("199000");
   const [facturacion, setFacturacion] = useState("mensual");
   const [diaPago, setDiaPago] = useState("");
   const [nombreCliente, setNombreCliente] = useState("");
@@ -141,7 +141,7 @@ export function NuevoClienteForm() {
       setHoraCierre("");
       setDiasAtencion([]);
       setPlan("basic");
-      setMontoMensual("125500");
+      setMontoMensual("199000");
       setFacturacion("mensual");
       setDiaPago("");
       setNombreCliente("");

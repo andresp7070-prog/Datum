@@ -3241,9 +3241,11 @@ create policy "ver mis puntos de venta" on puntos_venta
   for all using (empresa_id = mi_empresa_id() or es_admin());
 
 -- Solo permite actualizar (nunca crear ni borrar) la propia fila de empresa.
--- En la práctica, el único código de la aplicación que escribe aquí es
--- subirLogoEmpresa(), que solo toca logo_path — el resto de campos
--- (plan, módulos activos, etc.) siguen siendo de administración manual.
+-- En la práctica, el código de la aplicación que escribe acá con la sesión
+-- normal del cliente es subirLogoEmpresa() (logo_path) y aceptarTerminos()
+-- (terminos_aceptados_en/terminos_version, src/app/aceptar-terminos/) — el
+-- resto de campos (plan, módulos activos, etc.) siguen siendo de
+-- administración manual.
 create policy "actualizar mi propia empresa" on empresas
   for update using (id = mi_empresa_id() or es_admin())
   with check (id = mi_empresa_id() or es_admin());
@@ -3954,3 +3956,25 @@ $$;
 -- de la landing (src/lib/agendar.ts).
 -- ============================================================
 alter table datum_leads add column if not exists origen text;
+
+-- ============================================================
+-- ACEPTACIÓN DEL CONTRATO DENTRO DE LA PLATAFORMA — agregado 2026-10-26.
+-- Reemplaza la firma física del contrato: en el primer inicio de sesión
+-- (después de cambiar la contraseña), a toda cuenta cliente se le muestra
+-- el contrato completo con su plan/módulos/precio ya puestos, y debe darle
+-- "Acepto" para poder usar el resto de la plataforma (ver
+-- src/app/aceptar-terminos/). terminos_aceptados_en queda como la prueba
+-- de "firma electrónica" (fecha/hora exacta); terminos_version identifica
+-- qué versión del texto del contrato aceptó, por si el contrato cambia más
+-- adelante. nit/ciudad/representante_legal_* son los datos que el propio
+-- contrato le pide a "EL CLIENTE" para identificarlo — se llenan a mano en
+-- "Crear cliente" (/admin/clientes/nuevo) con lo que Andrés ya conversó
+-- con la persona antes de crearle la cuenta; todos opcionales, por si no
+-- se tienen a la mano en el momento de crear la cuenta.
+-- ============================================================
+alter table empresas add column if not exists nit text;
+alter table empresas add column if not exists ciudad text;
+alter table empresas add column if not exists representante_legal_nombre text;
+alter table empresas add column if not exists representante_legal_cc text;
+alter table empresas add column if not exists terminos_aceptados_en timestamptz;
+alter table empresas add column if not exists terminos_version text;

@@ -7,6 +7,7 @@ type Empresa = {
   tipo_negocio: string | null;
   modulos_activos: string[];
   permite_apartados: boolean;
+  terminos_aceptados_en: string | null;
 };
 
 type Perfil = {
@@ -31,7 +32,7 @@ export async function getPerfilActual(): Promise<Perfil | null> {
   const { data: perfil } = await supabase
     .from("perfiles")
     .select(
-      "rol, rol_empresa, nombre, empresa_id, punto_venta_id, debe_cambiar_password, ultima_actualizacion_vista_id, empresas ( id, nombre, tipo_negocio, modulos_activos, permite_apartados )",
+      "rol, rol_empresa, nombre, empresa_id, punto_venta_id, debe_cambiar_password, ultima_actualizacion_vista_id, empresas ( id, nombre, tipo_negocio, modulos_activos, permite_apartados, terminos_aceptados_en )",
     )
     .eq("id", user.id)
     .single();

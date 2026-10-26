@@ -16,28 +16,28 @@ type Plan = {
 const PLANES: Plan[] = [
   {
     nombre: "Basic",
-    mensual: 125500,
+    mensual: 199000,
     descripcion: "Para empezar con lo esencial.",
     destacado: false,
     feats: ["1 módulo de tu elección", "Panel de control"],
   },
   {
     nombre: "Startup",
-    mensual: 280900,
+    mensual: 409000,
     descripcion: "Para organizar tu operación.",
     destacado: false,
     feats: ["Hasta 3 módulos de tu elección", "Panel de control"],
   },
   {
     nombre: "Pyme",
-    mensual: 415700,
+    mensual: 649000,
     descripcion: "Para crecer con más control.",
     destacado: true,
     feats: ["Hasta 5 módulos de tu elección", "Panel de control"],
   },
   {
     nombre: "Enterprise",
-    mensual: 466700,
+    mensual: 799000,
     descripcion: "Para llevarlo al siguiente nivel.",
     destacado: false,
     feats: ["Todos los módulos", "Panel de control"],

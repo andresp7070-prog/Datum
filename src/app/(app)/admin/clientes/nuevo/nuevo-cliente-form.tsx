@@ -66,6 +66,10 @@ export function NuevoClienteForm() {
   const [diaPago, setDiaPago] = useState("");
   const [nombreCliente, setNombreCliente] = useState("");
   const [correoCliente, setCorreoCliente] = useState("");
+  const [nit, setNit] = useState("");
+  const [ciudad, setCiudad] = useState("");
+  const [representanteLegalNombre, setRepresentanteLegalNombre] = useState("");
+  const [representanteLegalCc, setRepresentanteLegalCc] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
@@ -88,6 +92,10 @@ export function NuevoClienteForm() {
 
     if (!nombreEmpresa.trim() || !nombreCliente.trim() || !correoCliente.trim()) {
       setError("Completa el nombre de la empresa, el nombre del cliente y su correo.");
+      return;
+    }
+    if (!nit.trim() || !ciudad.trim() || !representanteLegalNombre.trim() || !representanteLegalCc.trim()) {
+      setError("Completa el NIT/cédula, la ciudad, y el nombre y cédula del representante legal.");
       return;
     }
     if (modulosActivos.length === 0) {
@@ -115,6 +123,10 @@ export function NuevoClienteForm() {
         diaPago,
         nombreCliente,
         correoCliente,
+        nit,
+        ciudad,
+        representanteLegalNombre,
+        representanteLegalCc,
       });
       if (!res.ok) {
         setError(res.error);
@@ -134,6 +146,10 @@ export function NuevoClienteForm() {
       setDiaPago("");
       setNombreCliente("");
       setCorreoCliente("");
+      setNit("");
+      setCiudad("");
+      setRepresentanteLegalNombre("");
+      setRepresentanteLegalCc("");
     } finally {
       setEnviando(false);
     }
@@ -156,6 +172,55 @@ export function NuevoClienteForm() {
             placeholder="Ej. Distribuidora de aseo JM"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
           />
+        </div>
+
+        {/* Datos que pide el contrato para identificar a EL CLIENTE (ver
+            src/app/aceptar-terminos/) — obligatorios: a esta altura ya se
+            conversó con la persona, así que no deberían quedar pendientes. */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">NIT o cédula</label>
+            <input
+              value={nit}
+              onChange={(e) => setNit(e.target.value)}
+              placeholder="900.123.456-7"
+              required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Ciudad</label>
+            <input
+              value={ciudad}
+              onChange={(e) => setCiudad(e.target.value)}
+              placeholder="Bogotá D.C."
+              required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Representante legal
+            </label>
+            <input
+              value={representanteLegalNombre}
+              onChange={(e) => setRepresentanteLegalNombre(e.target.value)}
+              placeholder="Si es persona natural, su propio nombre"
+              required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              C.C. del representante
+            </label>
+            <input
+              value={representanteLegalCc}
+              onChange={(e) => setRepresentanteLegalCc(e.target.value)}
+              required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            />
+          </div>
         </div>
 
         <div>

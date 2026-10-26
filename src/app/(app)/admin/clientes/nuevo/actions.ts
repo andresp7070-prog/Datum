@@ -37,6 +37,10 @@ export async function crearCliente(input: {
   diaPago: string;
   nombreCliente: string;
   correoCliente: string;
+  nit: string;
+  ciudad: string;
+  representanteLegalNombre: string;
+  representanteLegalCc: string;
 }): Promise<
   | { ok: true; contrasena: string; correoEnviado: boolean; errorCorreo: string | null }
   | { ok: false; error: string }
@@ -46,12 +50,26 @@ export async function crearCliente(input: {
   const nombreEmpresa = input.nombreEmpresa.trim();
   const nombreCliente = input.nombreCliente.trim();
   const correoCliente = input.correoCliente.trim().toLowerCase();
+  const nit = input.nit.trim();
+  const ciudad = input.ciudad.trim();
+  const representanteLegalNombre = input.representanteLegalNombre.trim();
+  const representanteLegalCc = input.representanteLegalCc.trim();
 
   if (!nombreEmpresa || !nombreCliente || !correoCliente) {
     return { ok: false, error: "Completa el nombre de la empresa, el nombre del cliente y su correo." };
   }
   if (!correoValido(correoCliente)) {
     return { ok: false, error: "El correo no parece válido." };
+  }
+  // Estos 4 datos los pide el contrato (ver src/app/aceptar-terminos/)
+  // para identificar a EL CLIENTE — a esta altura (ya se decidió crearle
+  // la cuenta) ya se conversó con la persona, así que no hay razón para
+  // dejarlos a medias y tener que completarlos después a mano en Supabase.
+  if (!nit || !ciudad || !representanteLegalNombre || !representanteLegalCc) {
+    return {
+      ok: false,
+      error: "Completa el NIT/cédula, la ciudad, y el nombre y cédula del representante legal.",
+    };
   }
   if (input.modulosActivos.length === 0) {
     return { ok: false, error: "Elige al menos un módulo." };
@@ -116,6 +134,12 @@ export async function crearCliente(input: {
       hora_cierre: input.horaCierre || null,
       dias_atencion: input.diasAtencion.length > 0 ? input.diasAtencion : null,
       monto_mensual: montoMensual,
+      // Datos que pide el contrato para identificar a EL CLIENTE (ver
+      // src/app/aceptar-terminos/) — obligatorios, ya validados arriba.
+      nit,
+      ciudad,
+      representante_legal_nombre: representanteLegalNombre,
+      representante_legal_cc: representanteLegalCc,
     })
     .select("id")
     .single();

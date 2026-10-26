@@ -31,6 +31,17 @@ export default async function AppLayout({
   }
 
   const esDePlataforma = esRolDePlataforma(perfil.rol);
+
+  // Reemplaza la firma física del contrato — ver schema.sql, sección
+  // "ACEPTACIÓN DEL CONTRATO DENTRO DE LA PLATAFORMA". Toda cuenta cliente
+  // (nunca una de plataforma, que no le "firma" un contrato a sí misma)
+  // tiene que aceptarlo antes de ver cualquier otra pantalla — incluidas
+  // las cuentas que ya existían antes de que esto se construyera, porque
+  // ninguna tiene terminos_aceptados_en todavía.
+  if (!esDePlataforma && !perfil.empresas?.terminos_aceptados_en) {
+    redirect("/aceptar-terminos");
+  }
+
   let puntosVenta: { id: string; nombre: string }[] = [];
   let puntoSeleccionado: string | null = null;
   let mostrarSelectorPunto = false;

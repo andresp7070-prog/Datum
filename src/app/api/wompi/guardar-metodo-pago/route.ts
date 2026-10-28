@@ -58,9 +58,33 @@ export async function POST(request: Request) {
     // ya no puede escribir esta fila — solo lectura. Es el cuarto uso
     // legítimo de esta llave en el proyecto (ver src/lib/supabase/admin.ts).
     const admin = createAdminClient();
+
+    // El primer cobro debe caer cuando de verdad termina la prueba
+    // gratuita, no apenas se guarda la tarjeta (alguien podría agregarla
+    // antes de que se le venza) — y si ya se venció (este fue el gate
+    // forzado), toca cobrar lo antes posible, así que el cron lo recoge
+    // en su próxima corrida.
+    const { data: suscripcionActual } = await admin
+      .from("suscripciones")
+      .select("id, fecha_fin_prueba")
+      .eq("empresa_id", perfil.empresa_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const ahora = new Date();
+    const fechaFinPrueba = suscripcionActual?.fecha_fin_prueba
+      ? new Date(suscripcionActual.fecha_fin_prueba)
+      : ahora;
+    const fechaProximoCobro = fechaFinPrueba > ahora ? fechaFinPrueba : ahora;
+
     const { error } = await admin
       .from("suscripciones")
-      .update({ wompi_fuente_pago_id: fuentePago.id, proveedor_pago: "wompi" })
+      .update({
+        wompi_fuente_pago_id: String(fuentePago.id),
+        proveedor_pago: "wompi",
+        fecha_proximo_cobro: fechaProximoCobro.toISOString(),
+      })
       .eq("empresa_id", perfil.empresa_id);
     if (error) throw new Error(error.message);
   } catch (err) {

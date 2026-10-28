@@ -29,9 +29,11 @@ const ESTADO_WOMPI_A_COBRO: Record<string, "pendiente" | "aprobado" | "declinado
 // Recibe los avisos de Wompi cuando el estado de un cobro cambia (ver
 // CLAUDE.md, sección "Cobros"). Nunca confía en el cuerpo sin verificar la
 // firma primero — cualquiera podría mandar un POST falso diciendo "este
-// cobro se aprobó". El cron que dispara cada cobro mensual (siguiente paso
-// a construir) inserta la fila en suscripcion_cobros ANTES de crear la
-// transacción en Wompi; este webhook solo la actualiza, nunca la crea.
+// cobro se aprobó". El cron que dispara cada cobro mensual (ver
+// src/app/api/cron/cobro-suscripciones/route.ts) inserta la fila en
+// suscripcion_cobros justo después de crear la transacción en Wompi (con
+// el id que Wompi devuelve); este webhook solo la actualiza, nunca la
+// crea.
 export async function POST(request: Request) {
   const evento = (await request.json()) as EventoWompi;
 

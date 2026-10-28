@@ -2,10 +2,12 @@
 // CLAUDE.md, sección "Cobros". Código propio contra la API REST de Wompi
 // (fetch directo, sin SDK), mismo criterio que src/lib/google.ts.
 //
-// Wompi usa la misma URL para Sandbox y Producción — lo que cambia es el
-// prefijo de las llaves (pub_test_/prv_test_ vs pub_prod_/prv_prod_), así
-// que el ambiente se decide poniendo un juego de llaves u otro en Vercel,
-// nunca en este código.
+// Wompi usa un HOST distinto por ambiente, no solo un prefijo de llave
+// distinto como se pensó al principio — corregido 2026-10-28 al probar en
+// sandbox y ver un ejemplo real de su documentación con el host de
+// producción. baseUrlWompi() lo decide solo mirando el prefijo de la
+// llave que se esté usando en cada llamada, así el ambiente se sigue
+// decidiendo solo poniendo un juego de llaves u otro en Vercel, nunca acá.
 //
 // Hay CUATRO credenciales distintas, todas del Dashboard de Wompi, nunca
 // la misma: la llave pública y la privada (Mi cuenta → esa sección), el
@@ -20,7 +22,11 @@
 // - INTEGRIDAD_EVENTOS_WOMPI (el Secreto de Integridad, a pesar del
 //   nombre — quedó así por como se creó en Vercel)
 
-const WOMPI_API_BASE = "https://api.wompi.co/v1";
+function baseUrlWompi(llave: string): string {
+  return llave.startsWith("pub_test_") || llave.startsWith("prv_test_")
+    ? "https://sandbox.wompi.co/v1"
+    : "https://production.wompi.co/v1";
+}
 
 function variableRequerida(nombre: string): string {
   const valor = process.env[nombre];
@@ -48,7 +54,7 @@ export async function obtenerTokensAceptacionWompi(): Promise<{
   permalinkDatosPersonales: string;
 }> {
   const llavePublica = variableRequerida("LLAVE_PUBLICA_WOMPI");
-  const respuesta = await fetch(`${WOMPI_API_BASE}/merchants/info`, {
+  const respuesta = await fetch(`${baseUrlWompi(llavePublica)}/merchants/info`, {
     headers: { "x-merchant-public-key": llavePublica },
   });
   if (!respuesta.ok) {
@@ -80,7 +86,7 @@ export async function crearFuentePagoWompi(input: {
   deviceId?: string;
 }): Promise<{ id: number; estado: string }> {
   const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
-  const respuesta = await fetch(`${WOMPI_API_BASE}/payment_sources`, {
+  const respuesta = await fetch(`${baseUrlWompi(llavePrivada)}/payment_sources`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${llavePrivada}`,
@@ -146,7 +152,7 @@ export async function crearCobroRecurrenteWompi(input: {
     obtenerTokensAceptacionWompi(),
     firmaIntegridadWompi({ referencia: input.referencia, montoEnCentavos: input.montoEnCentavos, moneda }),
   ]);
-  const respuesta = await fetch(`${WOMPI_API_BASE}/transactions`, {
+  const respuesta = await fetch(`${baseUrlWompi(llavePrivada)}/transactions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${llavePrivada}`,
@@ -173,7 +179,7 @@ export async function crearCobroRecurrenteWompi(input: {
 
 export async function consultarTransaccionWompi(id: string): Promise<{ estado: string }> {
   const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
-  const respuesta = await fetch(`${WOMPI_API_BASE}/transactions/${id}`, {
+  const respuesta = await fetch(`${baseUrlWompi(llavePrivada)}/transactions/${id}`, {
     headers: { Authorization: `Bearer ${llavePrivada}` },
   });
   if (!respuesta.ok) throw new Error("No se pudo consultar el estado del cobro.");

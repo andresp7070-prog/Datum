@@ -172,6 +172,7 @@ export function FormularioMetodoPago({
         method="POST"
         action="/api/wompi/guardar-metodo-pago"
         data-listo={listoParaPagar ? "true" : "false"}
+        className="flex flex-col items-center"
         onSubmitCapture={(e) => {
           if (!listoParaPagar) {
             e.preventDefault();

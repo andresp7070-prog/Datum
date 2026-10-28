@@ -126,13 +126,18 @@ async function firmaIntegridadWompi(input: {
 // Cobro automático contra una fuente de pago ya creada (mes 2 en
 // adelante, o el primer cobro si no hay período de prueba de por medio) —
 // lo dispara Datum mismo (un cron propio, ver sección "Cobros" en
-// CLAUDE.md), nunca Wompi solo. recurrent:true activa Credential On File
-// para mejorar la tasa de aprobación cuando la tarjeta es Visa/Mastercard
-// procesada por RBM — en cualquier otro caso Wompi simplemente lo ignora,
-// sin error, así que siempre se manda. Los tokens de aceptación se piden
-// de nuevo acá adentro (no los recibe el llamador): no hay nadie frente a
+// CLAUDE.md), nunca Wompi solo. Los tokens de aceptación se piden de
+// nuevo acá adentro (no los recibe el llamador): no hay nadie frente a
 // una pantalla a quien mostrarle un checkbox en un cobro automático, así
 // que no tiene sentido pedírselos a quien llama esta función.
+//
+// payment_method sí es obligatorio incluso cobrando contra una fuente de
+// pago ya existente — confirmado 2026-10-28 contra la página real de
+// "Métodos de pago" de Wompi (su propio ejemplo de cobro recurrente con
+// Bancolombia manda payment_method + payment_source_id juntos, nunca uno
+// sin el otro). Antes esta función no lo mandaba para nada, y en cambio
+// mandaba un campo "recurrent: true" que no existe en ninguna parte de
+// esa documentación — era una suposición sin confirmar, se quitó.
 //
 // OJO: según la documentación real de Wompi, una transacción SIEMPRE nace
 // en estado PENDING — el `estado` que devuelve esta función nunca es el
@@ -164,8 +169,8 @@ export async function crearCobroRecurrenteWompi(input: {
       signature,
       customer_email: input.correoCliente,
       reference: input.referencia,
+      payment_method: { type: "CARD", installments: 1 },
       payment_source_id: input.fuentePagoId,
-      recurrent: true,
       acceptance_token: tokens.acceptanceToken,
       accept_personal_auth: tokens.acceptPersonalAuth,
     }),

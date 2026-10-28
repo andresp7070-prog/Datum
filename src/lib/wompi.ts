@@ -59,12 +59,17 @@ export async function obtenerTokensAceptacionWompi(): Promise<{
 // entrega el Widget de tokenización de Wompi, nunca la tarjeta en sí) en
 // una fuente de pago reutilizable — el cliente la acepta explícitamente
 // una sola vez, acá; cobrarle el mes siguiente ya no necesita que vuelva
-// a escribir nada (ver crearCobroRecurrenteWompi).
+// a escribir nada (ver crearCobroRecurrenteWompi). sessionId/deviceId
+// vienen de Wompi JS (su librería antifraude, que corre en el navegador
+// de quien está agregando la tarjeta) — opcionales, pero Wompi recomienda
+// mandarlos siempre que se pueda para mejorar la detección de fraude.
 export async function crearFuentePagoWompi(input: {
   tokenTarjeta: string;
   correoCliente: string;
   acceptanceToken: string;
   acceptPersonalAuth: string;
+  sessionId?: string;
+  deviceId?: string;
 }): Promise<{ id: number; estado: string }> {
   const llavePrivada = variableRequerida("WOMPI_PRIVATE_KEY");
   const respuesta = await fetch(`${WOMPI_API_BASE}/payment_sources`, {
@@ -79,6 +84,8 @@ export async function crearFuentePagoWompi(input: {
       customer_email: input.correoCliente,
       acceptance_token: input.acceptanceToken,
       accept_personal_auth: input.acceptPersonalAuth,
+      ...(input.sessionId ? { session_id: input.sessionId } : {}),
+      ...(input.deviceId ? { customer_data: { device_id: input.deviceId } } : {}),
     }),
   });
   const cuerpo = await respuesta.json();

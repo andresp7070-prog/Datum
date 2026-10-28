@@ -155,10 +155,23 @@ export function FormularioMetodoPago({
         </label>
       </div>
 
+      {/* El widget de Wompi, una vez montado, nunca se vuelve a quitar del
+          DOM (ver el useEffect de arriba) — así que ocultarlo cuando se
+          desmarca una casilla no puede hacerse quitándolo, tiene que ser
+          con CSS. Esta regla oculta cualquier cosa que haya quedado
+          después del <script> del widget (sea botón, iframe, lo que sea
+          que dibuje) mientras el formulario no esté "listo". */}
+      <style>{`
+        form[data-listo="false"] script[data-widget-operation="tokenize"] ~ * {
+          display: none !important;
+        }
+      `}</style>
+
       <form
         ref={formRef}
         method="POST"
         action="/api/wompi/guardar-metodo-pago"
+        data-listo={listoParaPagar ? "true" : "false"}
         onSubmitCapture={(e) => {
           if (!listoParaPagar) {
             e.preventDefault();
@@ -170,16 +183,17 @@ export function FormularioMetodoPago({
         <input type="hidden" name="session_id" value={sessionId} />
         <input type="hidden" name="device_id" value={deviceId} />
 
-        {/* El botón real de Wompi se inserta acá como hijo directo del
-            form, por fuera de React (ver el useEffect de arriba) — mientras
-            tanto, este botón deshabilitado ocupa su lugar visualmente. Se
-            oculta con "hidden" en vez de dejar de renderizarse: así React
-            nunca quita ni vuelve a insertar este nodo, que es justo lo que
-            antes chocaba con el <script> agregado a mano. */}
+        {/* El botón real de Wompi se inserta como hijo directo del form,
+            por fuera de React (ver el useEffect de arriba) — mientras
+            tanto, y cada vez que se desmarca una casilla, este botón
+            deshabilitado ocupa su lugar visualmente. Se oculta con
+            "hidden" en vez de dejar de renderizarse: así React nunca
+            quita ni vuelve a insertar este nodo, que es justo lo que antes
+            chocaba con el <script> agregado a mano. */}
         <button
           type="button"
           disabled
-          hidden={widgetMontado}
+          hidden={listoParaPagar}
           className="w-full cursor-not-allowed rounded-lg bg-gray-200 px-4 py-2.5 text-sm font-medium text-gray-400"
         >
           Marca las dos casillas para continuar

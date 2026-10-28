@@ -10,7 +10,15 @@
 // Hay CUATRO credenciales distintas, todas del Dashboard de Wompi, nunca
 // la misma: la llave pública y la privada (Mi cuenta → esa sección), el
 // Secreto de Eventos y el Secreto de Integridad (los dos viven en Mi
-// cuenta → Secretos para integración técnica).
+// cuenta → Secretos para integración técnica). En Vercel quedaron
+// guardadas con nombre en español, no el inglés que se usa en el resto
+// del proyecto (GOOGLE_CLIENT_ID, etc.) — ya están puestas así, no hace
+// falta cambiarlas:
+// - LLAVE_PUBLICA_WOMPI
+// - LLAVE_PRIVADA_WOMPI
+// - SECRETO_EVENTOS_WOMPI
+// - INTEGRIDAD_EVENTOS_WOMPI (el Secreto de Integridad, a pesar del
+//   nombre — quedó así por como se creó en Vercel)
 
 const WOMPI_API_BASE = "https://api.wompi.co/v1";
 
@@ -39,7 +47,7 @@ export async function obtenerTokensAceptacionWompi(): Promise<{
   permalinkTerminos: string;
   permalinkDatosPersonales: string;
 }> {
-  const llavePublica = variableRequerida("WOMPI_PUBLIC_KEY");
+  const llavePublica = variableRequerida("LLAVE_PUBLICA_WOMPI");
   const respuesta = await fetch(`${WOMPI_API_BASE}/merchants/info`, {
     headers: { "x-merchant-public-key": llavePublica },
   });
@@ -71,7 +79,7 @@ export async function crearFuentePagoWompi(input: {
   sessionId?: string;
   deviceId?: string;
 }): Promise<{ id: number; estado: string }> {
-  const llavePrivada = variableRequerida("WOMPI_PRIVATE_KEY");
+  const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
   const respuesta = await fetch(`${WOMPI_API_BASE}/payment_sources`, {
     method: "POST",
     headers: {
@@ -105,7 +113,7 @@ async function firmaIntegridadWompi(input: {
   montoEnCentavos: number;
   moneda: string;
 }): Promise<string> {
-  const secreto = variableRequerida("WOMPI_INTEGRITY_SECRET");
+  const secreto = variableRequerida("INTEGRIDAD_EVENTOS_WOMPI");
   return sha256Hex(`${input.referencia}${input.montoEnCentavos}${input.moneda}${secreto}`);
 }
 
@@ -132,7 +140,7 @@ export async function crearCobroRecurrenteWompi(input: {
   correoCliente: string;
   referencia: string;
 }): Promise<{ id: string; estado: string }> {
-  const llavePrivada = variableRequerida("WOMPI_PRIVATE_KEY");
+  const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
   const moneda = "COP";
   const [tokens, signature] = await Promise.all([
     obtenerTokensAceptacionWompi(),
@@ -164,7 +172,7 @@ export async function crearCobroRecurrenteWompi(input: {
 }
 
 export async function consultarTransaccionWompi(id: string): Promise<{ estado: string }> {
-  const llavePrivada = variableRequerida("WOMPI_PRIVATE_KEY");
+  const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
   const respuesta = await fetch(`${WOMPI_API_BASE}/transactions/${id}`, {
     headers: { Authorization: `Bearer ${llavePrivada}` },
   });
@@ -191,7 +199,7 @@ export async function verificarFirmaEventoWompi(evento: {
   timestamp: number;
   signature: { properties: string[]; checksum: string };
 }): Promise<boolean> {
-  const secreto = variableRequerida("WOMPI_EVENTS_SECRET");
+  const secreto = variableRequerida("SECRETO_EVENTOS_WOMPI");
   const valores = evento.signature.properties.map((ruta) => valorEnRuta(evento.data, ruta)).join("");
   const checksumCalculado = await sha256Hex(`${valores}${evento.timestamp}${secreto}`);
   return checksumCalculado.toLowerCase() === evento.signature.checksum.toLowerCase();

@@ -67,7 +67,7 @@ export default async function AgregarMetodoPagoPage({
         )}
 
         <FormularioMetodoPago
-          llavePublica={process.env.WOMPI_PUBLIC_KEY ?? ""}
+          llavePublica={process.env.LLAVE_PUBLICA_WOMPI ?? ""}
           acceptanceToken={tokens.acceptanceToken}
           acceptPersonalAuth={tokens.acceptPersonalAuth}
           permalinkTerminos={tokens.permalinkTerminos}

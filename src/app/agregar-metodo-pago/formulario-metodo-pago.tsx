@@ -33,7 +33,6 @@ export function FormularioMetodoPago({
   const [aceptaDatos, setAceptaDatos] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [deviceId, setDeviceId] = useState("");
-  const contenedorBotonRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const listoParaPagar = aceptaTerminos && aceptaDatos;
 
@@ -60,8 +59,18 @@ export function FormularioMetodoPago({
   // aceptación". Se agrega con un <script> creado a mano (no vía JSX)
   // porque los navegadores solo ejecutan un <script src> insertado así,
   // no uno puesto con innerHTML.
+  //
+  // El script se agrega como HIJO DIRECTO del <form> (formRef.current),
+  // nunca dentro de un <div> intermedio: en el ejemplo real de Wompi el
+  // script es hijo directo del formulario, y su validador probablemente
+  // ubica el formulario mirando el padre inmediato del script, no el
+  // ancestro más cercano — con un <div> de por medio, ese padre inmediato
+  // es el div (sin .method ni .action), no el form, aunque el form en sí
+  // esté perfectamente bien formado. Por eso el error de "method debe ser
+  // POST" seguía igual incluso después de corregir el orden de esos
+  // atributos en el form.
   useEffect(() => {
-    if (!listoParaPagar || !contenedorBotonRef.current) return;
+    if (!listoParaPagar || !formRef.current) return;
     const script = document.createElement("script");
     // Un <script> creado así se ejecuta "async" por defecto — el widget de
     // Wompi probablemente se apoya en document.currentScript para leer sus
@@ -73,10 +82,9 @@ export function FormularioMetodoPago({
     script.setAttribute("data-render", "button");
     script.setAttribute("data-widget-operation", "tokenize");
     script.setAttribute("data-public-key", llavePublica);
-    const contenedor = contenedorBotonRef.current;
-    contenedor.appendChild(script);
+    formRef.current.appendChild(script);
     return () => {
-      contenedor.replaceChildren();
+      script.remove();
     };
   }, [listoParaPagar, llavePublica]);
 
@@ -154,9 +162,10 @@ export function FormularioMetodoPago({
         <input type="hidden" name="session_id" value={sessionId} />
         <input type="hidden" name="device_id" value={deviceId} />
 
-        {listoParaPagar ? (
-          <div ref={contenedorBotonRef} />
-        ) : (
+        {/* El botón real de Wompi se inserta acá como hijo directo del
+            form, por fuera de React (ver el useEffect de arriba) — mientras
+            tanto, este botón deshabilitado ocupa su lugar visualmente. */}
+        {!listoParaPagar && (
           <button
             type="button"
             disabled

@@ -34,7 +34,24 @@ export function FormularioMetodoPago({
   const [sessionId, setSessionId] = useState("");
   const [deviceId, setDeviceId] = useState("");
   const contenedorBotonRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const listoParaPagar = aceptaTerminos && aceptaDatos;
+
+  // React reordena el atributo "action" de un <form> al renderizarlo (por
+  // su manejo especial de formularios) — el HTML final termina con
+  // action antes que method, aunque acá se escriban al revés. El
+  // validador de Wompi revisa el orden literal de los atributos y exige
+  // que method vaya primero, igual que en su propio ejemplo — se fuerza
+  // a mano quitando y volviendo a poner los atributos en ese orden.
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    const accion = form.getAttribute("action");
+    form.removeAttribute("method");
+    form.removeAttribute("action");
+    form.setAttribute("method", "POST");
+    if (accion) form.setAttribute("action", accion);
+  }, []);
 
   // El botón real de Wompi (el que de verdad tokeniza la tarjeta) solo se
   // agrega al DOM una vez las dos casillas están marcadas — así no hay
@@ -123,6 +140,7 @@ export function FormularioMetodoPago({
       </div>
 
       <form
+        ref={formRef}
         method="POST"
         action="/api/wompi/guardar-metodo-pago"
         onSubmitCapture={(e) => {

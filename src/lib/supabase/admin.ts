@@ -2,7 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 // Se salta Row Level Security a propósito — usarlo con cuidado, solo desde
 // código de servidor, y solo cuando de verdad no hay ninguna sesión con la
-// que autenticar la operación. Cuatro usos legítimos hoy:
+// que autenticar la operación. Cinco usos legítimos hoy:
 // 1. El cron del resumen semanal (src/app/api/cron/resumen-semanal/route.ts),
 //    que corre sin ninguna persona con sesión iniciada y necesita leer las
 //    ventas de TODAS las empresas para mandarle a cada una su propio correo.
@@ -27,6 +27,11 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 //    — a propósito, para que nadie pueda marcarse "activo" sin haber
 //    pagado de verdad. Solo se usa después de que Wompi ya confirmó que
 //    la tarjeta quedó tokenizada.
+// 5. El webhook de Wompi (src/app/api/webhooks/wompi/route.ts): lo llama
+//    Wompi mismo, nunca una persona con sesión — no hay forma de que
+//    exista una, así que es el mismo caso que el cron del punto 1. Valida
+//    la firma del aviso antes de confiar en cualquier dato (ver
+//    verificarFirmaEventoWompi en src/lib/wompi.ts).
 // Nunca importar esto desde un componente de cliente. Si se usa desde una
 // ruta pública que recibe peticiones de un usuario final sin sesión (como el
 // caso 2), esa ruta debe validar cuidadosamente su propia entrada — este

@@ -4005,7 +4005,11 @@ create table if not exists suscripcion_cobros (
   monto numeric(12,2) not null,
   -- 'voided': Wompi anuló la transacción (ej. una duplicada) — no es solo
   -- aprobado/declinado/error, agregado tras revisar su documentación real.
-  estado text not null check (estado in ('aprobado','declinado','error','voided')),
+  -- 'pendiente': toda transacción nace así según la documentación de
+  -- Wompi — nunca llega aprobada o rechazada en el mismo instante en que
+  -- se crea. El cron que dispara el cobro inserta la fila en este estado;
+  -- el webhook la actualiza al estado final cuando Wompi avisa.
+  estado text not null check (estado in ('pendiente','aprobado','declinado','error','voided')),
   mensaje_error text,
   fecha timestamptz not null default now()
 );

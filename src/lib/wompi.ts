@@ -119,6 +119,13 @@ async function firmaIntegridadWompi(input: {
 // de nuevo acá adentro (no los recibe el llamador): no hay nadie frente a
 // una pantalla a quien mostrarle un checkbox en un cobro automático, así
 // que no tiene sentido pedírselos a quien llama esta función.
+//
+// OJO: según la documentación real de Wompi, una transacción SIEMPRE nace
+// en estado PENDING — el `estado` que devuelve esta función nunca es el
+// resultado final (aprobado/declinado), eso solo llega después por el
+// webhook (ver verificarFirmaEventoWompi). Quien llame esta función debe
+// guardar el `id` devuelto y esperar el webhook, nunca asumir que ya sabe
+// si el cobro funcionó.
 export async function crearCobroRecurrenteWompi(input: {
   fuentePagoId: number;
   montoEnCentavos: number;

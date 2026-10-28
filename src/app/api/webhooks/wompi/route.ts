@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verificarFirmaEventoWompi } from "@/lib/wompi";
+import { calcularComisionWompi, verificarFirmaEventoWompi } from "@/lib/wompi";
 
 type TransaccionWompi = {
   id: string;
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
   // de prueba propia, no la de un cliente real.
   const transaccion = evento.data.transaction;
   const estadoCobro = ESTADO_WOMPI_A_COBRO[transaccion.status] ?? "error";
+  const montoCobrado = transaccion.amount_in_cents / 100;
   const admin = createAdminClient();
 
   const { data: cobro } = await admin
@@ -83,9 +84,22 @@ export async function POST(request: Request) {
   // estado, no se repite el efecto (ej. duplicar el ingreso en Datum).
   if (cobro.estado === estadoCobro) return NextResponse.json({ ok: true });
 
+  // La comisión solo tiene sentido sobre un cobro que de verdad se aprobó
+  // — en cualquier otro estado no hubo comisión (ver calcularComisionWompi
+  // en src/lib/wompi.ts).
+  const { comision, neto } =
+    estadoCobro === "aprobado"
+      ? calcularComisionWompi(montoCobrado)
+      : { comision: null, neto: null };
+
   await admin
     .from("suscripcion_cobros")
-    .update({ estado: estadoCobro, mensaje_error: transaccion.status_message ?? null })
+    .update({
+      estado: estadoCobro,
+      mensaje_error: transaccion.status_message ?? null,
+      comision_wompi: comision,
+      monto_neto: neto,
+    })
     .eq("id", cobro.id);
 
   if (estadoCobro === "aprobado") {
@@ -111,13 +125,28 @@ export async function POST(request: Request) {
     // se registra solo como ingreso en las finanzas internas de Datum,
     // sin que Andrés lo escriba a mano — mismo criterio de caja que ya
     // usa marcar_nomina_pagada() del lado de los gastos de un cliente.
-    await admin.from("datum_movimientos").insert({
-      tipo: "ingreso",
-      categoria: "suscripciones",
-      monto: transaccion.amount_in_cents / 100,
-      fecha: new Date().toISOString().slice(0, 10),
-      nota: `Cobro automático Wompi — referencia ${transaccion.reference}`,
-    });
+    // Se registra el monto COMPLETO como ingreso (es lo que de verdad se
+    // le facturó al cliente — importa para el umbral de IVA, ver
+    // CLAUDE.md) y la comisión de Wompi aparte como gasto, en vez de
+    // registrar solo el neto — así "Utilidad neta" en /admin/panel ya
+    // queda correcta sin perder el dato del bruto facturado.
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    await admin.from("datum_movimientos").insert([
+      {
+        tipo: "ingreso",
+        categoria: "suscripciones",
+        monto: montoCobrado,
+        fecha: fechaHoy,
+        nota: `Cobro automático Wompi — referencia ${transaccion.reference}`,
+      },
+      {
+        tipo: "gasto",
+        categoria: "comisión Wompi",
+        monto: comision,
+        fecha: fechaHoy,
+        nota: `Comisión Wompi sobre cobro — referencia ${transaccion.reference}`,
+      },
+    ]);
   } else if (estadoCobro === "declinado" || estadoCobro === "error") {
     await admin.from("suscripciones").update({ estado: "vencida" }).eq("id", cobro.suscripcion_id);
     // Pendiente a propósito (ver CLAUDE.md, "Pendientes"): avisar por

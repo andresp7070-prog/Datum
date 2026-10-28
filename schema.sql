@@ -4036,3 +4036,13 @@ create policy "ver mis cobros" on suscripcion_cobros
     suscripcion_id in (select id from suscripciones where empresa_id = mi_empresa_id())
     or es_admin()
   );
+
+-- Cuánto se queda Wompi de comisión por cada cobro aprobado, y cuánto le
+-- llega neto a Andrés después de esa comisión (agregado 2026-10-28) —
+-- calculado con la tarifa cotizada (ver calcularComisionWompi() en
+-- src/lib/wompi.ts), no un dato que Wompi entregue directamente en la
+-- transacción; pendiente de ajustar esa tarifa cuando Andrés confirme la
+-- cifra exacta. Quedan en null en cobros que no llegaron a 'aprobado' — no
+-- hay comisión sobre algo que nunca se cobró.
+alter table suscripcion_cobros add column if not exists comision_wompi numeric(12,2);
+alter table suscripcion_cobros add column if not exists monto_neto numeric(12,2);

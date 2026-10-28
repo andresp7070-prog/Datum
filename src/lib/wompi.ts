@@ -192,6 +192,25 @@ export async function consultarTransaccionWompi(id: string): Promise<{ estado: s
   return { estado: cuerpo.data.status };
 }
 
+// Tarifa cotizada del Plan Avanzado de Wompi (ver CLAUDE.md, sección
+// "Cobros") — 2,65% + $700 por transacción exitosa con tarjeta, y el IVA
+// (19%) se aplica sobre esa comisión completa, no solo sobre los $700.
+// Reconstruida comparando esta fórmula contra la tabla "Recibes con Wompi"
+// que ya estaba en CLAUDE.md y dando exacto, pero Wompi no entrega este
+// desglose en la respuesta de cada transacción — es un cálculo propio, no
+// un dato oficial de Wompi. PENDIENTE: Andrés va a confirmar la cifra
+// exacta — si cambia, solo hay que ajustar las dos constantes de acá
+// abajo, nada más en el proyecto depende de este número.
+const COMISION_WOMPI_PORCENTAJE = 0.0265;
+const COMISION_WOMPI_FIJA_COP = 700;
+const IVA = 0.19;
+
+export function calcularComisionWompi(montoEnPesos: number): { comision: number; neto: number } {
+  const comisionSinIva = montoEnPesos * COMISION_WOMPI_PORCENTAJE + COMISION_WOMPI_FIJA_COP;
+  const comision = Math.round(comisionSinIva * (1 + IVA));
+  return { comision, neto: montoEnPesos - comision };
+}
+
 function valorEnRuta(objeto: unknown, ruta: string): string {
   let actual: unknown = objeto;
   for (const parte of ruta.split(".")) {

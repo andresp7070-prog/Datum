@@ -136,6 +136,13 @@ No tengo experiencia técnica. Explica en español simple, sin dar por hecho que
 - Vercel: hosting
 - Sin servidores propios que administrar
 
+## Ambiente de pruebas (agregado 2026-10-28)
+Antes de esto, probar algo nuevo significaba hacerlo directo contra la base de datos y las cuentas reales, sin margen para que algo saliera mal. Ya no — y esto sirve para cualquier desarrollo futuro, no solo para Wompi: una futura plantilla de restaurantes, o cualquier otro desarrollo a la medida, se prueba primero acá.
+
+- **Un segundo proyecto de Supabase ("Datum-test-first")**, vacío, con el mismo `schema.sql` corrido ahí — una base de datos real pero sin ningún cliente de verdad.
+- **Vercel ya separa "Production" (la rama `main`, lo que ven los clientes) de "Preview" (cualquier otra rama — genera sola una URL nueva cada vez que se empuja un cambio)** — no hizo falta crear un proyecto de Vercel aparte. Las variables de entorno tienen un valor distinto por ambiente: en Production, el proyecto de Supabase real y las llaves de Wompi reales (`_prod_`); en Preview, "Datum-test-first" y las llaves de Sandbox de Wompi (`_test_`).
+- **Regla de ahora en adelante: nunca trabajar directo sobre `main`.** Todo cambio se desarrolla en una rama aparte, se prueba en la URL de Preview que esa rama genera sola (datos y pagos de mentira, sin ningún riesgo), y solo se fusiona a `main` — lo que de verdad despliega a producción — una vez probado y aprobado.
+
 ## Principio de portabilidad (no negociable)
 - La lógica de negocio vive en código propio (rutas de Next.js), nunca en funciones exclusivas de la plataforma. No usar Supabase Edge Functions para reglas de negocio centrales.
 - Row Level Security se define en SQL estándar, no en configuración exclusiva del panel de Supabase.

@@ -3969,8 +3969,9 @@ alter table datum_leads add column if not exists origen text;
 -- adelante. nit/ciudad/representante_legal_* son los datos que el propio
 -- contrato le pide a "EL CLIENTE" para identificarlo — se llenan a mano en
 -- "Crear cliente" (/admin/clientes/nuevo) con lo que Andrés ya conversó
--- con la persona antes de crearle la cuenta; todos opcionales, por si no
--- se tienen a la mano en el momento de crear la cuenta.
+-- con la persona antes de crearle la cuenta; todos obligatorios ahí (ver
+-- src/app/(app)/admin/clientes/nuevo/actions.ts) — a esta altura ya se
+-- conversó con la persona, así que no tiene sentido dejarlos a medias.
 -- ============================================================
 alter table empresas add column if not exists nit text;
 alter table empresas add column if not exists ciudad text;
@@ -3978,3 +3979,60 @@ alter table empresas add column if not exists representante_legal_nombre text;
 alter table empresas add column if not exists representante_legal_cc text;
 alter table empresas add column if not exists terminos_aceptados_en timestamptz;
 alter table empresas add column if not exists terminos_version text;
+
+-- ============================================================
+-- COBRO AUTOMÁTICO CON WOMPI — agregado 2026-10-28. wompi_fuente_pago_id
+-- guarda la referencia que entrega Wompi al tokenizar la tarjeta, para
+-- cobrar cada mes/año sin que el cliente vuelva a escribirla — la tarjeta
+-- en sí nunca se guarda acá, por PCI, siempre vive en Wompi.
+-- tarjeta_ultimos_digitos/tarjeta_franquicia son solo para mostrar algo
+-- como "Visa terminada en 4242" en Mi cuenta, sin exponer nada sensible.
+-- ============================================================
+alter table suscripciones add column if not exists wompi_fuente_pago_id text;
+alter table suscripciones add column if not exists tarjeta_ultimos_digitos text;
+alter table suscripciones add column if not exists tarjeta_franquicia text;
+
+-- Historial de cada intento de cobro — una suscripción tiene muchos cobros
+-- en el tiempo, igual criterio que inventario_lotes o apartados_abonos: es
+-- una entidad propia, no un campo. Sirve para mostrarle al cliente su
+-- historial, evitar duplicar el ingreso en datum_movimientos si Wompi
+-- reenvía el mismo aviso dos veces (comparando wompi_transaccion_id), y
+-- contar cobros fallidos seguidos para decidir cuándo suspender acceso.
+create table if not exists suscripcion_cobros (
+  id uuid primary key default gen_random_uuid(),
+  suscripcion_id uuid references suscripciones(id) not null,
+  wompi_transaccion_id text,
+  monto numeric(12,2) not null,
+  -- 'voided': Wompi anuló la transacción (ej. una duplicada) — no es solo
+  -- aprobado/declinado/error, agregado tras revisar su documentación real.
+  -- 'pendiente': toda transacción nace así según la documentación de
+  -- Wompi — nunca llega aprobada o rechazada en el mismo instante en que
+  -- se crea. El cron que dispara el cobro inserta la fila en este estado;
+  -- el webhook la actualiza al estado final cuando Wompi avisa.
+  estado text not null check (estado in ('pendiente','aprobado','declinado','error','voided')),
+  mensaje_error text,
+  fecha timestamptz not null default now()
+);
+
+alter table suscripcion_cobros enable row level security;
+
+create index if not exists suscripcion_cobros_suscripcion_id_idx
+  on suscripcion_cobros (suscripcion_id);
+
+-- Cierra un permiso más abierto de lo que debería: la política anterior
+-- ("ver mis suscripciones", for all) dejaba que la propia empresa no solo
+-- leyera sino también EDITARA su fila desde el navegador — por ejemplo,
+-- poner estado = 'activa' a mano sin haber pagado. Nunca fue un problema
+-- porque ninguna pantalla escribía ahí desde la sesión del cliente, pero
+-- ahora que ese campo decide si alguien entra sin pagar, solo el aviso
+-- automático de Wompi (con la llave de servicio, nunca la sesión del
+-- cliente) puede cambiarlo — el cliente se queda con permiso de lectura.
+drop policy if exists "ver mis suscripciones" on suscripciones;
+create policy "ver mis suscripciones" on suscripciones
+  for select using (empresa_id = mi_empresa_id() or es_admin());
+
+create policy "ver mis cobros" on suscripcion_cobros
+  for select using (
+    suscripcion_id in (select id from suscripciones where empresa_id = mi_empresa_id())
+    or es_admin()
+  );

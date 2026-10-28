@@ -7,6 +7,16 @@ import { enviarCorreoBienvenida } from "@/lib/email";
 const DIAS_VALIDOS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
 const PLANES_VALIDOS = ["basic", "startup", "pyme", "enterprise"] as const;
 
+// Mismo límite que nuevo-cliente-form.tsx (ver CLAUDE.md, "Planes y
+// precios") — se valida de nuevo acá por si algún día algo llega a este
+// action sin pasar por ese formulario.
+const LIMITE_MODULOS_POR_PLAN: Record<string, number> = {
+  basic: 1,
+  startup: 3,
+  pyme: 5,
+  enterprise: 6,
+};
+
 function correoValido(correo: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
 }
@@ -85,6 +95,10 @@ export async function crearCliente(input: {
   }
   if (!PLANES_VALIDOS.includes(input.plan as (typeof PLANES_VALIDOS)[number])) {
     return { ok: false, error: "Elige un plan válido." };
+  }
+  const limiteModulos = LIMITE_MODULOS_POR_PLAN[input.plan] ?? 6;
+  if (input.modulosActivos.length > limiteModulos) {
+    return { ok: false, error: `El plan elegido permite hasta ${limiteModulos} módulo(s) — quita alguno.` };
   }
   const montoMensual = Number(input.montoMensual);
   if (!Number.isFinite(montoMensual) || montoMensual <= 0) {

@@ -31,6 +31,16 @@ const MONTO_SUGERIDO_POR_PLAN: Record<string, string> = {
   enterprise: "799000",
 };
 
+// Cuántos módulos de pago permite cada plan (ver CLAUDE.md, "Planes y
+// precios") — Enterprise son los 6 módulos de pago del catálogo completo
+// (Panel de control no cuenta, siempre es gratis y no se elige acá).
+const LIMITE_MODULOS_POR_PLAN: Record<string, number> = {
+  basic: 1,
+  startup: 3,
+  pyme: 5,
+  enterprise: 6,
+};
+
 // Mismo descuento que DESCUENTO_ANUAL en landing.tsx.
 const DESCUENTO_ANUAL = 0.15;
 
@@ -63,6 +73,8 @@ export function EditarClienteForm({
   const [error, setError] = useState<string | null>(null);
   const [guardado, setGuardado] = useState(false);
 
+  const limiteModulos = LIMITE_MODULOS_POR_PLAN[plan] ?? 6;
+
   function alternarModulo(valor: string) {
     setModulosActivos((actuales) =>
       actuales.includes(valor) ? actuales.filter((m) => m !== valor) : [...actuales, valor],
@@ -75,6 +87,10 @@ export function EditarClienteForm({
 
     if (modulosActivos.length === 0) {
       setError("Elige al menos un módulo.");
+      return;
+    }
+    if (modulosActivos.length > limiteModulos) {
+      setError(`El plan elegido permite hasta ${limiteModulos} módulo(s) — quita alguno.`);
       return;
     }
     if (!montoMensual.trim()) {
@@ -116,19 +132,28 @@ export function EditarClienteForm({
 
       <div className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Módulos activos</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Módulos activos{" "}
+            <span className="font-normal text-gray-400">
+              ({modulosActivos.length}/{limiteModulos})
+            </span>
+          </label>
           <div className="flex flex-wrap gap-2">
             {MODULOS.map((m) => {
               const activo = modulosActivos.includes(m.value);
+              const deshabilitado = !activo && modulosActivos.length >= limiteModulos;
               return (
                 <button
                   key={m.value}
                   type="button"
+                  disabled={deshabilitado}
                   onClick={() => alternarModulo(m.value)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                     activo
                       ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-300 text-gray-600 hover:border-gray-400"
+                      : deshabilitado
+                        ? "cursor-not-allowed border-gray-200 text-gray-300"
+                        : "border-gray-300 text-gray-600 hover:border-gray-400"
                   }`}
                 >
                   {m.label}
@@ -139,6 +164,12 @@ export function EditarClienteForm({
           <p className="mt-1 text-xs text-gray-400">
             Panel de control va incluido gratis siempre — no hace falta elegirlo acá.
           </p>
+          {modulosActivos.length > limiteModulos && (
+            <p className="mt-1 text-xs text-red-600">
+              El plan elegido permite hasta {limiteModulos} módulo(s) — quita{" "}
+              {modulosActivos.length - limiteModulos} para poder guardar.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">

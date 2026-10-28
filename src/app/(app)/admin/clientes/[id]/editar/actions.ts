@@ -5,6 +5,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const PLANES_VALIDOS = ["basic", "startup", "pyme", "enterprise"] as const;
 
+// Mismo límite que editar-cliente-form.tsx / nuevo-cliente-form.tsx (ver
+// CLAUDE.md, "Planes y precios") — se valida de nuevo acá por si algún día
+// algo llega a este action sin pasar por ese formulario.
+const LIMITE_MODULOS_POR_PLAN: Record<string, number> = {
+  basic: 1,
+  startup: 3,
+  pyme: 5,
+  enterprise: 6,
+};
+
 // Cambia el plan/módulos/monto de un cliente que ya existe — la contraparte
 // de crearCliente() (que es solo para la creación inicial). Usa la llave de
 // servicio por el mismo motivo que guardar-metodo-pago/route.ts: desde que
@@ -26,6 +36,10 @@ export async function actualizarPlanCliente(input: {
   }
   if (!PLANES_VALIDOS.includes(input.plan as (typeof PLANES_VALIDOS)[number])) {
     return { ok: false, error: "Elige un plan válido." };
+  }
+  const limiteModulos = LIMITE_MODULOS_POR_PLAN[input.plan] ?? 6;
+  if (input.modulosActivos.length > limiteModulos) {
+    return { ok: false, error: `El plan elegido permite hasta ${limiteModulos} módulo(s) — quita alguno.` };
   }
   const montoMensual = Number(input.montoMensual);
   if (!Number.isFinite(montoMensual) || montoMensual <= 0) {

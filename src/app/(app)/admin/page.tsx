@@ -235,6 +235,7 @@ export default async function AdminDashboardPage() {
                 <th className="px-2 py-2">Módulos</th>
                 <th className="px-2 py-2">Mensualidad</th>
                 <th className="px-2 py-2">Desde</th>
+                <th className="px-2 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -254,6 +255,14 @@ export default async function AdminDashboardPage() {
                   </td>
                   <td className="px-2 py-2 text-gray-500">
                     {new Date(empresa.created_at).toLocaleDateString("es-CO")}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <Link
+                      href={`/admin/clientes/${empresa.id}/editar`}
+                      className="text-xs font-medium text-accent hover:underline"
+                    >
+                      Editar plan
+                    </Link>
                   </td>
                 </tr>
               ))}

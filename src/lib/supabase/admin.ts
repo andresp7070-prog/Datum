@@ -2,7 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 // Se salta Row Level Security a propósito — usarlo con cuidado, solo desde
 // código de servidor, y solo cuando de verdad no hay ninguna sesión con la
-// que autenticar la operación. Cinco usos legítimos hoy:
+// que autenticar la operación. Seis usos legítimos hoy:
 // 1. El cron del resumen semanal (src/app/api/cron/resumen-semanal/route.ts),
 //    que corre sin ninguna persona con sesión iniciada y necesita leer las
 //    ventas de TODAS las empresas para mandarle a cada una su propio correo.
@@ -32,6 +32,11 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 //    exista una, así que es el mismo caso que el cron del punto 1. Valida
 //    la firma del aviso antes de confiar en cualquier dato (ver
 //    verificarFirmaEventoWompi en src/lib/wompi.ts).
+// 6. Cambiar el plan de un cliente que ya existe (src/app/(app)/admin/
+//    clientes/[id]/editar/actions.ts): acá SÍ hay sesión (la de Andrés,
+//    verificada con requerirAdmin()), pero igual que en el punto 4,
+//    "suscripciones" ya no acepta escritura desde ninguna sesión normal,
+//    ni siquiera la de un admin — solo lectura.
 // Nunca importar esto desde un componente de cliente. Si se usa desde una
 // ruta pública que recibe peticiones de un usuario final sin sesión (como el
 // caso 2), esa ruta debe validar cuidadosamente su propia entrada — este

@@ -24,11 +24,13 @@ export async function POST(request: Request) {
   if (!perfil?.empresa_id) return NextResponse.redirect(`${urlBase}/`);
 
   const formData = await request.formData();
-  // El nombre exacto de este campo lo pone el widget de Wompi al terminar
-  // de tokenizar — no se pudo confirmar contra la documentación todavía
-  // (ver CLAUDE.md, sección "Cobros"). Si Wompi lo manda con otro nombre,
-  // este es el primer lugar a revisar al probar en sandbox.
-  const tokenTarjeta = formData.get("token") as string | null;
+  // Confirmado 2026-10-28 probando en sandbox (se revisó el POST real que
+  // manda el widget, vía un HAR exportado del navegador): el campo se
+  // llama payment_source_token, no "token" como se había adivinado al
+  // principio — por eso el guardado fallaba siempre con "No se pudo leer
+  // la tarjeta", incluso con una tarjeta de prueba válida y ya tokenizada
+  // correctamente del lado de Wompi.
+  const tokenTarjeta = formData.get("payment_source_token") as string | null;
   const acceptanceToken = formData.get("acceptance_token") as string;
   const acceptPersonalAuth = formData.get("accept_personal_auth") as string;
   const sessionId = (formData.get("session_id") as string) || undefined;

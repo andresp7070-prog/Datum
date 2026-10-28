@@ -55,12 +55,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // En Sandbox ('test') nunca se toca información real de Datum — se
-  // confirma igual, para que las pruebas no generen reintentos.
-  if (evento.environment !== "prod") {
-    return NextResponse.json({ ok: true });
-  }
-
+  // No se filtra por evento.environment: Datum tiene una sola base de
+  // datos (no hay un Supabase aparte para pruebas), así que un cobro de
+  // Sandbox actualiza las mismas tablas que uno real — a propósito,
+  // porque así es como se va a probar todo esto. No hay riesgo de mezclar
+  // datos de un cliente real: un token/fuente de pago de Sandbox nunca
+  // puede referirse a la fuente de pago real de un cliente, son universos
+  // separados dentro de Wompi. Mientras se prueba, usar una suscripción
+  // de prueba propia, no la de un cliente real.
   const transaccion = evento.data.transaction;
   const estadoCobro = ESTADO_WOMPI_A_COBRO[transaccion.status] ?? "error";
   const admin = createAdminClient();

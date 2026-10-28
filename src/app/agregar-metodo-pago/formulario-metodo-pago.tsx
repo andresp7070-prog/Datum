@@ -46,6 +46,12 @@ export function FormularioMetodoPago({
   useEffect(() => {
     if (!listoParaPagar || !contenedorBotonRef.current) return;
     const script = document.createElement("script");
+    // Un <script> creado así se ejecuta "async" por defecto — el widget de
+    // Wompi probablemente se apoya en document.currentScript para leer sus
+    // propios atributos data-*, y eso solo funciona confiablemente si el
+    // script corre en orden (no async). Sin esto, el script podía cargar
+    // sin error y aun así no dibujar nada.
+    script.async = false;
     script.src = "https://checkout.wompi.co/widget.js";
     script.setAttribute("data-render", "button");
     script.setAttribute("data-widget-operation", "tokenize");

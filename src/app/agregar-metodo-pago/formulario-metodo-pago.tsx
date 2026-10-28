@@ -33,6 +33,7 @@ export function FormularioMetodoPago({
   const [aceptaDatos, setAceptaDatos] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [deviceId, setDeviceId] = useState("");
+  const [widgetMontado, setWidgetMontado] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const listoParaPagar = aceptaTerminos && aceptaDatos;
 
@@ -64,19 +65,22 @@ export function FormularioMetodoPago({
   // nunca dentro de un <div> intermedio: en el ejemplo real de Wompi el
   // script es hijo directo del formulario, y su validador probablemente
   // ubica el formulario mirando el padre inmediato del script, no el
-  // ancestro más cercano — con un <div> de por medio, ese padre inmediato
-  // es el div (sin .method ni .action), no el form, aunque el form en sí
-  // esté perfectamente bien formado. Por eso el error de "method debe ser
-  // POST" seguía igual incluso después de corregir el orden de esos
-  // atributos en el form.
+  // ancestro más cercano.
+  //
+  // Se monta UNA SOLA VEZ (guardado con widgetMontado) y nunca se vuelve a
+  // quitar, aunque después se desmarque una casilla. Insertarlo y quitarlo
+  // cada vez que cambiaban las casillas causaba dos problemas: el widget de
+  // Wompi quedaba en un estado roto al recargarse varias veces seguidas
+  // (error propio "Cannot read properties of null"), y sobre todo, React
+  // deja de llevar la cuenta correcta de los hijos del <form> en cuanto algo
+  // externo los mueve — chocaba con el botón de "Marca las dos casillas"
+  // (que antes se agregaba/quitaba con React) y terminaba en un
+  // "NotFoundError: removeChild" que dañaba toda la pantalla. Por eso el
+  // botón de placeholder de abajo ahora tampoco se quita del DOM: solo se
+  // oculta con el atributo hidden, así React jamás vuelve a tocar los hijos
+  // del formulario después del primer render.
   useEffect(() => {
-    if (!listoParaPagar || !formRef.current) return;
-    const form = formRef.current;
-    // Marcador invisible (no es un elemento, no interfiere con que Wompi
-    // encuentre el <form>) para poder borrar TODO lo que se agregue de acá
-    // en adelante, sin importar qué estructura use el widget por dentro.
-    const marcador = document.createComment("widget-wompi");
-    form.appendChild(marcador);
+    if (!listoParaPagar || widgetMontado || !formRef.current) return;
     const script = document.createElement("script");
     // Un <script> creado así se ejecuta "async" por defecto — el widget de
     // Wompi probablemente se apoya en document.currentScript para leer sus
@@ -88,23 +92,9 @@ export function FormularioMetodoPago({
     script.setAttribute("data-render", "button");
     script.setAttribute("data-widget-operation", "tokenize");
     script.setAttribute("data-public-key", llavePublica);
-    form.appendChild(script);
-    return () => {
-      // No basta con quitar el <script>: para cuando se ejecuta, el widget
-      // ya insertó su propio botón como otro hijo del form, y quitar solo
-      // el <script> no deshace eso. Sin este barrido completo (todo lo que
-      // quedó después del marcador), desmarcar y volver a marcar las
-      // casillas dejaba un botón de Wompi nuevo cada vez, sin quitar el
-      // anterior.
-      let nodo = marcador.nextSibling;
-      while (nodo) {
-        const siguiente = nodo.nextSibling;
-        nodo.remove();
-        nodo = siguiente;
-      }
-      marcador.remove();
-    };
-  }, [listoParaPagar, llavePublica]);
+    formRef.current.appendChild(script);
+    setWidgetMontado(true);
+  }, [listoParaPagar, widgetMontado, llavePublica]);
 
   return (
     <>
@@ -182,16 +172,18 @@ export function FormularioMetodoPago({
 
         {/* El botón real de Wompi se inserta acá como hijo directo del
             form, por fuera de React (ver el useEffect de arriba) — mientras
-            tanto, este botón deshabilitado ocupa su lugar visualmente. */}
-        {!listoParaPagar && (
-          <button
-            type="button"
-            disabled
-            className="w-full cursor-not-allowed rounded-lg bg-gray-200 px-4 py-2.5 text-sm font-medium text-gray-400"
-          >
-            Marca las dos casillas para continuar
-          </button>
-        )}
+            tanto, este botón deshabilitado ocupa su lugar visualmente. Se
+            oculta con "hidden" en vez de dejar de renderizarse: así React
+            nunca quita ni vuelve a insertar este nodo, que es justo lo que
+            antes chocaba con el <script> agregado a mano. */}
+        <button
+          type="button"
+          disabled
+          hidden={widgetMontado}
+          className="w-full cursor-not-allowed rounded-lg bg-gray-200 px-4 py-2.5 text-sm font-medium text-gray-400"
+        >
+          Marca las dos casillas para continuar
+        </button>
       </form>
     </>
   );

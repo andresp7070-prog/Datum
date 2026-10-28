@@ -71,6 +71,12 @@ export function FormularioMetodoPago({
   // atributos en el form.
   useEffect(() => {
     if (!listoParaPagar || !formRef.current) return;
+    const form = formRef.current;
+    // Marcador invisible (no es un elemento, no interfiere con que Wompi
+    // encuentre el <form>) para poder borrar TODO lo que se agregue de acá
+    // en adelante, sin importar qué estructura use el widget por dentro.
+    const marcador = document.createComment("widget-wompi");
+    form.appendChild(marcador);
     const script = document.createElement("script");
     // Un <script> creado así se ejecuta "async" por defecto — el widget de
     // Wompi probablemente se apoya en document.currentScript para leer sus
@@ -82,9 +88,21 @@ export function FormularioMetodoPago({
     script.setAttribute("data-render", "button");
     script.setAttribute("data-widget-operation", "tokenize");
     script.setAttribute("data-public-key", llavePublica);
-    formRef.current.appendChild(script);
+    form.appendChild(script);
     return () => {
-      script.remove();
+      // No basta con quitar el <script>: para cuando se ejecuta, el widget
+      // ya insertó su propio botón como otro hijo del form, y quitar solo
+      // el <script> no deshace eso. Sin este barrido completo (todo lo que
+      // quedó después del marcador), desmarcar y volver a marcar las
+      // casillas dejaba un botón de Wompi nuevo cada vez, sin quitar el
+      // anterior.
+      let nodo = marcador.nextSibling;
+      while (nodo) {
+        const siguiente = nodo.nextSibling;
+        nodo.remove();
+        nodo = siguiente;
+      }
+      marcador.remove();
     };
   }, [listoParaPagar, llavePublica]);
 

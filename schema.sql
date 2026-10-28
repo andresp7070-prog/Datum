@@ -4003,7 +4003,9 @@ create table if not exists suscripcion_cobros (
   suscripcion_id uuid references suscripciones(id) not null,
   wompi_transaccion_id text,
   monto numeric(12,2) not null,
-  estado text not null check (estado in ('aprobado','declinado','error')),
+  -- 'voided': Wompi anuló la transacción (ej. una duplicada) — no es solo
+  -- aprobado/declinado/error, agregado tras revisar su documentación real.
+  estado text not null check (estado in ('aprobado','declinado','error','voided')),
   mensaje_error text,
   fecha timestamptz not null default now()
 );

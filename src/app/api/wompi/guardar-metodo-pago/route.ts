@@ -61,32 +61,39 @@ export async function POST(request: Request) {
     // legítimo de esta llave en el proyecto (ver src/lib/supabase/admin.ts).
     const admin = createAdminClient();
 
-    // El primer cobro debe caer cuando de verdad termina la prueba
-    // gratuita, no apenas se guarda la tarjeta (alguien podría agregarla
-    // antes de que se le venza) — y si ya se venció (este fue el gate
-    // forzado), toca cobrar lo antes posible, así que el cron lo recoge
-    // en su próxima corrida.
     const { data: suscripcionActual } = await admin
       .from("suscripciones")
-      .select("id, fecha_fin_prueba")
+      .select("id, fecha_fin_prueba, wompi_fuente_pago_id")
       .eq("empresa_id", perfil.empresa_id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const ahora = new Date();
-    const fechaFinPrueba = suscripcionActual?.fecha_fin_prueba
-      ? new Date(suscripcionActual.fecha_fin_prueba)
-      : ahora;
-    const fechaProximoCobro = fechaFinPrueba > ahora ? fechaFinPrueba : ahora;
+    const actualizacion: Record<string, string> = {
+      wompi_fuente_pago_id: String(fuentePago.id),
+      proveedor_pago: "wompi",
+    };
+
+    // El primer cobro debe caer cuando de verdad termina la prueba
+    // gratuita, no apenas se guarda la tarjeta (alguien podría agregarla
+    // antes de que se le venza) — y si ya se venció (este fue el gate
+    // forzado), toca cobrar lo antes posible, así que el cron lo recoge en
+    // su próxima corrida. Pero eso solo aplica la PRIMERA vez que se
+    // guarda una tarjeta — si ya tenía una (esto es un reemplazo desde
+    // "Mi cuenta"), se deja fecha_proximo_cobro tal como estaba, para no
+    // reiniciar un ciclo de cobro que ya estaba en curso.
+    if (!suscripcionActual?.wompi_fuente_pago_id) {
+      const ahora = new Date();
+      const fechaFinPrueba = suscripcionActual?.fecha_fin_prueba
+        ? new Date(suscripcionActual.fecha_fin_prueba)
+        : ahora;
+      const fechaProximoCobro = fechaFinPrueba > ahora ? fechaFinPrueba : ahora;
+      actualizacion.fecha_proximo_cobro = fechaProximoCobro.toISOString();
+    }
 
     const { error } = await admin
       .from("suscripciones")
-      .update({
-        wompi_fuente_pago_id: String(fuentePago.id),
-        proveedor_pago: "wompi",
-        fecha_proximo_cobro: fechaProximoCobro.toISOString(),
-      })
+      .update(actualizacion)
       .eq("empresa_id", perfil.empresa_id);
     if (error) throw new Error(error.message);
   } catch (err) {

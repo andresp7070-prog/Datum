@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getPerfilActual } from "@/lib/empresa";
 import { SignOutButton } from "@/components/signout-button";
@@ -30,13 +31,16 @@ export default async function CuentaPage({
     estado: string;
     fecha_fin_prueba: string;
     monto_mensual: number;
+    wompi_fuente_pago_id: string | null;
   } | null = null;
 
   if (perfil.empresa_id && perfil.rol_empresa === "administrador") {
     const { data } = await supabase
       .from("suscripciones")
-      .select("estado, fecha_fin_prueba, monto_mensual")
+      .select("estado, fecha_fin_prueba, monto_mensual, wompi_fuente_pago_id")
       .eq("empresa_id", perfil.empresa_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     suscripcion = data;
   }
@@ -110,9 +114,14 @@ export default async function CuentaPage({
           ) : (
             <p className="text-sm text-gray-400">Todavía no hay información de suscripción registrada.</p>
           )}
-          <p className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-400">
-            Agregar o cambiar el método de pago estará disponible próximamente.
-          </p>
+          {suscripcion && (
+            <Link
+              href="/agregar-metodo-pago"
+              className="mt-4 block rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {suscripcion.wompi_fuente_pago_id ? "Cambiar método de pago" : "Agregar método de pago"}
+            </Link>
+          )}
         </div>
       )}
 

@@ -51,20 +51,16 @@ export function LogoTarjeta({ marca, className }: { marca: string | null; classN
         </svg>
       );
     case "Bancolombia":
+      // "BANCOLOMBIA" como texto no cabía sin cortarse en un recuadro tan
+      // chico (confirmado por Andrés, 2026-10-29) — en vez de forzar texto
+      // largo, se usa un círculo dorado simple, parecido al sol que usa
+      // Bancolombia en su marca actual, igual que Visa/Mastercard acá
+      // arriba usan una forma reconocible en vez de todo el nombre.
       return (
         <svg viewBox="0 0 36 24" className={clase} role="img" aria-label="Bancolombia">
-          <rect width="36" height="24" rx="4" fill="#FFDD00" />
-          <text
-            x="18"
-            y="14.5"
-            textAnchor="middle"
-            fontSize="5.5"
-            fontWeight="700"
-            fill="#0C2340"
-            fontFamily="Arial, Helvetica, sans-serif"
-          >
-            BANCOLOMBIA
-          </text>
+          <rect width="36" height="24" rx="4" fill="#ffffff" stroke="#E5E7EB" />
+          <circle cx="18" cy="12" r="7" fill="#FFDD00" />
+          <circle cx="18" cy="12" r="3.2" fill="#ffffff" />
         </svg>
       );
     case "Diners Club":

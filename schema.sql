@@ -4126,3 +4126,24 @@ where s.wompi_fuente_pago_id is not null
     select 1 from metodos_pago m
     where m.empresa_id = s.empresa_id and m.wompi_fuente_pago_id = s.wompi_fuente_pago_id
   );
+
+-- ============================================================
+-- METODOS_PAGO: MÁS ALLÁ DE TARJETAS (agregado 2026-10-29)
+-- Generaliza metodos_pago para admitir métodos de pago distintos a
+-- tarjeta — primero Bancolombia (Botón Bancolombia: cobro silencioso una
+-- vez el cliente autoriza su cuenta, igual que tarjeta); Nequi viene
+-- después (requiere que el cliente apruebe cada cobro mensual desde su
+-- celular, a diferencia de tarjeta/Bancolombia — ver CLAUDE.md, sección
+-- "Cobros"). tarjeta_marca/tarjeta_ultimos_digitos se quedaban con
+-- nombres específicos de tarjeta aunque ahora también guardan datos de
+-- otros métodos — se renombran a algo general, para que el nombre de la
+-- columna siga diciendo la verdad al leer la tabla en Supabase.
+-- ============================================================
+alter table metodos_pago rename column tarjeta_marca to metodo_marca;
+alter table metodos_pago rename column tarjeta_ultimos_digitos to metodo_ultimos_digitos;
+
+alter table metodos_pago add column if not exists tipo text not null default 'tarjeta';
+
+alter table metodos_pago drop constraint if exists metodos_pago_tipo_check;
+alter table metodos_pago add constraint metodos_pago_tipo_check
+  check (tipo in ('tarjeta', 'bancolombia', 'nequi'));

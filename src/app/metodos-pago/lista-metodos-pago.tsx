@@ -6,14 +6,14 @@ import { LogoTarjeta } from "@/components/logo-tarjeta";
 
 type Metodo = {
   id: string;
-  tarjeta_marca: string | null;
-  tarjeta_ultimos_digitos: string | null;
+  metodo_marca: string | null;
+  metodo_ultimos_digitos: string | null;
   es_predeterminado: boolean;
   creado_en: string;
 };
 
 function etiquetaTarjeta(m: Metodo): string {
-  if (m.tarjeta_ultimos_digitos) return `•••• ${m.tarjeta_ultimos_digitos}`;
+  if (m.metodo_ultimos_digitos) return `•••• ${m.metodo_ultimos_digitos}`;
   return `Tarjeta guardada el ${new Date(m.creado_en).toLocaleDateString("es-CO")}`;
 }
 
@@ -30,7 +30,7 @@ export function ListaMetodosPago({ metodos }: { metodos: Metodo[] }) {
           className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
         >
           <div className="flex items-center gap-3">
-            <LogoTarjeta marca={m.tarjeta_marca} />
+            <LogoTarjeta marca={m.metodo_marca} />
             <div>
               <p className="text-sm font-medium text-gray-900">{etiquetaTarjeta(m)}</p>
               {m.es_predeterminado && (
@@ -61,7 +61,7 @@ export function ListaMetodosPago({ metodos }: { metodos: Metodo[] }) {
               type="button"
               disabled={pendiente}
               onClick={() => {
-                if (!confirm("¿Quitar esta tarjeta?")) return;
+                if (!confirm("¿Quitar este método de pago?")) return;
                 startTransition(async () => {
                   setError(null);
                   const res = await borrarMetodo(m.id);

@@ -19,14 +19,15 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 //    justo se está creando una empresa que todavía no es de nadie. También
 //    necesita el Admin API de Supabase Auth (crear el usuario en auth.users),
 //    al que tampoco se llega con la sesión normal del navegador.
-// 4. Guardar el método de pago de Wompi de un cliente (src/app/api/wompi/
-//    guardar-metodo-pago/route.ts): acá SÍ hay sesión (la del propio
-//    cliente), pero desde que se cerró el permiso de edición sobre
-//    "suscripciones" (ver schema.sql, sección "COBRO AUTOMÁTICO CON
-//    WOMPI") esa sesión solo puede leer su propia fila, nunca escribirla
-//    — a propósito, para que nadie pueda marcarse "activo" sin haber
-//    pagado de verdad. Solo se usa después de que Wompi ya confirmó que
-//    la tarjeta quedó tokenizada.
+// 4. Guardar el método de pago de Wompi de un cliente (guardarMetodoPago()
+//    en src/lib/metodos-pago.ts, usado tanto por /api/wompi/
+//    guardar-metodo-pago como por /api/wompi/bancolombia-callback): acá SÍ
+//    hay sesión (la del propio cliente), pero desde que se cerró el
+//    permiso de edición sobre "suscripciones" (ver schema.sql, sección
+//    "COBRO AUTOMÁTICO CON WOMPI") esa sesión solo puede leer su propia
+//    fila, nunca escribirla — a propósito, para que nadie pueda marcarse
+//    "activo" sin haber pagado de verdad. Solo se usa después de que
+//    Wompi ya confirmó que la tarjeta o cuenta quedó tokenizada.
 // 5. El webhook de Wompi (src/app/api/webhooks/wompi/route.ts): lo llama
 //    Wompi mismo, nunca una persona con sesión — no hay forma de que
 //    exista una, así que es el mismo caso que el cron del punto 1. Valida

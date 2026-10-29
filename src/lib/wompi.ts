@@ -97,12 +97,17 @@ function marcaDesdeBin(bin: string): string | null {
 }
 
 export async function crearFuentePagoWompi(input: {
-  tokenTarjeta: string;
+  tipo: "CARD" | "BANCOLOMBIA_TRANSFER";
+  token: string;
   correoCliente: string;
   acceptanceToken: string;
   acceptPersonalAuth: string;
   sessionId?: string;
   deviceId?: string;
+  // Solo Bancolombia la pide — la descripción por defecto de los cobros
+  // futuros contra esta fuente de pago (confirmado en la documentación de
+  // Wompi, sección "Payment Sources & Tokenization").
+  descripcionPago?: string;
 }): Promise<{ id: number; estado: string; marca: string | null; ultimosDigitos: string | null }> {
   const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
   const respuesta = await fetch(`${baseUrlWompi(llavePrivada)}/payment_sources`, {
@@ -112,11 +117,14 @@ export async function crearFuentePagoWompi(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      type: "CARD",
-      token: input.tokenTarjeta,
+      type: input.tipo,
+      token: input.token,
       customer_email: input.correoCliente,
       acceptance_token: input.acceptanceToken,
       accept_personal_auth: input.acceptPersonalAuth,
+      ...(input.tipo === "BANCOLOMBIA_TRANSFER"
+        ? { payment_description: input.descripcionPago ?? "Suscripción Datum" }
+        : {}),
       ...(input.sessionId ? { session_id: input.sessionId } : {}),
       ...(input.deviceId ? { customer_data: { device_id: input.deviceId } } : {}),
     }),
@@ -125,6 +133,19 @@ export async function crearFuentePagoWompi(input: {
   if (!respuesta.ok || cuerpo.data?.status !== "AVAILABLE") {
     throw new Error(cuerpo.error?.reason ?? "No se pudo guardar el método de pago.");
   }
+
+  if (input.tipo === "BANCOLOMBIA_TRANSFER") {
+    // Confirmado en la documentación de Wompi: viene como "***1234" — se
+    // deja solo los dígitos.
+    const crudos: string | undefined = cuerpo.data?.public_data?.bank_account_last_four;
+    return {
+      id: cuerpo.data.id,
+      estado: cuerpo.data.status,
+      marca: "Bancolombia",
+      ultimosDigitos: crudos ? crudos.replace(/\D/g, "") || null : null,
+    };
+  }
+
   const bin: string | undefined = cuerpo.data?.public_data?.bin;
   return {
     id: cuerpo.data.id,
@@ -132,6 +153,51 @@ export async function crearFuentePagoWompi(input: {
     marca: bin ? marcaDesdeBin(bin) : null,
     ultimosDigitos: cuerpo.data?.public_data?.last_four ?? null,
   };
+}
+
+// Paso 1 del Botón Bancolombia (ver CLAUDE.md, sección "Cobros"): pide un
+// "token" de cuenta Bancolombia con type_auth "TOKEN" — eso autoriza la
+// cuenta ANTES de cualquier cobro, a diferencia de "TRANSACTION" (que la
+// autoriza junto con un primer pago); acá no hay ningún cobro que hacer
+// todavía, solo guardar el método. Devuelve una URL a la que hay que
+// mandar el navegador completo del cliente (nunca un iframe ni un fetch)
+// para que inicie sesión en Bancolombia y autorice — Wompi lo redirige de
+// vuelta a redirectUrl cuando termina (aprobado o no).
+export async function crearTokenBancolombia(redirectUrl: string): Promise<{
+  id: string;
+  authorizationUrl: string;
+}> {
+  const llavePublica = variableRequerida("LLAVE_PUBLICA_WOMPI");
+  const respuesta = await fetch(`${baseUrlWompi(llavePublica)}/tokens/bancolombia_transfer`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${llavePublica}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ redirect_url: redirectUrl, type_auth: "TOKEN" }),
+  });
+  const cuerpo = await respuesta.json();
+  if (!respuesta.ok || !cuerpo.data?.authorization_url) {
+    throw new Error(cuerpo.error?.reason ?? "No se pudo iniciar la conexión con Bancolombia.");
+  }
+  return { id: cuerpo.data.id, authorizationUrl: cuerpo.data.authorization_url };
+}
+
+// Paso siguiente, cuando el cliente ya vuelve de autorizar en Bancolombia
+// (ver /api/wompi/bancolombia-callback): confirma que de verdad quedó
+// aprobado antes de crear la fuente de pago — nunca se asume por el solo
+// hecho de que Wompi lo haya redirigido de vuelta a la aplicación.
+export async function consultarTokenBancolombia(tokenId: string): Promise<{ estado: string }> {
+  const llavePublica = variableRequerida("LLAVE_PUBLICA_WOMPI");
+  const respuesta = await fetch(
+    `${baseUrlWompi(llavePublica)}/tokens/bancolombia_transfer/${tokenId}`,
+    { headers: { Authorization: `Bearer ${llavePublica}` } },
+  );
+  const cuerpo = await respuesta.json();
+  if (!respuesta.ok) {
+    throw new Error(cuerpo.error?.reason ?? "No se pudo consultar el estado de Bancolombia.");
+  }
+  return { estado: cuerpo.data?.status };
 }
 
 // La "firma de integridad" que exige cada transacción nueva — no confirmada
@@ -175,6 +241,8 @@ export async function crearCobroRecurrenteWompi(input: {
   montoEnCentavos: number;
   correoCliente: string;
   referencia: string;
+  tipo: "tarjeta" | "bancolombia";
+  descripcionPago?: string;
 }): Promise<{ id: string; estado: string }> {
   const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
   const moneda = "COP";
@@ -182,6 +250,20 @@ export async function crearCobroRecurrenteWompi(input: {
     obtenerTokensAceptacionWompi(),
     firmaIntegridadWompi({ referencia: input.referencia, montoEnCentavos: input.montoEnCentavos, moneda }),
   ]);
+
+  // payment_method lleva lo propio de cada cobro: cuotas en tarjeta,
+  // descripción en Bancolombia (confirmado en la documentación de Wompi,
+  // sección "Payment Sources & Tokenization" — ahí mismo aclaran que para
+  // métodos sin nada que configurar, como Nequi, este campo se puede
+  // omitir del todo; no aplica todavía porque Nequi no está construido).
+  const paymentMethod =
+    input.tipo === "bancolombia"
+      ? {
+          type: "BANCOLOMBIA_TRANSFER",
+          payment_description: input.descripcionPago ?? "Suscripción Datum",
+        }
+      : { type: "CARD", installments: 1 };
+
   const respuesta = await fetch(`${baseUrlWompi(llavePrivada)}/transactions`, {
     method: "POST",
     headers: {
@@ -194,7 +276,7 @@ export async function crearCobroRecurrenteWompi(input: {
       signature,
       customer_email: input.correoCliente,
       reference: input.referencia,
-      payment_method: { type: "CARD", installments: 1 },
+      payment_method: paymentMethod,
       payment_source_id: input.fuentePagoId,
       acceptance_token: tokens.acceptanceToken,
       accept_personal_auth: tokens.acceptPersonalAuth,

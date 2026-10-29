@@ -23,7 +23,7 @@ export default async function MetodosPagoPage() {
 
   const { data: metodos } = await supabase
     .from("metodos_pago")
-    .select("id, tarjeta_marca, tarjeta_ultimos_digitos, es_predeterminado, creado_en")
+    .select("id, metodo_marca, metodo_ultimos_digitos, es_predeterminado, creado_en")
     .eq("empresa_id", perfil.empresa_id)
     .order("creado_en", { ascending: false });
 
@@ -40,14 +40,16 @@ export default async function MetodosPagoPage() {
         {metodos && metodos.length > 0 ? (
           <ListaMetodosPago metodos={metodos} />
         ) : (
-          <p className="mb-4 text-sm text-gray-500">Todavía no tienes ninguna tarjeta guardada.</p>
+          <p className="mb-4 text-sm text-gray-500">
+            Todavía no tienes ningún método de pago guardado.
+          </p>
         )}
 
         <Link
           href="/agregar-metodo-pago"
           className="mt-4 block rounded-lg bg-accent px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-accent-hover"
         >
-          Agregar una tarjeta
+          Agregar un método de pago
         </Link>
       </div>
     </div>

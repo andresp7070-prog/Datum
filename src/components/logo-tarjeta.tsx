@@ -50,6 +50,23 @@ export function LogoTarjeta({ marca, className }: { marca: string | null; classN
           </text>
         </svg>
       );
+    case "Bancolombia":
+      return (
+        <svg viewBox="0 0 36 24" className={clase} role="img" aria-label="Bancolombia">
+          <rect width="36" height="24" rx="4" fill="#FFDD00" />
+          <text
+            x="18"
+            y="14.5"
+            textAnchor="middle"
+            fontSize="5.5"
+            fontWeight="700"
+            fill="#0C2340"
+            fontFamily="Arial, Helvetica, sans-serif"
+          >
+            BANCOLOMBIA
+          </text>
+        </svg>
+      );
     case "Diners Club":
       return (
         <svg viewBox="0 0 36 24" className={clase} role="img" aria-label="Diners Club">

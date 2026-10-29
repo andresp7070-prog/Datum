@@ -35,8 +35,8 @@ export default async function CuentaPage({
   } | null = null;
 
   let metodoPredeterminado: {
-    tarjeta_marca: string | null;
-    tarjeta_ultimos_digitos: string | null;
+    metodo_marca: string | null;
+    metodo_ultimos_digitos: string | null;
   } | null = null;
 
   if (perfil.empresa_id && perfil.rol_empresa === "administrador") {
@@ -51,7 +51,7 @@ export default async function CuentaPage({
 
     const { data: metodo } = await supabase
       .from("metodos_pago")
-      .select("tarjeta_marca, tarjeta_ultimos_digitos")
+      .select("metodo_marca, metodo_ultimos_digitos")
       .eq("empresa_id", perfil.empresa_id)
       .eq("es_predeterminado", true)
       .maybeSingle();
@@ -127,11 +127,11 @@ export default async function CuentaPage({
                 <div>
                   <dt className="text-gray-400">Método de pago</dt>
                   <dd className="mt-1 flex flex-wrap items-center gap-2">
-                    <LogoTarjeta marca={metodoPredeterminado.tarjeta_marca} />
+                    <LogoTarjeta marca={metodoPredeterminado.metodo_marca} />
                     <span className="font-medium text-gray-900">
-                      {metodoPredeterminado.tarjeta_ultimos_digitos
-                        ? `•••• ${metodoPredeterminado.tarjeta_ultimos_digitos}`
-                        : "Tarjeta guardada"}
+                      {metodoPredeterminado.metodo_ultimos_digitos
+                        ? `•••• ${metodoPredeterminado.metodo_ultimos_digitos}`
+                        : "Método de pago guardado"}
                     </span>
                     <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
                       Predeterminado

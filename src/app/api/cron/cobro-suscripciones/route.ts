@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     try {
       const { data: metodoPago } = await supabase
         .from("metodos_pago")
-        .select("wompi_fuente_pago_id")
+        .select("wompi_fuente_pago_id, tipo")
         .eq("empresa_id", suscripcion.empresa_id)
         .eq("es_predeterminado", true)
         .maybeSingle();
@@ -83,6 +83,8 @@ export async function GET(request: NextRequest) {
         montoEnCentavos: Math.round(montoACobrar * 100),
         correoCliente,
         referencia,
+        tipo: metodoPago.tipo as "tarjeta" | "bancolombia",
+        descripcionPago: "Suscripción Datum",
       });
 
       const { error: errorInsert } = await supabase.from("suscripcion_cobros").insert({

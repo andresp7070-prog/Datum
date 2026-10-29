@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { marcarPredeterminado, borrarMetodo } from "./actions";
+import { LogoTarjeta } from "@/components/logo-tarjeta";
 
 type Metodo = {
   id: string;
@@ -12,10 +13,7 @@ type Metodo = {
 };
 
 function etiquetaTarjeta(m: Metodo): string {
-  if (m.tarjeta_ultimos_digitos) {
-    const marca = m.tarjeta_marca ? `${m.tarjeta_marca} terminada` : "Tarjeta terminada";
-    return `${marca} en ${m.tarjeta_ultimos_digitos}`;
-  }
+  if (m.tarjeta_ultimos_digitos) return `•••• ${m.tarjeta_ultimos_digitos}`;
   return `Tarjeta guardada el ${new Date(m.creado_en).toLocaleDateString("es-CO")}`;
 }
 
@@ -31,13 +29,16 @@ export function ListaMetodosPago({ metodos }: { metodos: Metodo[] }) {
           key={m.id}
           className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
         >
-          <div>
-            <p className="text-sm font-medium text-gray-900">{etiquetaTarjeta(m)}</p>
-            {m.es_predeterminado && (
-              <span className="mt-1 inline-block rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
-                Se usa para cobrar
-              </span>
-            )}
+          <div className="flex items-center gap-3">
+            <LogoTarjeta marca={m.tarjeta_marca} />
+            <div>
+              <p className="text-sm font-medium text-gray-900">{etiquetaTarjeta(m)}</p>
+              {m.es_predeterminado && (
+                <span className="mt-1 inline-block rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                  Se usa para cobrar
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex gap-3">
             {!m.es_predeterminado && (

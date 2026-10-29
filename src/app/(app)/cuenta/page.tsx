@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getPerfilActual } from "@/lib/empresa";
 import { SignOutButton } from "@/components/signout-button";
+import { LogoTarjeta } from "@/components/logo-tarjeta";
 import { CambiarPasswordForm } from "./cambiar-password-form";
 
 const etiquetaEstado: Record<string, { texto: string; clase: string }> = {
@@ -33,6 +34,11 @@ export default async function CuentaPage({
     monto_mensual: number;
   } | null = null;
 
+  let metodoPredeterminado: {
+    tarjeta_marca: string | null;
+    tarjeta_ultimos_digitos: string | null;
+  } | null = null;
+
   if (perfil.empresa_id && perfil.rol_empresa === "administrador") {
     const { data } = await supabase
       .from("suscripciones")
@@ -42,6 +48,14 @@ export default async function CuentaPage({
       .limit(1)
       .maybeSingle();
     suscripcion = data;
+
+    const { data: metodo } = await supabase
+      .from("metodos_pago")
+      .select("tarjeta_marca, tarjeta_ultimos_digitos")
+      .eq("empresa_id", perfil.empresa_id)
+      .eq("es_predeterminado", true)
+      .maybeSingle();
+    metodoPredeterminado = metodo;
   }
 
   const diasDePrueba = suscripcion
@@ -109,6 +123,22 @@ export default async function CuentaPage({
                   })}
                 </dd>
               </div>
+              {metodoPredeterminado && (
+                <div>
+                  <dt className="text-gray-400">Método de pago</dt>
+                  <dd className="mt-1 flex flex-wrap items-center gap-2">
+                    <LogoTarjeta marca={metodoPredeterminado.tarjeta_marca} />
+                    <span className="font-medium text-gray-900">
+                      {metodoPredeterminado.tarjeta_ultimos_digitos
+                        ? `•••• ${metodoPredeterminado.tarjeta_ultimos_digitos}`
+                        : "Tarjeta guardada"}
+                    </span>
+                    <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                      Predeterminado
+                    </span>
+                  </dd>
+                </div>
+              )}
             </dl>
           ) : (
             <p className="text-sm text-gray-400">Todavía no hay información de suscripción registrada.</p>

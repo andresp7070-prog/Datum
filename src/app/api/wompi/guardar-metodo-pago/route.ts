@@ -61,6 +61,7 @@ export async function POST(request: Request) {
       tipo: "tarjeta",
       marca: fuentePago.marca,
       ultimosDigitos: fuentePago.ultimosDigitos,
+      titular: fuentePago.titular,
     });
   } catch (err) {
     const mensaje = err instanceof Error ? err.message : "No se pudo guardar el método de pago.";

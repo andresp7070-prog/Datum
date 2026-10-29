@@ -37,6 +37,7 @@ export default async function CuentaPage({
   let metodoPredeterminado: {
     metodo_marca: string | null;
     metodo_ultimos_digitos: string | null;
+    titular: string | null;
   } | null = null;
 
   if (perfil.empresa_id && perfil.rol_empresa === "administrador") {
@@ -51,7 +52,7 @@ export default async function CuentaPage({
 
     const { data: metodo } = await supabase
       .from("metodos_pago")
-      .select("metodo_marca, metodo_ultimos_digitos")
+      .select("metodo_marca, metodo_ultimos_digitos, titular")
       .eq("empresa_id", perfil.empresa_id)
       .eq("es_predeterminado", true)
       .maybeSingle();
@@ -64,6 +65,18 @@ export default async function CuentaPage({
         Math.ceil((new Date(suscripcion.fecha_fin_prueba).getTime() - new Date().getTime()) / 86400000),
       )
     : null;
+
+  // El nombre del titular identifica mejor que la marca — pero
+  // Bancolombia no entrega ningún nombre de persona, así que ahí se cae
+  // de respaldo a la marca ("Bancolombia"), que sí tenemos siempre.
+  const nombreMetodo = metodoPredeterminado
+    ? metodoPredeterminado.titular || metodoPredeterminado.metodo_marca
+    : null;
+  const etiquetaMetodo = !metodoPredeterminado?.metodo_ultimos_digitos
+    ? "Método de pago guardado"
+    : nombreMetodo
+      ? `${nombreMetodo} •••• ${metodoPredeterminado.metodo_ultimos_digitos}`
+      : `•••• ${metodoPredeterminado.metodo_ultimos_digitos}`;
 
   return (
     <div className="max-w-lg space-y-6">
@@ -128,11 +141,7 @@ export default async function CuentaPage({
                   <dt className="text-gray-400">Método de pago</dt>
                   <dd className="mt-1 flex flex-wrap items-center gap-2">
                     <LogoTarjeta marca={metodoPredeterminado.metodo_marca} />
-                    <span className="font-medium text-gray-900">
-                      {metodoPredeterminado.metodo_ultimos_digitos
-                        ? `${metodoPredeterminado.metodo_marca === "Bancolombia" ? "Bancolombia " : ""}•••• ${metodoPredeterminado.metodo_ultimos_digitos}`
-                        : "Método de pago guardado"}
-                    </span>
+                    <span className="font-medium text-gray-900">{etiquetaMetodo}</span>
                     <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
                       Predeterminado
                     </span>

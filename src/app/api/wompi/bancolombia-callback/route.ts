@@ -65,6 +65,7 @@ export async function GET(request: Request) {
       tipo: "bancolombia",
       marca: fuentePago.marca,
       ultimosDigitos: fuentePago.ultimosDigitos,
+      titular: fuentePago.titular,
     });
   } catch (err) {
     const mensaje = err instanceof Error ? err.message : "No se pudo conectar con Bancolombia.";

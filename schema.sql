@@ -4147,3 +4147,9 @@ alter table metodos_pago add column if not exists tipo text not null default 'ta
 alter table metodos_pago drop constraint if exists metodos_pago_tipo_check;
 alter table metodos_pago add constraint metodos_pago_tipo_check
   check (tipo in ('tarjeta', 'bancolombia', 'nequi'));
+
+-- Nombre del titular (agregado 2026-10-29) — Wompi sí entrega el nombre
+-- con el que se tokenizó la tarjeta (campo card_holder); Bancolombia no
+-- entrega ningún nombre de persona en su respuesta, así que esta columna
+-- queda null para esas filas a propósito, no es un dato que falte cargar.
+alter table metodos_pago add column if not exists titular text;

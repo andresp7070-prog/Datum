@@ -17,6 +17,7 @@ export async function guardarMetodoPago(input: {
   tipo: "tarjeta" | "bancolombia" | "nequi";
   marca: string | null;
   ultimosDigitos: string | null;
+  titular: string | null;
 }): Promise<void> {
   const admin = createAdminClient();
 
@@ -44,6 +45,7 @@ export async function guardarMetodoPago(input: {
     tipo: input.tipo,
     metodo_marca: input.marca,
     metodo_ultimos_digitos: input.ultimosDigitos,
+    titular: input.titular,
     es_predeterminado: true,
   });
   if (errorMetodo) throw new Error(errorMetodo.message);

@@ -8,15 +8,20 @@ type Metodo = {
   id: string;
   metodo_marca: string | null;
   metodo_ultimos_digitos: string | null;
+  titular: string | null;
   es_predeterminado: boolean;
   creado_en: string;
 };
 
 function etiquetaTarjeta(m: Metodo): string {
-  // Bancolombia no tiene ícono propio (ver LogoTarjeta) — se antepone el
-  // nombre como texto para que siga siendo identificable.
-  const prefijo = m.metodo_marca === "Bancolombia" ? "Bancolombia " : "";
-  if (m.metodo_ultimos_digitos) return `${prefijo}•••• ${m.metodo_ultimos_digitos}`;
+  // El nombre del titular (el que se escribió al agregar la tarjeta en
+  // Wompi) identifica mejor que la marca — pero Bancolombia no entrega
+  // ningún nombre de persona, así que ahí se cae de respaldo a la marca
+  // ("Bancolombia"), que sí tenemos siempre.
+  const nombre = m.titular || m.metodo_marca;
+  if (m.metodo_ultimos_digitos) {
+    return nombre ? `${nombre} •••• ${m.metodo_ultimos_digitos}` : `•••• ${m.metodo_ultimos_digitos}`;
+  }
   return `Tarjeta guardada el ${new Date(m.creado_en).toLocaleDateString("es-CO")}`;
 }
 

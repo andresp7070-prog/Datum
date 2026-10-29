@@ -23,7 +23,7 @@ export default async function MetodosPagoPage() {
 
   const { data: metodos } = await supabase
     .from("metodos_pago")
-    .select("id, metodo_marca, metodo_ultimos_digitos, es_predeterminado, creado_en")
+    .select("id, metodo_marca, metodo_ultimos_digitos, titular, es_predeterminado, creado_en")
     .eq("empresa_id", perfil.empresa_id)
     .order("creado_en", { ascending: false });
 

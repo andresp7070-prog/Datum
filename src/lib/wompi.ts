@@ -108,7 +108,13 @@ export async function crearFuentePagoWompi(input: {
   // futuros contra esta fuente de pago (confirmado en la documentación de
   // Wompi, sección "Payment Sources & Tokenization").
   descripcionPago?: string;
-}): Promise<{ id: number; estado: string; marca: string | null; ultimosDigitos: string | null }> {
+}): Promise<{
+  id: number;
+  estado: string;
+  marca: string | null;
+  ultimosDigitos: string | null;
+  titular: string | null;
+}> {
   const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
   const respuesta = await fetch(`${baseUrlWompi(llavePrivada)}/payment_sources`, {
     method: "POST",
@@ -136,13 +142,16 @@ export async function crearFuentePagoWompi(input: {
 
   if (input.tipo === "BANCOLOMBIA_TRANSFER") {
     // Confirmado en la documentación de Wompi: viene como "***1234" — se
-    // deja solo los dígitos.
+    // deja solo los dígitos. Bancolombia no entrega ningún nombre de
+    // titular acá (solo tipo de cuenta y últimos 4) — titular queda null
+    // a propósito, no es un dato que falte extraer.
     const crudos: string | undefined = cuerpo.data?.public_data?.bank_account_last_four;
     return {
       id: cuerpo.data.id,
       estado: cuerpo.data.status,
       marca: "Bancolombia",
       ultimosDigitos: crudos ? crudos.replace(/\D/g, "") || null : null,
+      titular: null,
     };
   }
 
@@ -152,6 +161,7 @@ export async function crearFuentePagoWompi(input: {
     estado: cuerpo.data.status,
     marca: bin ? marcaDesdeBin(bin) : null,
     ultimosDigitos: cuerpo.data?.public_data?.last_four ?? null,
+    titular: cuerpo.data?.public_data?.card_holder ?? null,
   };
 }
 

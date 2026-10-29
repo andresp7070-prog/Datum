@@ -13,7 +13,10 @@ type Metodo = {
 };
 
 function etiquetaTarjeta(m: Metodo): string {
-  if (m.metodo_ultimos_digitos) return `•••• ${m.metodo_ultimos_digitos}`;
+  // Bancolombia no tiene ícono propio (ver LogoTarjeta) — se antepone el
+  // nombre como texto para que siga siendo identificable.
+  const prefijo = m.metodo_marca === "Bancolombia" ? "Bancolombia " : "";
+  if (m.metodo_ultimos_digitos) return `${prefijo}•••• ${m.metodo_ultimos_digitos}`;
   return `Tarjeta guardada el ${new Date(m.creado_en).toLocaleDateString("es-CO")}`;
 }
 

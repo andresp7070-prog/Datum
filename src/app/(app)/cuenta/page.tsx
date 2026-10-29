@@ -130,7 +130,7 @@ export default async function CuentaPage({
                     <LogoTarjeta marca={metodoPredeterminado.metodo_marca} />
                     <span className="font-medium text-gray-900">
                       {metodoPredeterminado.metodo_ultimos_digitos
-                        ? `•••• ${metodoPredeterminado.metodo_ultimos_digitos}`
+                        ? `${metodoPredeterminado.metodo_marca === "Bancolombia" ? "Bancolombia " : ""}•••• ${metodoPredeterminado.metodo_ultimos_digitos}`
                         : "Método de pago guardado"}
                     </span>
                     <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">

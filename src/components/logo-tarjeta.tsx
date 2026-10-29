@@ -51,20 +51,14 @@ export function LogoTarjeta({ marca, className }: { marca: string | null; classN
         </svg>
       );
     case "Bancolombia":
-      // "BANCOLOMBIA" como texto no cabía sin cortarse en un recuadro tan
-      // chico (confirmado por Andrés, 2026-10-29) — se usan en cambio los
-      // tres trazos dorados de su marca actual (pedido explícito de
-      // Andrés, prefiere esto a un círculo), con largos distintos, mismo
-      // criterio que Visa/Mastercard acá arriba: una forma reconocible en
-      // vez de todo el nombre.
-      return (
-        <svg viewBox="0 0 36 24" className={clase} role="img" aria-label="Bancolombia">
-          <rect width="36" height="24" rx="4" fill="#ffffff" stroke="#E5E7EB" />
-          <rect x="9" y="7" width="11" height="2.4" rx="1.2" fill="#FFE066" />
-          <rect x="9" y="10.8" width="15" height="2.4" rx="1.2" fill="#FFCD00" />
-          <rect x="9" y="14.6" width="18" height="2.4" rx="1.2" fill="#F2A900" />
-        </svg>
-      );
+      // Sin logo oficial de Bancolombia/Wompi confirmado para usar acá —
+      // se buscó, no hay ningún activo público verificado (solo un manual
+      // de marca del propio Wompi, marcado confidencial, y de Wompi, no
+      // de Bancolombia). Dos intentos propios (círculo, tres trazos) no
+      // convencieron a Andrés — se deja sin ícono a propósito; el nombre
+      // se agrega como texto en su lugar (ver lista-metodos-pago.tsx y
+      // cuenta/page.tsx).
+      return null;
     case "Diners Club":
       return (
         <svg viewBox="0 0 36 24" className={clase} role="img" aria-label="Diners Club">

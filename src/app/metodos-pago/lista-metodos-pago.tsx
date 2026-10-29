@@ -12,8 +12,9 @@ type Metodo = {
 };
 
 function etiquetaTarjeta(m: Metodo): string {
-  if (m.tarjeta_marca && m.tarjeta_ultimos_digitos) {
-    return `${m.tarjeta_marca} terminada en ${m.tarjeta_ultimos_digitos}`;
+  if (m.tarjeta_ultimos_digitos) {
+    const marca = m.tarjeta_marca ? `${m.tarjeta_marca} terminada` : "Tarjeta terminada";
+    return `${marca} en ${m.tarjeta_ultimos_digitos}`;
   }
   return `Tarjeta guardada el ${new Date(m.creado_en).toLocaleDateString("es-CO")}`;
 }

@@ -77,6 +77,25 @@ export async function obtenerTokensAceptacionWompi(): Promise<{
 // vienen de Wompi JS (su librería antifraude, que corre en el navegador
 // de quien está agregando la tarjeta) — opcionales, pero Wompi recomienda
 // mandarlos siempre que se pueda para mejorar la detección de fraude.
+// Confirmado 2026-10-29 revisando una respuesta real de Wompi en sandbox:
+// POST /payment_sources no entrega la marca de la tarjeta (Visa/Mastercard/
+// etc.) como campo propio, pero sí el BIN (los primeros 6 dígitos, en
+// data.public_data.bin). La marca se deduce del BIN acá mismo — es un
+// estándar de toda la industria (ISO/IEC 7812), no algo específico de
+// Wompi, así que no hace falta que su documentación lo confirme para
+// usarlo con confianza. Si el BIN no cae en ningún rango reconocido,
+// queda sin marca (null) en vez de arriesgar un dato incorrecto.
+function marcaDesdeBin(bin: string): string | null {
+  if (bin.startsWith("4")) return "Visa";
+  const dosDigitos = Number(bin.slice(0, 2));
+  const cuatroDigitos = Number(bin.slice(0, 4));
+  if (dosDigitos >= 51 && dosDigitos <= 55) return "Mastercard";
+  if (cuatroDigitos >= 2221 && cuatroDigitos <= 2720) return "Mastercard";
+  if (dosDigitos === 34 || dosDigitos === 37) return "American Express";
+  if (dosDigitos === 36 || dosDigitos === 38) return "Diners Club";
+  return null;
+}
+
 export async function crearFuentePagoWompi(input: {
   tokenTarjeta: string;
   correoCliente: string;
@@ -84,7 +103,7 @@ export async function crearFuentePagoWompi(input: {
   acceptPersonalAuth: string;
   sessionId?: string;
   deviceId?: string;
-}): Promise<{ id: number; estado: string }> {
+}): Promise<{ id: number; estado: string; marca: string | null; ultimosDigitos: string | null }> {
   const llavePrivada = variableRequerida("LLAVE_PRIVADA_WOMPI");
   const respuesta = await fetch(`${baseUrlWompi(llavePrivada)}/payment_sources`, {
     method: "POST",
@@ -106,11 +125,13 @@ export async function crearFuentePagoWompi(input: {
   if (!respuesta.ok || cuerpo.data?.status !== "AVAILABLE") {
     throw new Error(cuerpo.error?.reason ?? "No se pudo guardar el método de pago.");
   }
-  // TEMPORAL — para descubrir si Wompi devuelve acá la marca/últimos 4
-  // dígitos de la tarjeta (no está confirmado en su documentación). Revisar
-  // en los logs de Vercel tras la próxima prueba y borrar esta línea.
-  console.log("Respuesta completa de POST /payment_sources:", JSON.stringify(cuerpo));
-  return { id: cuerpo.data.id, estado: cuerpo.data.status };
+  const bin: string | undefined = cuerpo.data?.public_data?.bin;
+  return {
+    id: cuerpo.data.id,
+    estado: cuerpo.data.status,
+    marca: bin ? marcaDesdeBin(bin) : null,
+    ultimosDigitos: cuerpo.data?.public_data?.last_four ?? null,
+  };
 }
 
 // La "firma de integridad" que exige cada transacción nueva — no confirmada

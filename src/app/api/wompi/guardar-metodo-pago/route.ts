@@ -85,6 +85,8 @@ export async function POST(request: Request) {
     const { error: errorMetodo } = await admin.from("metodos_pago").insert({
       empresa_id: perfil.empresa_id,
       wompi_fuente_pago_id: String(fuentePago.id),
+      tarjeta_marca: fuentePago.marca,
+      tarjeta_ultimos_digitos: fuentePago.ultimosDigitos,
       es_predeterminado: true,
     });
     if (errorMetodo) throw new Error(errorMetodo.message);

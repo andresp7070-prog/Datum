@@ -106,6 +106,10 @@ export async function crearFuentePagoWompi(input: {
   if (!respuesta.ok || cuerpo.data?.status !== "AVAILABLE") {
     throw new Error(cuerpo.error?.reason ?? "No se pudo guardar el método de pago.");
   }
+  // TEMPORAL — para descubrir si Wompi devuelve acá la marca/últimos 4
+  // dígitos de la tarjeta (no está confirmado en su documentación). Revisar
+  // en los logs de Vercel tras la próxima prueba y borrar esta línea.
+  console.log("Respuesta completa de POST /payment_sources:", JSON.stringify(cuerpo));
   return { id: cuerpo.data.id, estado: cuerpo.data.status };
 }
 

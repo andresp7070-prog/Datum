@@ -35,40 +35,36 @@ export default async function AgregarMetodoPagoPage({
 
   const { data: suscripcion } = await supabase
     .from("suscripciones")
-    .select("monto_mensual, facturacion, wompi_fuente_pago_id")
+    .select("monto_mensual, facturacion")
     .eq("empresa_id", perfil.empresa_id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   // Sin suscripción no hay nada que cobrar — ahí sí esta pantalla no tiene
-  // sentido. Con una fuente de pago ya guardada, esta misma pantalla sirve
-  // para reemplazarla (ver "Mi cuenta" → Cambiar método de pago) — no
-  // redirige, solo cambia el texto de abajo según el caso.
+  // sentido.
   if (!suscripcion) redirect("/");
 
-  const yaTieneTarjeta = Boolean(suscripcion.wompi_fuente_pago_id);
+  // Ya no redirige si la empresa tiene una tarjeta guardada — con varias
+  // tarjetas permitidas (ver metodos_pago en schema.sql), esta pantalla
+  // sirve tanto para la primera como para agregar una adicional. Se
+  // revisa acá (no en metodos-pago/page.tsx) solo para cambiar el texto
+  // de abajo según el caso.
+  const { count: metodosExistentes } = await supabase
+    .from("metodos_pago")
+    .select("id", { count: "exact", head: true })
+    .eq("empresa_id", perfil.empresa_id);
+  const esLaPrimera = !metodosExistentes;
 
   const tokens = await obtenerTokensAceptacionWompi();
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="mx-auto max-w-lg rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold text-gray-900">
-          {yaTieneTarjeta ? "Cambia tu método de pago" : "Agrega tu método de pago"}
-        </h1>
+        <h1 className="mb-1 text-xl font-semibold text-gray-900">Agrega una tarjeta</h1>
         <p className="mb-6 text-sm text-gray-500">
           {empresa?.nombre ? `${empresa.nombre}: ` : ""}
-          {yaTieneTarjeta ? (
-            <>
-              reemplaza la tarjeta guardada — se sigue cobrando{" "}
-              <strong>
-                ${Number(suscripcion.monto_mensual).toLocaleString("es-CO")} COP
-                {suscripcion.facturacion === "anual" ? "/año" : "/mes"}
-              </strong>
-              , en la fecha que ya tenías programada.
-            </>
-          ) : (
+          {esLaPrimera ? (
             <>
               tu período de prueba ya terminó. Para seguir usando Datum, agrega una tarjeta — se
               te cobrará{" "}
@@ -77,6 +73,11 @@ export default async function AgregarMetodoPagoPage({
                 {suscripcion.facturacion === "anual" ? "/año" : "/mes"}
               </strong>
               .
+            </>
+          ) : (
+            <>
+              esta tarjeta queda guardada junto a las demás — puedes elegir después, desde{" "}
+              <strong>Mis métodos de pago</strong>, cuál quieres usar para cobrar.
             </>
           )}{" "}
           Tu tarjeta nunca se guarda en los servidores de Datum: queda directamente en Wompi, la

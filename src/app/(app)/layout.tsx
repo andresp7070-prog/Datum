@@ -52,11 +52,13 @@ export default async function AppLayout({
 
     // Tercer gate (después de cambiar la contraseña y aceptar el
     // contrato): si ya se venció la prueba gratuita y la empresa todavía
-    // no tiene una tarjeta guardada en Wompi, no puede seguir usando la
-    // plataforma hasta que la agregue — ver CLAUDE.md, sección "Cobros".
+    // no tiene ninguna tarjeta guardada en Wompi (ver metodos_pago en
+    // schema.sql — ahora puede haber varias, no una sola), no puede
+    // seguir usando la plataforma hasta que agregue al menos una — ver
+    // CLAUDE.md, sección "Cobros".
     const { data: suscripcion } = await supabase
       .from("suscripciones")
-      .select("fecha_fin_prueba, wompi_fuente_pago_id")
+      .select("fecha_fin_prueba")
       .eq("empresa_id", perfil.empresa_id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -66,8 +68,14 @@ export default async function AppLayout({
       ? new Date(suscripcion.fecha_fin_prueba) < new Date()
       : false;
 
-    if (pruebaVencida && !suscripcion?.wompi_fuente_pago_id) {
-      redirect("/agregar-metodo-pago");
+    if (pruebaVencida) {
+      const { count: metodosExistentes } = await supabase
+        .from("metodos_pago")
+        .select("id", { count: "exact", head: true })
+        .eq("empresa_id", perfil.empresa_id);
+      if (!metodosExistentes) {
+        redirect("/agregar-metodo-pago");
+      }
     }
 
     if (perfil.empresa_id) {

@@ -54,48 +54,70 @@ export async function POST(request: Request) {
       deviceId,
     });
 
-    // Escribe con la llave de servicio a propósito: desde que se cerró el
-    // permiso de edición normal sobre suscripciones (ver schema.sql,
-    // sección "COBRO AUTOMÁTICO CON WOMPI"), la sesión del propio cliente
-    // ya no puede escribir esta fila — solo lectura. Es el cuarto uso
-    // legítimo de esta llave en el proyecto (ver src/lib/supabase/admin.ts).
+    // Escribe con la llave de servicio a propósito: crear un método de
+    // pago exige haberlo tokenizado con Wompi primero, y desde que se
+    // cerró el permiso de edición normal sobre suscripciones (ver
+    // schema.sql, sección "COBRO AUTOMÁTICO CON WOMPI") esa misma lógica
+    // aplica a metodos_pago — solo la llave de servicio puede insertar
+    // ahí. Sexto uso legítimo de esta llave en el proyecto (ver
+    // src/lib/supabase/admin.ts).
     const admin = createAdminClient();
 
-    const { data: suscripcionActual } = await admin
-      .from("suscripciones")
-      .select("id, fecha_fin_prueba, wompi_fuente_pago_id")
-      .eq("empresa_id", perfil.empresa_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { count: metodosExistentes } = await admin
+      .from("metodos_pago")
+      .select("id", { count: "exact", head: true })
+      .eq("empresa_id", perfil.empresa_id);
 
-    const actualizacion: Record<string, string> = {
+    const esLaPrimera = !metodosExistentes;
+
+    // Toda tarjeta nueva se guarda como la predeterminada — es la más
+    // reciente, lo más probable es que sea la que se quiere usar ya. Si
+    // ya había otras, se apagan primero para que nunca quede ninguna o
+    // dos marcadas a la vez (mismo criterio que
+    // marcar_metodo_pago_predeterminado() en schema.sql).
+    if (!esLaPrimera) {
+      await admin
+        .from("metodos_pago")
+        .update({ es_predeterminado: false })
+        .eq("empresa_id", perfil.empresa_id);
+    }
+
+    const { error: errorMetodo } = await admin.from("metodos_pago").insert({
+      empresa_id: perfil.empresa_id,
       wompi_fuente_pago_id: String(fuentePago.id),
-      proveedor_pago: "wompi",
-    };
+      es_predeterminado: true,
+    });
+    if (errorMetodo) throw new Error(errorMetodo.message);
 
     // El primer cobro debe caer cuando de verdad termina la prueba
     // gratuita, no apenas se guarda la tarjeta (alguien podría agregarla
     // antes de que se le venza) — y si ya se venció (este fue el gate
     // forzado), toca cobrar lo antes posible, así que el cron lo recoge en
-    // su próxima corrida. Pero eso solo aplica la PRIMERA vez que se
-    // guarda una tarjeta — si ya tenía una (esto es un reemplazo desde
-    // "Mi cuenta"), se deja fecha_proximo_cobro tal como estaba, para no
-    // reiniciar un ciclo de cobro que ya estaba en curso.
-    if (!suscripcionActual?.wompi_fuente_pago_id) {
+    // su próxima corrida. Pero eso solo aplica la PRIMERA tarjeta que se
+    // guarda — si ya tenía otra (esto es agregar una adicional desde
+    // "Mis métodos de pago"), se deja fecha_proximo_cobro tal como
+    // estaba, para no reiniciar un ciclo de cobro que ya estaba en curso.
+    if (esLaPrimera) {
+      const { data: suscripcionActual } = await admin
+        .from("suscripciones")
+        .select("id, fecha_fin_prueba")
+        .eq("empresa_id", perfil.empresa_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       const ahora = new Date();
       const fechaFinPrueba = suscripcionActual?.fecha_fin_prueba
         ? new Date(suscripcionActual.fecha_fin_prueba)
         : ahora;
       const fechaProximoCobro = fechaFinPrueba > ahora ? fechaFinPrueba : ahora;
-      actualizacion.fecha_proximo_cobro = fechaProximoCobro.toISOString();
-    }
 
-    const { error } = await admin
-      .from("suscripciones")
-      .update(actualizacion)
-      .eq("empresa_id", perfil.empresa_id);
-    if (error) throw new Error(error.message);
+      const { error } = await admin
+        .from("suscripciones")
+        .update({ fecha_proximo_cobro: fechaProximoCobro.toISOString() })
+        .eq("empresa_id", perfil.empresa_id);
+      if (error) throw new Error(error.message);
+    }
   } catch (err) {
     const mensaje = err instanceof Error ? err.message : "No se pudo guardar el método de pago.";
     return NextResponse.redirect(
@@ -103,5 +125,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.redirect(`${urlBase}/`);
+  return NextResponse.redirect(`${urlBase}/metodos-pago`);
 }

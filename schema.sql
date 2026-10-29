@@ -4046,3 +4046,83 @@ create policy "ver mis cobros" on suscripcion_cobros
 -- hay comisión sobre algo que nunca se cobró.
 alter table suscripcion_cobros add column if not exists comision_wompi numeric(12,2);
 alter table suscripcion_cobros add column if not exists monto_neto numeric(12,2);
+
+-- ============================================================
+-- VARIAS TARJETAS GUARDADAS POR EMPRESA (agregado 2026-10-29)
+-- Hasta acá, suscripciones.wompi_fuente_pago_id solo guardaba UNA fuente de
+-- pago — agregar una tarjeta nueva reemplazaba la anterior sin dejar
+-- rastro. Esta tabla permite guardar varias por empresa, cada una con su
+-- propio estado de "es la que se usa para cobrar". Esa columna de
+-- suscripciones se deja tal como está (no se borra, por si acaso), pero el
+-- código deja de escribirla — a partir de acá, metodos_pago es la fuente
+-- de verdad.
+-- ============================================================
+create table if not exists metodos_pago (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null,
+  wompi_fuente_pago_id text not null,
+  tarjeta_marca text,
+  tarjeta_ultimos_digitos text,
+  es_predeterminado boolean not null default false,
+  creado_en timestamptz not null default now()
+);
+
+alter table metodos_pago enable row level security;
+
+create index if not exists metodos_pago_empresa_id_idx on metodos_pago (empresa_id);
+
+create policy "ver mis metodos de pago" on metodos_pago
+  for select using (empresa_id = mi_empresa_id() or es_admin());
+
+-- Marcar cuál es la predeterminada y borrar una que ya no sirve sí quedan
+-- abiertas a la sesión normal del cliente — a diferencia de crear una (que
+-- exige haberla tokenizado con Wompi primero, ver
+-- /api/wompi/guardar-metodo-pago), estas dos acciones solo operan sobre
+-- filas que ya pasaron por ese proceso, así que no hay nada que proteger
+-- con la llave de servicio.
+create policy "actualizar mis metodos de pago" on metodos_pago
+  for update using (empresa_id = mi_empresa_id())
+  with check (empresa_id = mi_empresa_id());
+
+create policy "borrar mis metodos de pago" on metodos_pago
+  for delete using (empresa_id = mi_empresa_id());
+
+-- Sin política de insert a propósito: crear un método de pago exige
+-- haberlo tokenizado con Wompi primero, así que solo la llave de servicio
+-- puede insertar acá (mismo criterio que ya usa suscripciones).
+
+-- Cambia cuál es la tarjeta predeterminada de una empresa, apagando la
+-- anterior y prendiendo la nueva en un solo paso — mismo criterio que
+-- marcar_etapa_cierre() en el CRM, para que nunca quede ninguna o dos
+-- marcadas a la vez. No necesita privilegios especiales: corre como quien
+-- la llama, así que RLS ya limita ambos UPDATE a las filas de su propia
+-- empresa.
+create or replace function marcar_metodo_pago_predeterminado(p_metodo_id uuid)
+returns void
+language plpgsql
+as $$
+begin
+  update metodos_pago
+  set es_predeterminado = false
+  where empresa_id = (select empresa_id from metodos_pago where id = p_metodo_id);
+
+  update metodos_pago
+  set es_predeterminado = true
+  where id = p_metodo_id;
+end;
+$$;
+
+-- Migra la tarjeta que cada empresa ya tenía guardada en suscripciones
+-- hacia la tabla nueva, como su primer método y predeterminado — para no
+-- perderla. Con "on conflict do nothing" no aplica acá (no hay una
+-- restricción unique que lo pida), así que se protege con el propio where:
+-- si se vuelve a correr sin querer, solo insertaría de nuevo si la empresa
+-- en cuestión no tiene ya un método con esa misma fuente de pago.
+insert into metodos_pago (empresa_id, wompi_fuente_pago_id, es_predeterminado)
+select s.empresa_id, s.wompi_fuente_pago_id, true
+from suscripciones s
+where s.wompi_fuente_pago_id is not null
+  and not exists (
+    select 1 from metodos_pago m
+    where m.empresa_id = s.empresa_id and m.wompi_fuente_pago_id = s.wompi_fuente_pago_id
+  );

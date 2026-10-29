@@ -22,15 +22,16 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient();
   const ahora = new Date();
 
-  // Candidatas: ya tienen tarjeta guardada, no están canceladas, y ya les
-  // toca cobrar (fecha_proximo_cobro quedó en el pasado o es justo ahora).
-  // Una suscripción 'vencida' (el cobro anterior falló) también se
-  // reintenta acá — todavía no hay una cola de reintentos aparte ni un
-  // tope de cuántas veces se reintenta.
+  // Candidatas: no están canceladas, y ya les toca cobrar (fecha_proximo_cobro
+  // quedó en el pasado o es justo ahora). Ya no se filtra acá por tener
+  // tarjeta guardada — eso se revisa abajo, una por una, contra
+  // metodos_pago (una empresa puede tener varias, se usa la marcada como
+  // predeterminada). Una suscripción 'vencida' (el cobro anterior falló)
+  // también se reintenta acá — todavía no hay una cola de reintentos
+  // aparte ni un tope de cuántas veces se reintenta.
   const { data: suscripciones, error } = await supabase
     .from("suscripciones")
-    .select("id, empresa_id, monto_mensual, facturacion, wompi_fuente_pago_id")
-    .not("wompi_fuente_pago_id", "is", null)
+    .select("id, empresa_id, monto_mensual, facturacion")
     .not("fecha_proximo_cobro", "is", null)
     .neq("estado", "cancelada")
     .lte("fecha_proximo_cobro", ahora.toISOString());
@@ -42,6 +43,16 @@ export async function GET(request: NextRequest) {
 
   for (const suscripcion of suscripciones ?? []) {
     try {
+      const { data: metodoPago } = await supabase
+        .from("metodos_pago")
+        .select("wompi_fuente_pago_id")
+        .eq("empresa_id", suscripcion.empresa_id)
+        .eq("es_predeterminado", true)
+        .maybeSingle();
+      if (!metodoPago) {
+        throw new Error("No tiene ningún método de pago marcado como predeterminado");
+      }
+
       const { data: perfilAdmin } = await supabase
         .from("perfiles")
         .select("id")
@@ -68,7 +79,7 @@ export async function GET(request: NextRequest) {
       const referencia = `datum-${suscripcion.id}-${Date.now()}`;
 
       const transaccion = await crearCobroRecurrenteWompi({
-        fuentePagoId: Number(suscripcion.wompi_fuente_pago_id),
+        fuentePagoId: Number(metodoPago.wompi_fuente_pago_id),
         montoEnCentavos: Math.round(montoACobrar * 100),
         correoCliente,
         referencia,

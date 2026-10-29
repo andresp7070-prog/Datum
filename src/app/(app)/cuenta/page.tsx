@@ -31,13 +31,12 @@ export default async function CuentaPage({
     estado: string;
     fecha_fin_prueba: string;
     monto_mensual: number;
-    wompi_fuente_pago_id: string | null;
   } | null = null;
 
   if (perfil.empresa_id && perfil.rol_empresa === "administrador") {
     const { data } = await supabase
       .from("suscripciones")
-      .select("estado, fecha_fin_prueba, monto_mensual, wompi_fuente_pago_id")
+      .select("estado, fecha_fin_prueba, monto_mensual")
       .eq("empresa_id", perfil.empresa_id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -116,10 +115,10 @@ export default async function CuentaPage({
           )}
           {suscripcion && (
             <Link
-              href="/agregar-metodo-pago"
+              href="/metodos-pago"
               className="mt-4 block rounded-lg border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              {suscripcion.wompi_fuente_pago_id ? "Cambiar método de pago" : "Agregar método de pago"}
+              Métodos de pago
             </Link>
           )}
         </div>

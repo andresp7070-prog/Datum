@@ -239,6 +239,87 @@ export function NuevoClienteForm() {
           </div>
         </div>
 
+        {/* Plan y facturación van antes de elegir módulos a propósito: el
+            plan es lo que define cuántos módulos se pueden activar, así que
+            tiene que decidirse primero (2026-10-30, pedido explícito tras
+            ver el formulario desordenado). */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Plan</label>
+            <select
+              value={plan}
+              onChange={(e) => {
+                const nuevoPlan = e.target.value;
+                setPlan(nuevoPlan);
+                setMontoMensual(MONTO_SUGERIDO_POR_PLAN[nuevoPlan] ?? montoMensual);
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            >
+              {PLANES.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <CampoMoneda id="montoMensual" label="Monto mensual" value={montoMensual} onChange={setMontoMensual} />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Frecuencia de pago</label>
+          <div className="flex gap-2">
+            {[
+              { value: "mensual", label: "Mensual" },
+              { value: "anual", label: "Anual (-15%)" },
+            ].map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFacturacion(f.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  facturacion === f.value
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {facturacion === "anual" &&
+            (() => {
+              const base = Number(montoMensual) || 0;
+              const totalSinDescuento = base * 12;
+              const totalConDescuento = totalSinDescuento * (1 - DESCUENTO_ANUAL);
+              return (
+                <p className="mt-1 text-xs text-gray-400">
+                  Se le cobra una sola vez al año: {formatoCOP(totalConDescuento)} (ahorra{" "}
+                  {formatoCOP(totalSinDescuento - totalConDescuento)} frente a pagar mes a mes).
+                </p>
+              );
+            })()}
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Día de pago del mes <span className="font-normal text-gray-400">(opcional)</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={31}
+            value={diaPago}
+            onChange={(e) => setDiaPago(e.target.value)}
+            placeholder="Ej. 5"
+            className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            Dato de referencia nomás — el cobro real ya es automático con Wompi: se dispara solo
+            cuando termina la prueba gratuita de 15 días (o antes, si el cliente agrega su método
+            de pago primero), no en este día del mes.
+          </p>
+        </div>
+
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">
             Módulos activos{" "}
@@ -352,82 +433,6 @@ export function NuevoClienteForm() {
           </div>
           <p className="mt-1 text-xs text-gray-400">
             Sin elegir ninguno, se asume que atiende todos los días.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Plan</label>
-            <select
-              value={plan}
-              onChange={(e) => {
-                const nuevoPlan = e.target.value;
-                setPlan(nuevoPlan);
-                setMontoMensual(MONTO_SUGERIDO_POR_PLAN[nuevoPlan] ?? montoMensual);
-              }}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-            >
-              {PLANES.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <CampoMoneda id="montoMensual" label="Monto mensual" value={montoMensual} onChange={setMontoMensual} />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Frecuencia de pago</label>
-          <div className="flex gap-2">
-            {[
-              { value: "mensual", label: "Mensual" },
-              { value: "anual", label: "Anual (-15%)" },
-            ].map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setFacturacion(f.value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                  facturacion === f.value
-                    ? "border-gray-900 bg-gray-900 text-white"
-                    : "border-gray-300 text-gray-600 hover:border-gray-400"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          {facturacion === "anual" &&
-            (() => {
-              const base = Number(montoMensual) || 0;
-              const totalSinDescuento = base * 12;
-              const totalConDescuento = totalSinDescuento * (1 - DESCUENTO_ANUAL);
-              return (
-                <p className="mt-1 text-xs text-gray-400">
-                  Se le cobra una sola vez al año: {formatoCOP(totalConDescuento)} (ahorra{" "}
-                  {formatoCOP(totalSinDescuento - totalConDescuento)} frente a pagar mes a mes).
-                </p>
-              );
-            })()}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Día de pago del mes <span className="font-normal text-gray-400">(opcional)</span>
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={31}
-            value={diaPago}
-            onChange={(e) => setDiaPago(e.target.value)}
-            placeholder="Ej. 5"
-            className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-          />
-          <p className="mt-1 text-xs text-gray-400">
-            Solo para saber cuándo recordarle el pago manual — el cobro sigue siendo por
-            transferencia, no hay pasarela conectada todavía.
           </p>
         </div>
 

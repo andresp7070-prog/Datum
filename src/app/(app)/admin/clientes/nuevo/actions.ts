@@ -116,6 +116,30 @@ export async function crearCliente(input: {
   }
 
   const supabase = createAdminClient();
+
+  // Evita crear la misma empresa dos veces por accidente — compara nombre
+  // (sin importar mayúsculas) y NIT/cédula contra las empresas que ya
+  // existen. No debería pasar casi nunca, pero el costo de revisar es bajo
+  // y el de duplicar una empresa real no lo es (agregado 2026-10-30).
+  const { data: empresaPorNombre } = await supabase
+    .from("empresas")
+    .select("id")
+    .ilike("nombre", nombreEmpresa)
+    .limit(1);
+  if (empresaPorNombre && empresaPorNombre.length > 0) {
+    return {
+      ok: false,
+      error: `Ya existe una empresa llamada "${nombreEmpresa}" — revisa que no sea un duplicado.`,
+    };
+  }
+  const { data: empresaPorNit } = await supabase.from("empresas").select("id").eq("nit", nit).limit(1);
+  if (empresaPorNit && empresaPorNit.length > 0) {
+    return {
+      ok: false,
+      error: `Ya existe una empresa registrada con el NIT/cédula "${nit}" — revisa que no sea un duplicado.`,
+    };
+  }
+
   const contrasena = generarContrasenaTemporal();
 
   // 1. Usuario de acceso (Auth). email_confirm:true porque el correo de
@@ -181,8 +205,9 @@ export async function crearCliente(input: {
   // 4. Suscripción — plan, monto, si se factura mensual o anual, y día de
   // pago acordados, y arranca en 'prueba' (fecha_fin_prueba usa su default
   // de 15 días calendario, la misma prueba gratuita del contrato). El cobro
-  // sigue siendo manual por ahora (ver sección "Cobros" en CLAUDE.md); esto
-  // es solo el dato para saber cuánto y cuándo cobrarle.
+  // real ya es automático con Wompi una vez el cliente agrega su método de
+  // pago (ver sección "Cobros" en CLAUDE.md) — lo dispara fecha_proximo_cobro,
+  // no estos campos; dia_pago queda solo como dato de referencia.
   const { error: errorSuscripcion } = await supabase.from("suscripciones").insert({
     empresa_id: empresaCreada.id,
     monto_mensual: montoMensual,

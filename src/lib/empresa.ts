@@ -82,6 +82,15 @@ export async function requerirAdmin() {
 
   const superAdminId = process.env.SUPER_ADMIN_USER_ID;
   if (!user || !superAdminId || user.id !== superAdminId) {
+    // Diagnóstico temporal (2026-10-31) — en vez de mandar a /resumen (que
+    // para una cuenta rol=super_admin bota de vuelta a /admin, armando un
+    // bucle que nunca deja ver el motivo), manda a una página aparte que
+    // muestra los dos ids lado a lado. Nunca corre en producción. Ver
+    // src/app/(app)/diagnostico-admin/page.tsx — borrar junto con esa
+    // página en cuanto se resuelva el caso real.
+    if (process.env.VERCEL_ENV !== "production") {
+      redirect("/diagnostico-admin");
+    }
     redirect("/resumen");
   }
 }

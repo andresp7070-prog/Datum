@@ -21,7 +21,17 @@ export async function login(formData: FormData) {
   // cualquier otro dispositivo. scope: "others" es parte del propio
   // Supabase Auth (no una función exclusiva de la plataforma): revoca los
   // demás refresh tokens de este usuario sin tocar la sesión recién creada.
-  await supabase.auth.signOut({ scope: "others" });
+  // Diagnóstico temporal (2026-10-31): este paso nunca revisaba su propio
+  // error, así que si llegaba a fallar (o a afectar la sesión recién
+  // creada), quedaba oculto — se veía igual que "no hay sesión". Mientras
+  // se confirma si es la causa de un caso real, se muestra el error en vez
+  // de tragárselo.
+  const { error: errorSignOut } = await supabase.auth.signOut({ scope: "others" });
+  if (errorSignOut) {
+    redirect(
+      `/login?error=${encodeURIComponent(`Fallo cerrando otras sesiones: ${errorSignOut.message}`)}`,
+    );
+  }
 
   redirect("/");
 }

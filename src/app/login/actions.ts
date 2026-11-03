@@ -21,11 +21,11 @@ export async function login(formData: FormData) {
   // cualquier otro dispositivo. scope: "others" es parte del propio
   // Supabase Auth (no una función exclusiva de la plataforma): revoca los
   // demás refresh tokens de este usuario sin tocar la sesión recién creada.
-  // Diagnóstico temporal (2026-10-31): este paso nunca revisaba su propio
-  // error, así que si llegaba a fallar (o a afectar la sesión recién
-  // creada), quedaba oculto — se veía igual que "no hay sesión". Mientras
-  // se confirma si es la causa de un caso real, se muestra el error en vez
-  // de tragárselo.
+  // Este paso antes no revisaba su propio error (quedaba oculto, se veía
+  // igual que "no hay sesión") — se dejó así a propósito desde el
+  // 2026-10-31, tras una sesión larga de depuración en Preview donde esto
+  // no terminó siendo la causa real, pero confirmó que vale la pena no
+  // tragarse el error de un paso de autenticación.
   const { error: errorSignOut } = await supabase.auth.signOut({ scope: "others" });
   if (errorSignOut) {
     redirect(

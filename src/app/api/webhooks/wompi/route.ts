@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calcularComisionWompi, verificarFirmaEventoWompi } from "@/lib/wompi";
+import { enviarCorreoPagoFallido } from "@/lib/email";
 
 type TransaccionWompi = {
   id: string;
@@ -148,10 +149,33 @@ export async function POST(request: Request) {
       },
     ]);
   } else if (estadoCobro === "declinado" || estadoCobro === "error") {
+    const { data: suscripcion } = await admin
+      .from("suscripciones")
+      .select("empresa_id, empresas(nombre)")
+      .eq("id", cobro.suscripcion_id)
+      .single();
+
     await admin.from("suscripciones").update({ estado: "vencida" }).eq("id", cobro.suscripcion_id);
-    // Pendiente a propósito (ver CLAUDE.md, "Pendientes"): avisar por
-    // correo con enviarCorreoPagoFallido y decidir cuándo suspender el
-    // acceso si el cobro sigue fallando varios días seguidos.
+
+    // Conectado 2026-11-10 (ver CLAUDE.md, "Pendientes") — sigue pendiente
+    // a propósito decidir cuándo suspender el acceso si el cobro sigue
+    // fallando varios días seguidos; esto solo avisa, no corta nada.
+    if (suscripcion) {
+      const empresa = suscripcion.empresas as unknown as { nombre: string } | null;
+      const nombreEmpresa = empresa?.nombre ?? "tu empresa";
+
+      const { data: administradores } = await admin
+        .from("perfiles")
+        .select("id")
+        .eq("empresa_id", suscripcion.empresa_id)
+        .eq("rol_empresa", "administrador");
+
+      for (const administrador of administradores ?? []) {
+        const { data: usuario } = await admin.auth.admin.getUserById(administrador.id);
+        const correoAdmin = usuario?.user?.email;
+        if (correoAdmin) await enviarCorreoPagoFallido({ correo: correoAdmin, nombreEmpresa });
+      }
+    }
   }
 
   return NextResponse.json({ ok: true });

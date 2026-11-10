@@ -600,7 +600,7 @@ export function Landing() {
           <div className="chapter-head">
             <h2>Nuestro ecosistema</h2>
             <p className="subtitle">
-              Cada módulo está conectado. Automatiza procesos de tu empresa con pocos clics.
+              Cada módulo en Datum está conectado. Automatiza procesos de tu empresa con pocos clics.
             </p>
           </div>
           <div className="eco-demo-stage">

@@ -918,9 +918,13 @@ export function Landing() {
           <h3>6. Limitación de responsabilidad</h3>
           <p>
             Datum se ofrece &ldquo;tal cual&rdquo;. Hacemos lo posible por mantener el servicio
-            disponible y seguro, pero no garantizamos que esté libre de interrupciones o
-            errores, y no somos responsables por decisiones de negocio tomadas con base en la
-            información de la plataforma.
+            disponible y seguro, pero no garantizamos que esté libre de interrupciones o errores.
+            Salvo que el daño haya sido causado por dolo o culpa grave de nuestra parte (caso en
+            el que respondemos según las reglas generales, porque la ley no permite excluir eso
+            de antemano), Datum no paga ninguna suma de dinero ni compensación por reclamos
+            derivados del uso de la plataforma — incluyendo lucro cesante, pérdida de datos,
+            pérdida de oportunidades de negocio, ni daños indirectos. Esto no limita ningún
+            derecho irrenunciable que la ley te reconozca.
           </p>
 
           <h3>7. Cambios a estos términos</h3>

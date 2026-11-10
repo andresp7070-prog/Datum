@@ -440,16 +440,30 @@ export function ContratoCompleto({
       </ol>
 
       <h3 className="font-semibold text-gray-900">CLÁUSULA DÉCIMA TERCERA. LIMITACIÓN DE RESPONSABILIDAD.</h3>
-      <p>
-        En la máxima medida permitida por la ley aplicable, la responsabilidad total de EL
-        PRESTADOR frente a EL CLIENTE por cualquier reclamación derivada de este Contrato, sea
-        contractual o extracontractual, no excederá el valor efectivamente pagado por EL CLIENTE a
-        EL PRESTADOR durante los seis (6) meses anteriores al hecho que originó la reclamación. En
-        ningún caso EL PRESTADOR será responsable por lucro cesante, pérdida de datos por causas
-        ajenas a su culpa, pérdida de oportunidades de negocio, ni por daños indirectos o
-        consecuenciales. Lo anterior no aplica a los daños causados por dolo o culpa grave de EL
-        PRESTADOR, ni limita los derechos irrenunciables que la ley reconozca a EL CLIENTE.
-      </p>
+      <ol className="list-decimal space-y-2 pl-5">
+        <li>
+          Salvo lo previsto en el numeral 2, EL PRESTADOR no estará obligado a pagar a EL CLIENTE
+          ninguna suma de dinero, indemnización ni compensación de ninguna naturaleza, por ninguna
+          reclamación que se derive de este Contrato o del uso de la Plataforma, sea de
+          responsabilidad contractual o extracontractual. Esto incluye, sin limitarse a: (i) lucro
+          cesante; (ii) pérdida de datos, incluso si la pérdida fue causada por EL PRESTADOR; (iii)
+          pérdida de oportunidades de negocio, de clientes o de ingresos; ni (iv) daños indirectos,
+          incidentales, consecuenciales o punitivos.
+        </li>
+        <li>
+          Lo dispuesto en el numeral 1 no aplica cuando el daño haya sido causado por dolo de EL
+          PRESTADOR o por su culpa grave. En ese único caso, EL PRESTADOR responde conforme a las
+          reglas generales de la responsabilidad civil y comercial colombiana. Esta excepción existe
+          porque la ley colombiana no permite pactar de antemano que no se responderá por el propio
+          dolo o culpa grave.
+        </li>
+        <li>
+          Nada de lo previsto en esta cláusula limita ningún derecho irrenunciable que la ley
+          reconozca a EL CLIENTE, ni su derecho a terminar este Contrato conforme a la Cláusula
+          Décima Cuarta, ni a que se le devuelva la parte del precio pagada por un período de
+          servicio que EL PRESTADOR no haya llegado a prestar.
+        </li>
+      </ol>
 
       <h3 className="font-semibold text-gray-900">CLÁUSULA DÉCIMA CUARTA. TERMINACIÓN.</h3>
       <ol className="list-decimal space-y-2 pl-5">

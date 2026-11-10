@@ -30,6 +30,7 @@ async function enviarSegunTipo(tipo: TipoCorreoPrueba, correo: string) {
       return enviarCorreoPagoFallido({
         correo,
         nombreEmpresa: "Aseo Total",
+        monto: 199000,
       });
     case "resumen_semanal":
       return enviarCorreoResumenSemanal({

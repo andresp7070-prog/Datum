@@ -173,7 +173,7 @@ export async function POST(request: Request) {
       for (const administrador of administradores ?? []) {
         const { data: usuario } = await admin.auth.admin.getUserById(administrador.id);
         const correoAdmin = usuario?.user?.email;
-        if (correoAdmin) await enviarCorreoPagoFallido({ correo: correoAdmin, nombreEmpresa });
+        if (correoAdmin) await enviarCorreoPagoFallido({ correo: correoAdmin, nombreEmpresa, monto: montoCobrado });
       }
     }
   }

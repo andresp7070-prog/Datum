@@ -3,6 +3,9 @@ import { Resend } from "resend";
 const URL_APP = process.env.NEXT_PUBLIC_APP_URL ?? "https://datum.vercel.app";
 const REMITENTE = process.env.RESEND_FROM_EMAIL ?? "Datum <onboarding@resend.dev>";
 
+const formatoCOP = (valor: number) =>
+  valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
+
 const CIERRE_CALIDO = `
   <p style="font-size: 13px; color: #6b7280;">
     Cualquier cosa que necesites, aquí estamos.<br />— El equipo de Datum
@@ -212,12 +215,17 @@ export async function enviarCorreoFinDePrueba({
   const filas = `
     <tr>
       <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.7; color:#14151f;">
-        Tu prueba gratuita de 15 días en Datum está por terminar — te quedan <span style="display:inline-block; background-color:#e3a748; color:#1a1b33; font-weight:700; padding:2px 10px; border-radius:6px;" bgcolor="#e3a748">${dias}</span>.
+        Te quedan <span style="display:inline-block; background-color:#e3a748; color:#1a1b33; font-weight:700; padding:2px 10px; border-radius:6px;" bgcolor="#e3a748">${dias}</span> de tu prueba gratuita de 15 días en Datum.
         <br /><br />
         Para que <strong>${nombreEmpresa}</strong> siga funcionando sin interrupciones, agrega tu método de pago antes de que termine tu prueba.
       </td>
     </tr>
     ${botonV2("Agregar método de pago", `${URL_APP}/agregar-metodo-pago`)}
+    <tr>
+      <td style="padding:20px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:13px; line-height:1.6; color:#5b5d6e;">
+        Si antes de pagar quieres que te aclaremos algo, <a href="mailto:andresp7070@gmail.com" style="color:#1a1b33; font-weight:600; text-decoration:underline;">escríbenos</a> — te respondemos rápido.
+      </td>
+    </tr>
   `;
 
   return enviar({
@@ -230,14 +238,16 @@ export async function enviarCorreoFinDePrueba({
 export async function enviarCorreoPagoFallido({
   correo,
   nombreEmpresa,
+  monto,
 }: {
   correo: string;
   nombreEmpresa: string;
+  monto: number;
 }): Promise<{ error: string | null }> {
   const filas = `
     <tr>
       <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
-        No pudimos cobrar el plan de <strong>${nombreEmpresa}</strong> — tranquilo, tu cuenta sigue activa por ahora.
+        No pudimos cobrar <strong>${formatoCOP(monto)}</strong> del plan de <strong>${nombreEmpresa}</strong>.
       </td>
     </tr>
     <tr>
@@ -272,9 +282,6 @@ export async function enviarCorreoResumenSemanal({
   ventasSemana: number;
   ventasSemanaAnterior: number;
 }): Promise<{ error: string | null }> {
-  const formatoCOP = (valor: number) =>
-    valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
-
   let comparacion: string;
   if (ventasSemanaAnterior > 0) {
     const diferencia = Math.round(((ventasSemana - ventasSemanaAnterior) / ventasSemanaAnterior) * 100);

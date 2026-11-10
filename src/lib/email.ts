@@ -274,6 +274,382 @@ export async function enviarCorreoPagoFallido({
   });
 }
 
+// Los siguientes 8 correos se diseñaron con Visual y Copy de Oficina Datum
+// (2026-11-10), con el mismo tarjetaCorreoV2()/botonV2() de arriba — pero
+// ninguno está conectado todavía a su disparador real (cron, webhook, ruta).
+// Ver CLAUDE.md, "Cadencia de los correos automáticos".
+
+export async function enviarCorreoReunionAgendada({
+  correo,
+  nombre,
+  empresa,
+  fechaHoraISO,
+  meetLink,
+  modulosInteres,
+}: {
+  correo: string;
+  nombre: string;
+  empresa: string;
+  fechaHoraISO: string;
+  meetLink: string | null;
+  modulosInteres?: string[];
+}): Promise<{ error: string | null }> {
+  const fechaHoraTexto = new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "America/Bogota",
+  }).format(new Date(fechaHoraISO));
+
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        Hola ${nombre}, gracias por tomarte un espacio para hablar de Datum con <strong>${empresa}</strong>. Quedamos así:
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:20px 32px 0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f6f0; border-left:4px solid #e3a748; border-radius:0 8px 8px 0;" bgcolor="#f8f6f0">
+          <tr>
+            <td style="padding:16px 20px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; color:#14151f;">
+              <span style="color:#5b5d6e;">Tu reunión</span><br />
+              <strong style="font-size:15px;">${fechaHoraTexto} (hora Colombia)</strong>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:18px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; line-height:1.6; color:#5b5d6e;">
+        Google Calendar ya te mandó la invitación a tu correo con todos los detalles — este mensaje es solo nuestra forma de confirmarte que quedó todo listo.${
+          modulosInteres && modulosInteres.length > 0
+            ? ` Vamos a conversar especialmente de: <strong style="color:#14151f;">${modulosInteres.join(", ")}</strong>.`
+            : ""
+        }
+      </td>
+    </tr>
+    ${meetLink ? botonV2("Unirme a la reunión", meetLink) : ""}
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Quedamos agendados — tu reunión con Datum",
+    html: tarjetaCorreoV2({ titulo: "¡Quedamos agendados!", filas }),
+  });
+}
+
+export async function enviarCorreoPruebaActivada({
+  correo,
+  nombreEmpresa,
+  fechaInicio,
+  fechaFin,
+  modulos,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+  fechaInicio: Date;
+  fechaFin: Date;
+  modulos: string[]; // nombres ya humanizados, ej. ["Ventas", "Inventario"]
+}): Promise<{ error: string | null }> {
+  const formatoFecha = (fecha: Date) =>
+    new Intl.DateTimeFormat("es-CO", { dateStyle: "long", timeZone: "America/Bogota" }).format(fecha);
+
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        Desde hoy, <strong>${nombreEmpresa}</strong> tiene acceso completo a Datum sin costo durante 15 días.
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:20px 32px 0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f6f0; border-left:4px solid #e3a748; border-radius:0 8px 8px 0;" bgcolor="#f8f6f0">
+          <tr>
+            <td style="padding:16px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; color:#14151f;">
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Empieza</td>
+                  <td style="padding:4px 0; font-weight:700;">${formatoFecha(fechaInicio)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Termina</td>
+                  <td style="padding:4px 0; font-weight:700;">${formatoFecha(fechaFin)}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:18px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; line-height:1.6; color:#5b5d6e;">
+        Quedaron activos los módulos que elegiste: <strong style="color:#14151f;">${modulos.join(", ")}</strong>. El Panel de control viene incluido sin costo en cualquier plan, así que ya lo tienes disponible también.
+      </td>
+    </tr>
+    ${botonV2("Entrar a Datum", `${URL_APP}/login`)}
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Tu prueba gratuita de Datum ya está activa",
+    html: tarjetaCorreoV2({ titulo: "Tu prueba de 15 días ya empezó", filas }),
+  });
+}
+
+export async function enviarCorreoContrasenaActualizada({
+  correo,
+  nombreEmpresa,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+}): Promise<{ error: string | null }> {
+  const fechaHoraTexto = new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "America/Bogota",
+  }).format(new Date());
+
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        La contraseña de la cuenta de <strong>${nombreEmpresa}</strong> en Datum se actualizó correctamente, el ${fechaHoraTexto} (hora Colombia).
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:13px; line-height:1.6; color:#5b5d6e;">
+        Si no fuiste tú quien hizo este cambio, <a href="mailto:andresp7070@gmail.com" style="color:#1a1b33; font-weight:600; text-decoration:underline;">contáctanos de inmediato</a> — te ayudamos a revisar tu cuenta cuanto antes.
+      </td>
+    </tr>
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Tu contraseña de Datum se actualizó",
+    html: tarjetaCorreoV2({ titulo: "Contraseña actualizada", filas }),
+  });
+}
+
+export async function enviarCorreoPruebaVencida({
+  correo,
+  nombreEmpresa,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+}): Promise<{ error: string | null }> {
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        Hoy se cumplieron los 15 días de prueba gratuita de <strong>${nombreEmpresa}</strong> en Datum.
+        <br /><br />
+        Para seguir disfrutando de Datum sin interrupciones, recuerda agregar tu método de pago.
+      </td>
+    </tr>
+    ${botonV2("Agregar método de pago", `${URL_APP}/agregar-metodo-pago`)}
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Tu prueba gratuita de Datum se cumplió",
+    html: tarjetaCorreoV2({ titulo: "Tu prueba está por terminar", filas }),
+  });
+}
+
+export async function enviarCorreoMetodoPagoAgregado({
+  correo,
+  nombreEmpresa,
+  descripcionMetodo,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+  descripcionMetodo: string; // ej. "Visa •••• 4242" o "Bancolombia"
+}): Promise<{ error: string | null }> {
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        Guardamos un nuevo método de pago para <strong>${nombreEmpresa}</strong>:
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 32px 0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f6f0; border-left:4px solid #e3a748; border-radius:0 8px 8px 0;" bgcolor="#f8f6f0">
+          <tr>
+            <td style="padding:14px 20px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; font-weight:700; color:#14151f;">
+              ${descripcionMetodo}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:18px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:13px; line-height:1.6; color:#5b5d6e;">
+        Por tu seguridad, el número completo nunca se guarda en los servidores de Datum — vive directamente en la pasarela de pago que procesa el cobro.
+      </td>
+    </tr>
+    ${botonV2("Ver métodos de pago", `${URL_APP}/metodos-pago`)}
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Guardamos tu método de pago en Datum",
+    html: tarjetaCorreoV2({ titulo: "Método de pago guardado", filas }),
+  });
+}
+
+export async function enviarCorreoPagoRealizado({
+  correo,
+  nombreEmpresa,
+  monto,
+  plan,
+  descripcionMetodo,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+  monto: number;
+  plan: string; // nombre ya humanizado, ej. "Startup"
+  descripcionMetodo: string; // ej. "Visa •••• 4242" o "Bancolombia"
+}): Promise<{ error: string | null }> {
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        Recibimos el pago de <strong>${nombreEmpresa}</strong>.
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:20px 32px 0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f6f0; border-left:4px solid #e3a748; border-radius:0 8px 8px 0;" bgcolor="#f8f6f0">
+          <tr>
+            <td style="padding:16px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; color:#14151f;">
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Monto cobrado</td>
+                  <td style="padding:4px 0; font-weight:700;">${formatoCOP(monto)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Plan</td>
+                  <td style="padding:4px 0; font-weight:700;">${plan}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Método de pago</td>
+                  <td style="padding:4px 0; font-weight:700;">${descripcionMetodo}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    ${botonV2("Ver mi cuenta", `${URL_APP}/cuenta`)}
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Confirmamos tu pago de Datum",
+    html: tarjetaCorreoV2({ titulo: "¡Pago confirmado!", filas }),
+  });
+}
+
+// Variante de enviarCorreoPagoRealizado para cuando un cobro de Wompi suma
+// más de un concepto (suscripción + facturación electrónica por uso y/o
+// desarrollo a la medida) — hoy ningún mecanismo real junta esos cobros en
+// una sola transacción (ver CLAUDE.md, "Cobro variable por uso" y "Planes y
+// precios": ninguno de los dos está construido), así que `items` queda
+// genérico a propósito, listo para cuando exista.
+export async function enviarCorreoPagoRealizadoDesglosado({
+  correo,
+  nombreEmpresa,
+  items,
+  descripcionMetodo,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+  items: { descripcion: string; monto: number }[]; // ej. [{ descripcion: "Suscripción — Plan Startup", monto: 409000 }, { descripcion: "Facturación electrónica (42 facturas)", monto: 18900 }]
+  descripcionMetodo: string; // ej. "Visa •••• 4242" o "Bancolombia"
+}): Promise<{ error: string | null }> {
+  const montoTotal = items.reduce((suma, item) => suma + item.monto, 0);
+
+  const filasItems = items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding:4px 0; color:#5b5d6e; width:44%;">${item.descripcion}</td>
+          <td style="padding:4px 0; font-weight:700;">${formatoCOP(item.monto)}</td>
+        </tr>`,
+    )
+    .join("");
+
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        Recibimos el pago de <strong>${nombreEmpresa}</strong> — este mes incluye más de un concepto, aquí el detalle:
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:20px 32px 0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f6f0; border-left:4px solid #e3a748; border-radius:0 8px 8px 0;" bgcolor="#f8f6f0">
+          <tr>
+            <td style="padding:16px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; color:#14151f;">
+                ${filasItems}
+                <tr>
+                  <td style="padding:10px 0 4px; border-top:1px solid #e4e1d8; color:#1a1b33; font-weight:700; width:44%;">Total pagado</td>
+                  <td style="padding:10px 0 4px; border-top:1px solid #e4e1d8; font-weight:700;">${formatoCOP(montoTotal)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Método de pago</td>
+                  <td style="padding:4px 0; font-weight:700;">${descripcionMetodo}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    ${botonV2("Ver mi cuenta", `${URL_APP}/cuenta`)}
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Confirmamos tu pago de Datum",
+    html: tarjetaCorreoV2({ titulo: "¡Pago confirmado!", filas }),
+  });
+}
+
+export async function enviarCorreoCambioPlan({
+  correo,
+  nombreEmpresa,
+  plan,
+  montoMensual,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+  plan: string; // nombre ya humanizado, ej. "Pyme"
+  montoMensual: number;
+}): Promise<{ error: string | null }> {
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        El plan de <strong>${nombreEmpresa}</strong> en Datum cambió a <strong>${plan}</strong> — ${formatoCOP(montoMensual)}/mes.
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:18px 32px 0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f6f0; border-left:4px solid #e3a748; border-radius:0 8px 8px 0;" bgcolor="#f8f6f0">
+          <tr>
+            <td style="padding:14px 20px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; line-height:1.5; color:#1a1b33; font-weight:600;">
+              Este nuevo monto se cobra a partir de tu próximo cobro programado. No se cobra ninguna diferencia ahora, ni se prorratea el mes en curso.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    ${botonV2("Ver mi cuenta", `${URL_APP}/cuenta`)}
+  `;
+
+  return enviar({
+    correo,
+    asunto: "Tu plan de Datum cambió",
+    html: tarjetaCorreoV2({ titulo: "Tu plan cambió", filas }),
+  });
+}
+
 export async function enviarCorreoResumenSemanal({
   correo,
   nombreEmpresa,

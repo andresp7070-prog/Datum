@@ -19,28 +19,48 @@ const PLANES: Plan[] = [
     mensual: 199000,
     descripcion: "Para empezar con lo esencial.",
     destacado: false,
-    feats: ["1 módulo de tu elección", "Panel de control"],
+    feats: [
+      "1 módulo de tu elección",
+      "Panel de control",
+      "Onboarding personalizado",
+      "Atención personalizada",
+    ],
   },
   {
     nombre: "Startup",
     mensual: 409000,
     descripcion: "Para organizar tu operación.",
     destacado: false,
-    feats: ["Hasta 3 módulos de tu elección", "Panel de control"],
+    feats: [
+      "Hasta 3 módulos de tu elección",
+      "Panel de control",
+      "Onboarding personalizado",
+      "Atención personalizada",
+    ],
   },
   {
     nombre: "Pyme",
     mensual: 649000,
     descripcion: "Para crecer con más control.",
     destacado: true,
-    feats: ["Hasta 5 módulos de tu elección", "Panel de control"],
+    feats: [
+      "Hasta 5 módulos de tu elección",
+      "Panel de control",
+      "Onboarding personalizado",
+      "Atención personalizada",
+    ],
   },
   {
     nombre: "Enterprise",
     mensual: 799000,
     descripcion: "Para llevarlo al siguiente nivel.",
     destacado: false,
-    feats: ["Todos los módulos", "Panel de control"],
+    feats: [
+      "Todos los módulos",
+      "Panel de control",
+      "Onboarding personalizado",
+      "Atención personalizada",
+    ],
   },
 ];
 

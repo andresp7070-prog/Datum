@@ -3,8 +3,11 @@ import { Resend } from "resend";
 const URL_APP = process.env.NEXT_PUBLIC_APP_URL ?? "https://datum.vercel.app";
 const REMITENTE = process.env.RESEND_FROM_EMAIL ?? "Datum <onboarding@resend.dev>";
 
+// maximumFractionDigits: 0 porque el peso colombiano no se muestra con
+// centavos en ningún lado de la app (ver vista_resumen_ventas, etc.) — sin
+// esto, toLocaleString agrega ",00" a cada monto.
 const formatoCOP = (valor: number) =>
-  valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
+  valor.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 
 const CIERRE_CALIDO = `
   <p style="font-size: 13px; color: #6b7280;">

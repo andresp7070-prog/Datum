@@ -223,7 +223,7 @@ export async function enviarCorreoFinDePrueba({
     ${botonV2("Agregar método de pago", `${URL_APP}/agregar-metodo-pago`)}
     <tr>
       <td style="padding:20px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:13px; line-height:1.6; color:#5b5d6e;">
-        Si antes de pagar quieres que te aclaremos algo, <a href="mailto:andresp7070@gmail.com" style="color:#1a1b33; font-weight:600; text-decoration:underline;">escríbenos</a> — te respondemos rápido.
+        Si tienes alguna duda, <a href="mailto:andresp7070@gmail.com" style="color:#1a1b33; font-weight:600; text-decoration:underline;">contáctanos</a> — te responderemos cuanto antes.
       </td>
     </tr>
   `;
@@ -247,7 +247,7 @@ export async function enviarCorreoPagoFallido({
   const filas = `
     <tr>
       <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
-        No pudimos cobrar <strong>${formatoCOP(monto)}</strong> del plan de <strong>${nombreEmpresa}</strong>.
+        No fue posible realizar el cobro por <strong>${formatoCOP(monto)}</strong> del plan de <strong>${nombreEmpresa}</strong>.
       </td>
     </tr>
     <tr>

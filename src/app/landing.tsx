@@ -548,8 +548,7 @@ export function Landing() {
               </span>
             </h1>
             <p className="lede">
-              Creamos un ecosistema a medida con las soluciones tecnológicas que impulsan el
-              crecimiento de tu empresa.
+              Un ecosistema definitivo creado a la medida de tu negocio.
             </p>
             <a
               className="precios-cta hero-cta"
@@ -581,7 +580,7 @@ export function Landing() {
           <div className="chapter-head">
             <h2>Nuestro ecosistema</h2>
             <p className="subtitle">
-              Cada módulo está conectado e interactúa con los demás, toda la gestión a un solo clic.
+              Cada módulo está conectado. Automatiza procesos de tu empresa con pocos clics.
             </p>
           </div>
           <div className="eco-demo-stage">
@@ -617,7 +616,7 @@ export function Landing() {
             <div className="paso">
               <span className="paso-num">02</span>
               <h3>Registra el día a día</h3>
-              <p>Cada venta, cada cliente, cada movimiento de inventario registrado en un solo lugar.</p>
+              <p>Tu inventario, ventas, facturación, nómina y más en un solo lugar.</p>
             </div>
             <div className="paso">
               <span className="paso-num">03</span>

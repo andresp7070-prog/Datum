@@ -7,6 +7,7 @@ export async function crearEmpleado(input: {
   nombre: string;
   cedula: string;
   cargo: string;
+  correo: string;
   salarioBase: number;
   fechaIngreso: string;
   tipoContrato: string;
@@ -34,6 +35,7 @@ export async function crearEmpleado(input: {
       nombre: input.nombre,
       cedula: input.cedula || null,
       cargo: input.cargo || null,
+      correo: input.correo || null,
       salario_base: input.salarioBase,
       fecha_ingreso: input.fechaIngreso,
       tipo_contrato: input.tipoContrato,
@@ -43,6 +45,26 @@ export async function crearEmpleado(input: {
 
   if (error) return { error: error.message };
   return { error: null, id: data.id as string };
+}
+
+export async function actualizarCorreoEmpleado(input: {
+  empleadoId: string;
+  correo: string;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No hay sesión activa." };
+
+  const { error } = await supabase
+    .from("empleados")
+    .update({ correo: input.correo || null })
+    .eq("id", input.empleadoId);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/nomina/${input.empleadoId}`);
+  return { error: null };
 }
 
 export async function generarPeriodoNomina(input: {

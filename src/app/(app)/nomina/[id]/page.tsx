@@ -32,7 +32,7 @@ export default async function EmpleadoPage({ params }: { params: Promise<{ id: s
   const [{ data: empleado }, { data: vacacionesInfo }, { data: vacacionesData }] = await Promise.all([
     supabase
       .from("empleados")
-      .select("id, nombre, cedula, cargo, salario_base, fecha_ingreso, fecha_retiro, activo, tipo_contrato")
+      .select("id, nombre, cedula, cargo, correo, salario_base, fecha_ingreso, fecha_retiro, activo, tipo_contrato")
       .eq("id", id)
       .eq("empresa_id", perfil.empresa_id)
       .single(),

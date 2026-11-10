@@ -7,6 +7,7 @@ import {
   registrarVacaciones,
   simularLiquidacion,
   confirmarFinalizacionContrato,
+  actualizarCorreoEmpleado,
   type Liquidacion,
   type MotivoSalida,
 } from "../actions";
@@ -16,6 +17,7 @@ type Empleado = {
   nombre: string;
   cedula: string | null;
   cargo: string | null;
+  correo: string | null;
   salario_base: number;
   fecha_ingreso: string;
   fecha_retiro: string | null;
@@ -91,6 +93,11 @@ export function FichaEmpleado({
   const router = useRouter();
   const diasPendientes = Math.max(0, diasCausados - diasTomados);
 
+  const [editandoCorreo, setEditandoCorreo] = useState(false);
+  const [correoEditado, setCorreoEditado] = useState(empleado.correo ?? "");
+  const [guardandoCorreo, setGuardandoCorreo] = useState(false);
+  const [errorCorreo, setErrorCorreo] = useState<string | null>(null);
+
   const [mostrarForm, setMostrarForm] = useState(false);
   const [fechaInicio, setFechaInicio] = useState(hoyIso());
   const [fechaFin, setFechaFin] = useState(hoyIso());
@@ -123,6 +130,19 @@ export function FichaEmpleado({
       return;
     }
     setMostrarForm(false);
+    router.refresh();
+  }
+
+  async function guardarCorreo() {
+    setErrorCorreo(null);
+    setGuardandoCorreo(true);
+    const resultado = await actualizarCorreoEmpleado({ empleadoId: empleado.id, correo: correoEditado.trim() });
+    setGuardandoCorreo(false);
+    if (resultado.error) {
+      setErrorCorreo(resultado.error);
+      return;
+    }
+    setEditandoCorreo(false);
     router.refresh();
   }
 
@@ -193,6 +213,51 @@ export function FichaEmpleado({
         <div>
           <p className="text-xs text-gray-400">Días de vacaciones pendientes</p>
           <p className="text-sm font-medium text-gray-900">{diasPendientes} días</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400">Correo</p>
+          {editandoCorreo ? (
+            <div className="mt-1 flex items-center gap-1">
+              <input
+                type="email"
+                value={correoEditado}
+                onChange={(e) => setCorreoEditado(e.target.value)}
+                placeholder="correo@ejemplo.com"
+                className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-gray-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={guardarCorreo}
+                disabled={guardandoCorreo}
+                className="shrink-0 text-xs font-medium text-accent hover:text-accent-hover disabled:opacity-50"
+              >
+                {guardandoCorreo ? "..." : "Guardar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditandoCorreo(false);
+                  setCorreoEditado(empleado.correo ?? "");
+                  setErrorCorreo(null);
+                }}
+                className="shrink-0 text-xs text-gray-400 hover:text-gray-600"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-gray-900">
+              {empleado.correo || "Sin correo"}{" "}
+              <button
+                type="button"
+                onClick={() => setEditandoCorreo(true)}
+                className="text-xs font-normal text-accent hover:text-accent-hover"
+              >
+                Editar
+              </button>
+            </p>
+          )}
+          {errorCorreo && <p className="mt-1 text-xs text-red-600">{errorCorreo}</p>}
         </div>
         <div>
           <p className="text-xs text-gray-400">Tipo de contrato</p>

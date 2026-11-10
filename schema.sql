@@ -4153,3 +4153,9 @@ alter table metodos_pago add constraint metodos_pago_tipo_check
 -- entrega ningún nombre de persona en su respuesta, así que esta columna
 -- queda null para esas filas a propósito, no es un dato que falte cargar.
 alter table metodos_pago add column if not exists titular text;
+
+-- Correo del empleado (agregado 2026-11-10) — opcional, para más adelante
+-- poder mandar el desprendible de pago por correo automáticamente (hoy ese
+-- envío sigue siendo manual a propósito). Se llena al crear el empleado, o
+-- después desde su ficha si no se tenía en ese momento.
+alter table empleados add column if not exists correo text;

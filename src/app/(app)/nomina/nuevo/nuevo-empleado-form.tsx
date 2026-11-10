@@ -16,6 +16,7 @@ export function NuevoEmpleadoForm() {
   const [nombre, setNombre] = useState("");
   const [cedula, setCedula] = useState("");
   const [cargo, setCargo] = useState("");
+  const [correo, setCorreo] = useState("");
   const [salarioBase, setSalarioBase] = useState("");
   const [fechaIngreso, setFechaIngreso] = useState(hoyIso());
   const [tipoContrato, setTipoContrato] = useState("indefinido");
@@ -43,6 +44,7 @@ export function NuevoEmpleadoForm() {
         nombre: nombre.trim(),
         cedula: cedula.trim(),
         cargo: cargo.trim(),
+        correo: correo.trim(),
         salarioBase: salarioNum,
         fechaIngreso,
         tipoContrato,
@@ -94,6 +96,17 @@ export function NuevoEmpleadoForm() {
             value={cargo}
             onChange={(e) => setCargo(e.target.value)}
             placeholder="Ej. Vendedora"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Correo (opcional)</label>
+          <input
+            type="email"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            placeholder="Ej. maria@correo.com"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
           />
         </div>

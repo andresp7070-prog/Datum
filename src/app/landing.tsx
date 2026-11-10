@@ -599,8 +599,11 @@ export function Landing() {
         <div className="wrap reveal reveal-sin-deslizar">
           <div className="chapter-head">
             <h2>Nuestro ecosistema</h2>
-            <p className="subtitle">Cada módulo en Datum está conectado.</p>
-            <p className="subtitle">Automatiza procesos de tu empresa con pocos clics.</p>
+            <p className="subtitle">
+              Cada módulo en Datum está conectado.
+              <br />
+              Automatiza procesos de tu empresa con pocos clics.
+            </p>
           </div>
           <div className="eco-demo-stage">
             <EcosistemaDemo />

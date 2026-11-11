@@ -5,8 +5,20 @@ import { enviarCorreoDePrueba, type TipoCorreoPrueba } from "./actions";
 
 const TIPOS: { tipo: TipoCorreoPrueba; nombre: string; descripcion: string }[] = [
   { tipo: "bienvenida", nombre: "Bienvenida", descripcion: "El que recibe una empresa al crear su cuenta." },
-  { tipo: "fin_prueba", nombre: "Fin de prueba", descripcion: "Avisa cuántos días quedan del mes gratis." },
+  { tipo: "prueba_activada", nombre: "Prueba activada", descripcion: "Confirma que la prueba de 15 días ya empezó." },
+  { tipo: "reunion_agendada", nombre: "Reunión agendada", descripcion: "Confirma una reunión agendada desde la landing." },
+  { tipo: "fin_prueba", nombre: "Aviso de fin de prueba", descripcion: "Avisa que quedan 3 días del período gratuito." },
+  { tipo: "prueba_vencida", nombre: "Prueba vencida", descripcion: "Avisa que los 15 días ya se cumplieron." },
+  { tipo: "metodo_pago_agregado", nombre: "Método de pago agregado", descripcion: "Confirma que se guardó una tarjeta o cuenta." },
+  { tipo: "pago_realizado", nombre: "Pago realizado", descripcion: "Confirma un cobro exitoso." },
+  {
+    tipo: "pago_realizado_desglosado",
+    nombre: "Pago realizado (desglosado)",
+    descripcion: "Igual, pero con más de un concepto en el mismo cobro.",
+  },
   { tipo: "pago_fallido", nombre: "Pago fallido", descripcion: "Avisa que un cobro no pasó." },
+  { tipo: "cambio_plan", nombre: "Cambio de plan", descripcion: "Avisa que el plan de la empresa cambió." },
+  { tipo: "contrasena_actualizada", nombre: "Contraseña actualizada", descripcion: "Confirma un cambio de contraseña voluntario." },
   { tipo: "resumen_semanal", nombre: "Resumen semanal", descripcion: "Ventas de la semana vs. la anterior." },
 ];
 
@@ -42,8 +54,8 @@ export function CorreosForm() {
     <div className="max-w-lg">
       <h1 className="mb-1 text-lg font-semibold text-gray-900">Probar correos</h1>
       <p className="mb-6 text-sm text-gray-500">
-        Manda cualquiera de los cuatro correos a un destino de prueba, con datos de ejemplo. No
-        crea ni cambia nada en la base de datos — solo envía el correo.
+        Manda cualquiera de estos correos a un destino de prueba, con datos de ejemplo. No crea ni
+        cambia nada en la base de datos — solo envía el correo.
       </p>
 
       <div className="mb-4">

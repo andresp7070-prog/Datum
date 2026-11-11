@@ -69,7 +69,7 @@ export async function requerirModulo(modulo: string) {
 }
 
 // Bloquea el acceso al panel de administrador y sus pantallas (reporte
-// global, enviar bienvenida) a exactamente una cuenta — la de Andrés,
+// global, editar plan de un cliente) a exactamente una cuenta — la de Andrés,
 // identificada por su id de usuario en SUPER_ADMIN_USER_ID. No basta con
 // tener rol = 'admin': si en el futuro existe otra cuenta con ese rol, esta
 // función igual la bloquea. Es intencional — este panel ve datos de todas

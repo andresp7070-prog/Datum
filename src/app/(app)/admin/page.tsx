@@ -124,10 +124,10 @@ export default async function AdminDashboardPage() {
             Estado P y G
           </Link>
           <Link
-            href="/admin/bienvenida"
+            href="/admin/correos"
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
           >
-            Enviar bienvenida
+            Probar correos
           </Link>
         </div>
       </div>

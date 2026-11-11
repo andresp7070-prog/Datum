@@ -3,6 +3,13 @@ import { Resend } from "resend";
 const URL_APP = process.env.NEXT_PUBLIC_APP_URL ?? "https://datum.vercel.app";
 const REMITENTE = process.env.RESEND_FROM_EMAIL ?? "Datum <onboarding@resend.dev>";
 
+// TODO: número real de WhatsApp de Datum — pendiente, pedido a Andrés
+// 2026-11-11. Mientras tanto este link no funciona; no desplegar a
+// producción hasta reemplazarlo.
+const WHATSAPP_DATUM = "573000000000";
+const URL_AGENDAR = `${URL_APP}/#contacto`;
+const URL_WHATSAPP = `https://wa.me/${WHATSAPP_DATUM}`;
+
 // maximumFractionDigits: 0 porque el peso colombiano no se muestra con
 // centavos en ningún lado de la app (ver vista_resumen_ventas, etc.) — sin
 // esto, toLocaleString agrega ",00" a cada monto.
@@ -93,6 +100,39 @@ function botonV2(texto: string, href: string) {
         </table>
       </td>
     </tr>
+  `;
+}
+
+// Botón secundario (contorno, sin relleno) — para una segunda acción que no
+// debe competir visualmente con el botón principal de botonV2().
+function botonSecundarioV2(texto: string, href: string) {
+  return `
+    <tr>
+      <td style="padding:12px 32px 0 32px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="border:1.5px solid #1a1b33; border-radius:8px;">
+              <a href="${href}" style="display:inline-block; padding:11.5px 26px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; font-weight:600; color:#1a1b33; text-decoration:none;">${texto}</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+}
+
+// Fila de texto + los dos botones de contacto (agendar llamada / WhatsApp),
+// para repetir exactamente igual en los correos de fin de prueba. Un solo
+// lugar para las dos URLs — si cambian, se ajustan una vez.
+function filasContacto() {
+  return `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:13px; line-height:1.55; color:#5b5d6e;">
+        ¿Prefieres hablar con nosotros antes de decidir?
+      </td>
+    </tr>
+    ${botonSecundarioV2("Agendar una llamada", URL_AGENDAR)}
+    ${botonSecundarioV2("Escríbenos por WhatsApp", URL_WHATSAPP)}
   `;
 }
 
@@ -191,11 +231,7 @@ export async function enviarCorreoFinDePrueba({
       </td>
     </tr>
     ${botonV2("Agregar método de pago", `${URL_APP}/agregar-metodo-pago`)}
-    <tr>
-      <td style="padding:20px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:13px; line-height:1.6; color:#5b5d6e;">
-        Si tienes alguna duda, <a href="mailto:andresp7070@gmail.com" style="color:#1a1b33; font-weight:600; text-decoration:underline;">contáctanos</a> — te responderemos cuanto antes.
-      </td>
-    </tr>
+    ${filasContacto()}
   `;
 
   return enviar({
@@ -410,6 +446,7 @@ export async function enviarCorreoPruebaVencida({
       </td>
     </tr>
     ${botonV2("Agregar método de pago", `${URL_APP}/agregar-metodo-pago`)}
+    ${filasContacto()}
   `;
 
   return enviar({

@@ -3,12 +3,13 @@ import { Resend } from "resend";
 const URL_APP = process.env.NEXT_PUBLIC_APP_URL ?? "https://datum.vercel.app";
 const REMITENTE = process.env.RESEND_FROM_EMAIL ?? "Datum <onboarding@resend.dev>";
 
-// TODO: número real de WhatsApp de Datum — pendiente, pedido a Andrés
-// 2026-11-11. Mientras tanto este link no funciona; no desplegar a
-// producción hasta reemplazarlo.
-const WHATSAPP_DATUM = "573000000000";
+// Número real de WhatsApp de Datum — pendiente, pedido a Andrés 2026-11-11.
+// Mientras sea null, filasContacto() no muestra el botón de WhatsApp (en
+// vez de mostrar uno que no funciona) — se activa solo poniendo el número
+// acá, sin necesidad de otro cambio.
+const WHATSAPP_DATUM: string | null = null;
 const URL_AGENDAR = `${URL_APP}/#contacto`;
-const URL_WHATSAPP = `https://wa.me/${WHATSAPP_DATUM}`;
+const URL_WHATSAPP = WHATSAPP_DATUM ? `https://wa.me/${WHATSAPP_DATUM}` : null;
 
 // maximumFractionDigits: 0 porque el peso colombiano no se muestra con
 // centavos en ningún lado de la app (ver vista_resumen_ventas, etc.) — sin
@@ -132,7 +133,7 @@ function filasContacto() {
       </td>
     </tr>
     ${botonSecundarioV2("Agendar una llamada", URL_AGENDAR)}
-    ${botonSecundarioV2("Escríbenos por WhatsApp", URL_WHATSAPP)}
+    ${URL_WHATSAPP ? botonSecundarioV2("Escríbenos por WhatsApp", URL_WHATSAPP) : ""}
   `;
 }
 

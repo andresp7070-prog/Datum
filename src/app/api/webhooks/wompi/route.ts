@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calcularComisionWompi, verificarFirmaEventoWompi } from "@/lib/wompi";
-import { enviarCorreoPagoFallido } from "@/lib/email";
+import { enviarCorreoPagoFallido, enviarCorreoPagoRealizado } from "@/lib/email";
+
+const NOMBRE_PLAN: Record<string, string> = {
+  basic: "Basic",
+  startup: "Startup",
+  pyme: "Pyme",
+  enterprise: "Enterprise",
+};
 
 type TransaccionWompi = {
   id: string;
@@ -106,7 +113,7 @@ export async function POST(request: Request) {
   if (estadoCobro === "aprobado") {
     const { data: suscripcion } = await admin
       .from("suscripciones")
-      .select("facturacion")
+      .select("facturacion, empresa_id, plan, empresas(nombre)")
       .eq("id", cobro.suscripcion_id)
       .single();
 
@@ -148,6 +155,50 @@ export async function POST(request: Request) {
         nota: `Comisión Wompi sobre cobro — referencia ${transaccion.reference}`,
       },
     ]);
+
+    // Aviso a los administradores de la empresa — conectado 2026-11-11, no
+    // bloquea nada si falla. No distingue tarjeta/Bancolombia: se manda la
+    // misma descripción que ya usan /metodos-pago y /cuenta.
+    if (suscripcion) {
+      const empresaSuscripcion = suscripcion.empresas as unknown as { nombre: string } | null;
+      const nombreEmpresa = empresaSuscripcion?.nombre ?? "tu empresa";
+      const nombrePlan = NOMBRE_PLAN[suscripcion.plan ?? ""] ?? (suscripcion.plan ?? "tu plan");
+
+      const { data: metodoPredeterminado } = await admin
+        .from("metodos_pago")
+        .select("titular, metodo_marca, metodo_ultimos_digitos")
+        .eq("empresa_id", suscripcion.empresa_id)
+        .eq("es_predeterminado", true)
+        .maybeSingle();
+      const descripcionMetodo = metodoPredeterminado
+        ? [
+            metodoPredeterminado.titular ?? metodoPredeterminado.metodo_marca,
+            metodoPredeterminado.metodo_ultimos_digitos ? `•••• ${metodoPredeterminado.metodo_ultimos_digitos}` : null,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        : "tu método de pago guardado";
+
+      const { data: administradores } = await admin
+        .from("perfiles")
+        .select("id")
+        .eq("empresa_id", suscripcion.empresa_id)
+        .eq("rol_empresa", "administrador");
+
+      for (const administrador of administradores ?? []) {
+        const { data: usuario } = await admin.auth.admin.getUserById(administrador.id);
+        const correoAdmin = usuario?.user?.email;
+        if (correoAdmin) {
+          await enviarCorreoPagoRealizado({
+            correo: correoAdmin,
+            nombreEmpresa,
+            monto: montoCobrado,
+            plan: nombrePlan,
+            descripcionMetodo,
+          });
+        }
+      }
+    }
   } else if (estadoCobro === "declinado" || estadoCobro === "error") {
     const { data: suscripcion } = await admin
       .from("suscripciones")

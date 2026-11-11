@@ -2,8 +2,16 @@
 
 import { requerirAdmin } from "@/lib/empresa";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enviarCorreoCambioPlan } from "@/lib/email";
 
 const PLANES_VALIDOS = ["basic", "startup", "pyme", "enterprise"] as const;
+
+const NOMBRE_PLAN: Record<string, string> = {
+  basic: "Basic",
+  startup: "Startup",
+  pyme: "Pyme",
+  enterprise: "Enterprise",
+};
 
 // Mismo límite que editar-cliente-form.tsx / nuevo-cliente-form.tsx (ver
 // CLAUDE.md, "Planes y precios") — se valida de nuevo acá por si algún día
@@ -87,6 +95,28 @@ export async function actualizarPlanCliente(input: {
 
   if (errorSuscripcion) {
     return { ok: false, error: `No se pudo actualizar la suscripción: ${errorSuscripcion.message}` };
+  }
+
+  // Aviso a los administradores de la empresa — conectado 2026-11-11, no
+  // bloquea nada si falla. El correo ya aclara que el monto nuevo no se
+  // cobra de inmediato, para que coincida con lo que de verdad pasa.
+  const { data: empresa } = await supabase.from("empresas").select("nombre").eq("id", input.empresaId).single();
+  const { data: administradores } = await supabase
+    .from("perfiles")
+    .select("id")
+    .eq("empresa_id", input.empresaId)
+    .eq("rol_empresa", "administrador");
+  for (const administrador of administradores ?? []) {
+    const { data: usuario } = await supabase.auth.admin.getUserById(administrador.id);
+    const correoAdmin = usuario?.user?.email;
+    if (correoAdmin) {
+      await enviarCorreoCambioPlan({
+        correo: correoAdmin,
+        nombreEmpresa: empresa?.nombre ?? "tu empresa",
+        plan: NOMBRE_PLAN[input.plan] ?? input.plan,
+        montoMensual,
+      });
+    }
   }
 
   return { ok: true };

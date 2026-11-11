@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enviarCorreoMetodoPagoAgregado } from "@/lib/email";
 
 // Guarda un método de pago nuevo (tarjeta o Bancolombia, y más adelante
 // Nequi) y lo deja como predeterminado — usado tanto por el flujo de
@@ -49,6 +50,30 @@ export async function guardarMetodoPago(input: {
     es_predeterminado: true,
   });
   if (errorMetodo) throw new Error(errorMetodo.message);
+
+  // Aviso a los administradores de la empresa — no bloquea nada si falla.
+  // Mismo texto que ya usan /metodos-pago y /cuenta: titular si existe
+  // (tarjetas), si no la marca (Bancolombia, lo que sea).
+  const descripcionMetodo = [input.titular ?? input.marca, input.ultimosDigitos ? `•••• ${input.ultimosDigitos}` : null]
+    .filter(Boolean)
+    .join(" ");
+  const { data: empresa } = await admin.from("empresas").select("nombre").eq("id", input.empresaId).single();
+  const { data: administradores } = await admin
+    .from("perfiles")
+    .select("id")
+    .eq("empresa_id", input.empresaId)
+    .eq("rol_empresa", "administrador");
+  for (const administrador of administradores ?? []) {
+    const { data: usuario } = await admin.auth.admin.getUserById(administrador.id);
+    const correoAdmin = usuario?.user?.email;
+    if (correoAdmin) {
+      await enviarCorreoMetodoPagoAgregado({
+        correo: correoAdmin,
+        nombreEmpresa: empresa?.nombre ?? "tu empresa",
+        descripcionMetodo,
+      });
+    }
+  }
 
   // El primer cobro debe caer cuando de verdad termina la prueba gratuita,
   // no apenas se guarda el método (alguien podría agregarlo antes de que

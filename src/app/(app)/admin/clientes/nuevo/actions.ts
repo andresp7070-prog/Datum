@@ -2,10 +2,22 @@
 
 import { requerirAdmin } from "@/lib/empresa";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { enviarCorreoBienvenida } from "@/lib/email";
+import { enviarCorreoBienvenida, enviarCorreoPruebaActivada } from "@/lib/email";
 
 const DIAS_VALIDOS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
 const PLANES_VALIDOS = ["basic", "startup", "pyme", "enterprise"] as const;
+
+// Mismos value/label que MODULOS en nuevo-cliente-form.tsx — para poder
+// mostrar nombres humanos en el correo de activación en vez de los slugs
+// crudos que guarda modulos_activos.
+const NOMBRE_MODULO: Record<string, string> = {
+  ventas: "Ventas",
+  crm: "CRM",
+  inventario: "Inventario",
+  pyg: "Estado P y G",
+  nomina: "Nómina",
+  promociones: "Promociones",
+};
 
 // Mismo límite que nuevo-cliente-form.tsx (ver CLAUDE.md, "Planes y
 // precios") — se valida de nuevo acá por si algún día algo llega a este
@@ -228,6 +240,21 @@ export async function crearCliente(input: {
     correo: correoCliente,
     nombreEmpresa,
     contrasena,
+  });
+
+  // 6. Correo de activación de la prueba — aparte del de bienvenida, no lo
+  // reemplaza. fecha_fin_prueba usa el default de 15 días de suscripciones
+  // en schema.sql; se recalcula acá en vez de volver a consultarla porque
+  // la diferencia de milisegundos entre el insert y este punto no cambia
+  // el día calendario que ve el cliente. No bloquea la creación si falla.
+  const fechaInicioPrueba = new Date();
+  const fechaFinPrueba = new Date(fechaInicioPrueba.getTime() + 15 * 24 * 60 * 60 * 1000);
+  await enviarCorreoPruebaActivada({
+    correo: correoCliente,
+    nombreEmpresa,
+    fechaInicio: fechaInicioPrueba,
+    fechaFin: fechaFinPrueba,
+    modulos: input.modulosActivos.map((m) => NOMBRE_MODULO[m] ?? m),
   });
 
   return {

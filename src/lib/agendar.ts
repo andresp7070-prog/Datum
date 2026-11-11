@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { refrescarAccessToken, consultarFreeBusy, crearEventoCalendarConToken } from "@/lib/google";
+import { enviarCorreoReunionAgendada } from "@/lib/email";
 
 // Formulario público de agendamiento de la landing (ver CLAUDE.md, sección
 // "Formulario de agendamiento"). Sin sesión posible (el visitante no tiene
@@ -250,6 +251,18 @@ export async function reservarReunion(input: {
       timeStyle: "short",
       timeZone: "America/Bogota",
     }).format(inicio),
+  });
+
+  // No bloquea la reserva si falla — el evento de Google Calendar (con su
+  // propia invitación por correo) ya quedó creado, esto es solo la
+  // confirmación con la marca de Datum encima.
+  await enviarCorreoReunionAgendada({
+    correo: input.correo,
+    nombre: input.nombre,
+    empresa: input.empresa,
+    fechaHoraISO: franjaElegida.inicioISO,
+    meetLink: evento.meetLink,
+    modulosInteres: input.modulosInteres,
   });
 
   return { ok: true, link: evento.link, meetLink: evento.meetLink };

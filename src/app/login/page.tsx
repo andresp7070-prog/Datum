@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { login } from "./actions";
 import { CampoPassword } from "./campo-password";
+import { BotonEntrar } from "./boton-entrar";
 
 function LogoCompass({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -71,12 +72,7 @@ export default async function LoginPage({
             <CampoPassword />
           </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-hover"
-          >
-            Entrar
-          </button>
+          <BotonEntrar />
         </form>
       </div>
     </div>

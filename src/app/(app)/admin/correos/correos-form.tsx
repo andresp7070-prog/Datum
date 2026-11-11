@@ -19,7 +19,6 @@ const TIPOS: { tipo: TipoCorreoPrueba; nombre: string; descripcion: string }[] =
   { tipo: "pago_fallido", nombre: "Pago fallido", descripcion: "Avisa que un cobro no pasó." },
   { tipo: "cambio_plan", nombre: "Cambio de plan", descripcion: "Avisa que el plan de la empresa cambió." },
   { tipo: "contrasena_actualizada", nombre: "Contraseña actualizada", descripcion: "Confirma un cambio de contraseña voluntario." },
-  { tipo: "resumen_semanal", nombre: "Resumen semanal", descripcion: "Ventas de la semana vs. la anterior." },
 ];
 
 export function CorreosForm() {

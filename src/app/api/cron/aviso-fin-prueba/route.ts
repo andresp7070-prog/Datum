@@ -10,8 +10,8 @@ import { enviarCorreoFinDePrueba, enviarCorreoPruebaVencida } from "@/lib/email"
 // transaccionales") — mismo cron para los dos, en vez de uno nuevo, porque
 // son la misma consulta con una ventana de fecha distinta. Antes del (1)
 // solo se podía mandar a mano desde /admin/correos. Usa la service role
-// key por el mismo motivo que resumen-semanal/route.ts: no hay ninguna
-// persona con sesión iniciada en ese momento.
+// key por el mismo motivo que los demás crons: no hay ninguna persona con
+// sesión iniciada en ese momento.
 export async function GET(request: NextRequest) {
   const auth = request.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {

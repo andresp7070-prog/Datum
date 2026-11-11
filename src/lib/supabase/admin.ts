@@ -2,16 +2,13 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 // Se salta Row Level Security a propósito — usarlo con cuidado, solo desde
 // código de servidor, y solo cuando de verdad no hay ninguna sesión con la
-// que autenticar la operación. Seis usos legítimos hoy:
-// 1. El cron del resumen semanal (src/app/api/cron/resumen-semanal/route.ts),
-//    que corre sin ninguna persona con sesión iniciada y necesita leer las
-//    ventas de TODAS las empresas para mandarle a cada una su propio correo.
-// 2. El formulario público de agendamiento de la landing (src/lib/agendar.ts):
+// que autenticar la operación. Cinco usos legítimos hoy:
+// 1. El formulario público de agendamiento de la landing (src/lib/agendar.ts):
 //    un visitante sin cuenta en Datum agenda una reunión, así que no hay
 //    sesión de usuario posible — se usa este cliente, con mucho cuidado, solo
 //    para leer el refresh_token de Google guardado por el admin y para crear
 //    el lead/evento resultante en las tablas internas de Datum.
-// 3. Crear una empresa cliente nueva (src/app/(app)/admin/clientes/nuevo/
+// 2. Crear una empresa cliente nueva (src/app/(app)/admin/clientes/nuevo/
 //    actions.ts): acá SÍ hay una sesión (la de Andrés, verificada con
 //    requerirAdmin() antes de tocar este archivo), pero RLS no sirve para
 //    esta operación — las políticas de "empresas"/"perfiles" están armadas
@@ -19,7 +16,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 //    justo se está creando una empresa que todavía no es de nadie. También
 //    necesita el Admin API de Supabase Auth (crear el usuario en auth.users),
 //    al que tampoco se llega con la sesión normal del navegador.
-// 4. Guardar el método de pago de Wompi de un cliente (guardarMetodoPago()
+// 3. Guardar el método de pago de Wompi de un cliente (guardarMetodoPago()
 //    en src/lib/metodos-pago.ts, usado tanto por /api/wompi/
 //    guardar-metodo-pago como por /api/wompi/bancolombia-callback): acá SÍ
 //    hay sesión (la del propio cliente), pero desde que se cerró el
@@ -28,14 +25,14 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 //    fila, nunca escribirla — a propósito, para que nadie pueda marcarse
 //    "activo" sin haber pagado de verdad. Solo se usa después de que
 //    Wompi ya confirmó que la tarjeta o cuenta quedó tokenizada.
-// 5. El webhook de Wompi (src/app/api/webhooks/wompi/route.ts): lo llama
-//    Wompi mismo, nunca una persona con sesión — no hay forma de que
-//    exista una, así que es el mismo caso que el cron del punto 1. Valida
-//    la firma del aviso antes de confiar en cualquier dato (ver
-//    verificarFirmaEventoWompi en src/lib/wompi.ts).
-// 6. Cambiar el plan de un cliente que ya existe (src/app/(app)/admin/
+// 4. El webhook de Wompi (src/app/api/webhooks/wompi/route.ts) y el cron
+//    de cobro diario (src/app/api/cron/cobro-suscripciones/route.ts): a
+//    ninguno de los dos lo llama una persona con sesión — no hay forma de
+//    que exista una. El webhook valida la firma del aviso antes de confiar
+//    en cualquier dato (ver verificarFirmaEventoWompi en src/lib/wompi.ts).
+// 5. Cambiar el plan de un cliente que ya existe (src/app/(app)/admin/
 //    clientes/[id]/editar/actions.ts): acá SÍ hay sesión (la de Andrés,
-//    verificada con requerirAdmin()), pero igual que en el punto 4,
+//    verificada con requerirAdmin()), pero igual que en el punto 3,
 //    "suscripciones" ya no acepta escritura desde ninguna sesión normal,
 //    ni siquiera la de un admin — solo lectura.
 // Nunca importar esto desde un componente de cliente. Si se usa desde una

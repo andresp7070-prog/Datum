@@ -9,45 +9,12 @@ const REMITENTE = process.env.RESEND_FROM_EMAIL ?? "Datum <onboarding@resend.dev
 const formatoCOP = (valor: number) =>
   valor.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 
-const CIERRE_CALIDO = `
-  <p style="font-size: 13px; color: #6b7280;">
-    Cualquier cosa que necesites, aquí estamos.<br />— El equipo de Datum
-  </p>
-`;
-
-function boton(texto: string, href: string) {
-  return `
-    <p>
-      <a href="${href}" style="display: inline-block; background: #111827; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none;">
-        ${texto}
-      </a>
-    </p>
-  `;
-}
-
-// Envoltorio compartido por todos los correos de Datum: mismo tono, mismo
-// tamaño, misma firma al final. Cada correo solo arma su propio título y
-// cuerpo; esto evita repetir el marcado alrededor en cada uno.
-function plantillaCorreo({ titulo, cuerpo }: { titulo: string; cuerpo: string }) {
-  return `
-    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #1f2937;">
-      <h1 style="font-size: 18px;">${titulo}</h1>
-      ${cuerpo}
-      <p style="font-size: 11px; color: #9ca3af; margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-        Datum · Ecosistema de soluciones empresariales
-      </p>
-    </div>
-  `;
-}
-
-// Encabezado/tarjeta/pie compartidos por los 3 correos con el diseño nuevo
-// (Bienvenida, Aviso fin de prueba, Pago fallido — diseñado con Visual y
-// revisado con Copy de Oficina Datum, 2026-11-10; enviarCorreoResumenSemanal
-// se queda con plantillaCorreo()/boton() de arriba, sin tocar). El ícono es
-// el mismo compás que usa el resto de la app (sidebar.tsx, landing.tsx) en
-// SVG inline — Outlook de escritorio no lo soporta, así que los comentarios
-// [if mso]/[if !mso] lo reemplazan por el texto "Datum" solo ahí, nunca un
-// espacio roto.
+// Encabezado/tarjeta/pie compartidos por todos los correos de Datum
+// (diseñado con Visual y revisado con Copy de Oficina Datum, 2026-11-10).
+// El ícono es el mismo compás que usa el resto de la app (sidebar.tsx,
+// landing.tsx) en SVG inline — Outlook de escritorio no lo soporta, así que
+// los comentarios [if mso]/[if !mso] lo reemplazan por el texto "Datum"
+// solo ahí, nunca un espacio roto.
 function tarjetaCorreoV2({ titulo, filas }: { titulo: string; filas: string }) {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f2f1eb; margin:0; padding:0;">
@@ -650,40 +617,3 @@ export async function enviarCorreoCambioPlan({
   });
 }
 
-export async function enviarCorreoResumenSemanal({
-  correo,
-  nombreEmpresa,
-  ventasSemana,
-  ventasSemanaAnterior,
-}: {
-  correo: string;
-  nombreEmpresa: string;
-  ventasSemana: number;
-  ventasSemanaAnterior: number;
-}): Promise<{ error: string | null }> {
-  let comparacion: string;
-  if (ventasSemanaAnterior > 0) {
-    const diferencia = Math.round(((ventasSemana - ventasSemanaAnterior) / ventasSemanaAnterior) * 100);
-    if (diferencia > 0) comparacion = `▲ ${diferencia}% más que la semana anterior`;
-    else if (diferencia < 0) comparacion = `▼ ${Math.abs(diferencia)}% menos que la semana anterior`;
-    else comparacion = "Igual que la semana anterior";
-  } else {
-    comparacion = "Aún no hay una semana anterior con qué comparar";
-  }
-
-  const cuerpo = `
-    <p>Aquí tienes un resumen rápido de <strong>${nombreEmpresa}</strong> en los últimos 7 días:</p>
-    <table style="margin: 16px 0; font-size: 14px;">
-      <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Vendido esta semana</td><td><strong>${formatoCOP(ventasSemana)}</strong></td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Comparado con la anterior</td><td><strong>${comparacion}</strong></td></tr>
-    </table>
-    ${boton("Ver Ventas", `${URL_APP}/ventas`)}
-    ${CIERRE_CALIDO}
-  `;
-
-  return enviar({
-    correo,
-    asunto: "Tu resumen semanal de Datum",
-    html: plantillaCorreo({ titulo: "Así te fue esta semana", cuerpo }),
-  });
-}

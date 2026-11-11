@@ -5,7 +5,6 @@ import {
   enviarCorreoBienvenida,
   enviarCorreoFinDePrueba,
   enviarCorreoPagoFallido,
-  enviarCorreoResumenSemanal,
   enviarCorreoReunionAgendada,
   enviarCorreoPruebaActivada,
   enviarCorreoContrasenaActualizada,
@@ -20,7 +19,6 @@ export type TipoCorreoPrueba =
   | "bienvenida"
   | "fin_prueba"
   | "pago_fallido"
-  | "resumen_semanal"
   | "reunion_agendada"
   | "prueba_activada"
   | "contrasena_actualizada"
@@ -51,13 +49,6 @@ async function enviarSegunTipo(tipo: TipoCorreoPrueba, correo: string) {
         correo,
         nombreEmpresa: "Aseo Total",
         monto: 199000,
-      });
-    case "resumen_semanal":
-      return enviarCorreoResumenSemanal({
-        correo,
-        nombreEmpresa: "Aseo Total",
-        ventasSemana: 1240000,
-        ventasSemanaAnterior: 1050000,
       });
     case "reunion_agendada":
       return enviarCorreoReunionAgendada({

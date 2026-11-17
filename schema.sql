@@ -4159,3 +4159,43 @@ alter table metodos_pago add column if not exists titular text;
 -- envío sigue siendo manual a propósito). Se llena al crear el empleado, o
 -- después desde su ficha si no se tenía en ese momento.
 alter table empleados add column if not exists correo text;
+
+-- ============================================================
+-- FACTURACIÓN ELECTRÓNICA CON FACTUS (agregado 2026-11-17)
+-- Una fila por cada intento de facturar electrónicamente una venta a
+-- través de Factus (proveedor tecnológico habilitado por la DIAN — ver
+-- CLAUDE.md, "Facturación electrónica — Factus"). No es única por
+-- venta_id: igual que suscripcion_cobros con los cobros de Wompi, si un
+-- intento queda 'rechazada', el reintento siguiente es una fila nueva —
+-- nunca se sobrescribe la anterior, para no perder el historial de qué
+-- pasó con cada intento.
+-- ============================================================
+create table if not exists facturas_electronicas (
+  id uuid primary key default gen_random_uuid(),
+  venta_id uuid references ventas(id) not null,
+  numero_factus text,
+  -- Código Único de Facturación Electrónica que asigna la DIAN — solo
+  -- existe una vez la factura queda 'validada'.
+  cufe text,
+  -- A diferencia de suscripcion_cobros (Wompi responde async, por
+  -- webhook), POST /v2/bills/validate de Factus responde ya validada o
+  -- rechazada en la misma llamada — 'pendiente' acá es solo la fila que
+  -- se deja puesta justo antes de llamar a Factus, por si la función se
+  -- cae a mitad de camino y nunca llega a actualizarla.
+  estado text not null default 'pendiente' check (estado in ('pendiente','validada','rechazada')),
+  pdf_url text,
+  xml_url text,
+  mensaje_error text,
+  created_at timestamptz not null default now()
+);
+
+alter table facturas_electronicas enable row level security;
+
+create index if not exists facturas_electronicas_venta_id_idx
+  on facturas_electronicas (venta_id);
+
+create policy "ver mis facturas electronicas" on facturas_electronicas
+  for all using (
+    venta_id in (select id from ventas where empresa_id = mi_empresa_id())
+    or es_admin()
+  );

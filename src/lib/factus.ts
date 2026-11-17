@@ -5,7 +5,7 @@
 //
 // Cinco variables de entorno, todavía sin poner en Vercel (ver
 // CLAUDE.md, "Pendientes" — el siguiente paso es ponerlas ahí cuando se
-// empiece a probar esto contra una pantalla real):
+// empiece a conectar esto a una pantalla real):
 // - FACTUS_BASE_URL — distinta por ambiente, mismo criterio que
 //   NEXT_PUBLIC_SUPABASE_URL: en Preview, la de sandbox
 //   (https://api-sandbox.factus.com.co); en producción, la real
@@ -18,29 +18,31 @@
 // - FACTUS_USERNAME — el correo de la cuenta de Factus
 // - FACTUS_PASSWORD
 //
-// OJO — lo que SÍ está confirmado contra el sandbox real (2026-11-17) y
-// lo que NO:
-// - Login y el rango de numeración (ver obtenerTokenFactus) están
-//   confirmados de punta a punta.
-// - Los nombres de los campos de crearYValidarFacturaFactus() están
-//   confirmados mandando cuerpos incompletos a propósito y leyendo los
-//   errores de validación que devuelve Factus (siempre dice qué campo
-//   falta) — no son una suposición.
-// - Lo que NO está confirmado: la forma exacta de customer.responsibilities
-//   y items[].taxes (¿arreglo de qué forma exacta?), la forma de
-//   payment_details, y la respuesta cuando una factura SÍ se valida con
-//   éxito — un intento con datos de relleno no llegó a un 422 sino a un
-//   500 (error interno de Factus), así que no se pudo aprender nada ahí.
-// - Los códigos del catálogo de la DIAN (tipo de documento, responsabilidad
-//   fiscal, unidad de medida, estándar de codificación, impuestos) nunca
-//   se inventan acá — cada función los recibe como parámetro, para que
-//   se usen los códigos reales del catálogo de Factus/la DIAN, no un
-//   valor de ejemplo puesto a mano.
-// - Importante para cuando se vuelva a probar: cada intento contra
-//   /v2/bills/validate consume un número real del rango compartido —
-//   confirmado viendo que el "current" del rango subió incluso con un
-//   intento que terminó en error 500. No es una sandbox "de mentira" sin
-//   costo — hay que probar con cuidado, no a prueba y error.
+// Todo lo de este archivo quedó confirmado contra el sandbox real
+// (2026-11-17) creando y validando una factura completa de punta a
+// punta, no adivinado de la documentación: los nombres de los campos se
+// aprendieron mandando cuerpos incompletos a propósito y leyendo los
+// errores de validación de Factus (siempre dicen qué campo falta), y la
+// forma de la respuesta exitosa, el PDF y el XML se confirmaron con una
+// factura real (de prueba) que sí llegó a validarse ante la DIAN.
+//
+// Hallazgo importante probando esto: cada intento contra
+// /v2/bills/validate consume un número real del rango de numeración
+// compartido — y la cuenta de sandbox usada (sandboxv2@factus.com.co)
+// parece compartida con otros desarrolladores probando la misma API, no
+// exclusiva de Datum (el contador subió mucho más de lo que las propias
+// pruebas de acá explican). No es una sandbox "de mentira" sin costo —
+// cada factura de prueba real cuenta.
+//
+// Los códigos del catálogo de la DIAN (tipo de documento, responsabilidad
+// fiscal, unidad de medida, estándar de codificación, impuestos, forma y
+// método de pago) nunca se inventan acá — cada función los recibe como
+// parámetro. La prueba real que confirmó este archivo usó códigos
+// genéricos razonables (cédula de ciudadanía, "No responsable" R-99-PN,
+// unidad, UNSPSC, IVA 19%, pago de contado en efectivo) que sí
+// funcionaron contra el sandbox, pero hay que confirmar con Andrés los
+// valores correctos para cada caso real antes de facturarle a un
+// cliente de verdad.
 
 function variableRequerida(nombre: string): string {
   const valor = process.env[nombre];
@@ -74,8 +76,9 @@ async function obtenerTokenFactus(): Promise<string> {
 }
 
 export interface ImpuestoItemFactura {
-  // Código del impuesto en el catálogo de Factus/la DIAN (ej. el del
-  // IVA) — viene de ese catálogo, nunca se inventa acá.
+  // Código del impuesto en el catálogo de Factus/la DIAN (ej. "01" =
+  // IVA, el que se usó en la prueba real) — viene de ese catálogo,
+  // nunca se inventa acá.
   code: string;
   rate: number; // tarifa, ej. 19 para 19%
 }
@@ -85,29 +88,40 @@ export interface ItemFactura {
   name: string;
   quantity: number;
   price: number; // precio unitario
-  // Código de unidad de medida del catálogo de la DIAN — nunca se
-  // inventa acá, viene de ese catálogo.
+  // Código de unidad de medida del catálogo de la DIAN (ej. "94" =
+  // unidad, el que se usó en la prueba real) — nunca se inventa acá.
   unitMeasureCode: string;
-  // Código del estándar de codificación del ítem (ej. UNSPSC) del
-  // catálogo de la DIAN — nunca se inventa acá.
+  // Código del estándar de codificación del ítem — ej. "1" = UNSPSC
+  // (el que se usó en la prueba real) — nunca se inventa acá.
   standardCode: string;
   taxes: ImpuestoItemFactura[];
   discount?: number;
 }
 
 export interface ClienteFactura {
-  // Código de tipo de documento del catálogo de la DIAN (ej. cédula de
-  // ciudadanía) — nunca se inventa acá.
+  // Código de tipo de documento del catálogo de la DIAN — ej. "13" =
+  // cédula de ciudadanía (el que se usó en la prueba real) — nunca se
+  // inventa acá.
   identificationDocumentCode: string;
   identification: string; // número de documento
   names: string;
-  // Responsabilidades fiscales del catálogo de la DIAN — forma exacta
-  // (¿arreglo de códigos, o algo distinto?) todavía sin confirmar contra
-  // una respuesta real, ver la nota al principio del archivo.
+  // Responsabilidades fiscales del catálogo de la DIAN — confirmado que
+  // es un arreglo de códigos (ej. ["R-99-PN"] = No responsable, el que
+  // se usó en la prueba real).
   responsibilities: string[];
   email?: string;
   phone?: string;
   address?: string;
+}
+
+export interface DetallePagoFactura {
+  // Forma de pago del catálogo de la DIAN — ej. "1" = pago de contado
+  // (el que se usó en la prueba real).
+  paymentForm: string;
+  // Método de pago del catálogo de la DIAN — ej. "10" = efectivo (el
+  // que se usó en la prueba real).
+  paymentMethodCode: string;
+  amount: number; // cuánto se paga con este método — permite pagos repartidos entre varios
 }
 
 export interface FacturaFactusInput {
@@ -115,23 +129,44 @@ export interface FacturaFactusInput {
   // Referencia propia de Datum para esta factura (ej. el numero_venta) —
   // así se puede referenciar sin usar el id técnico de Factus.
   referenceCode: string;
-  // Forma exacta todavía sin confirmar (ver la nota al principio del
-  // archivo) — se manda tal cual lo entregue quien llame esta función.
-  paymentDetails: Record<string, unknown>;
+  // Confirmado que es un arreglo, no un objeto — mandarlo como objeto
+  // (como se intentó al principio) produce errores de validación
+  // confusos, porque Factus lo interpreta como un arreglo con las
+  // claves del objeto como índices.
+  paymentDetails: DetallePagoFactura[];
   customer: ClienteFactura;
   items: ItemFactura[];
 }
 
+export interface FacturaFactusExitosa {
+  exitosa: true;
+  // El número oficial que le asigna Factus (prefijo + consecutivo, ej.
+  // "SETP990037334") — es lo que identifica la factura en
+  // descargarPdfFactura()/descargarXmlFactura(), no el reference_code
+  // propio de Datum.
+  numero: string;
+  cufe: string;
+  linkQr: string; // página de verificación pública de la DIAN
+  linkPublico: string; // página de Factus donde se puede ver el documento
+  // Avisos de la propia DIAN que pueden venir incluso con la factura ya
+  // validada (ej. que el documento de identidad no coincide con el RUT)
+  // — no significan que la factura haya fallado, is_validated es la
+  // señal real de éxito. Quedan acá para poder mostrarlos si hace falta.
+  avisosDian: Record<string, string>;
+  data: unknown; // la respuesta completa de Factus, por si se necesita algo no extraído acá
+}
+
+export interface FacturaFactusFallida {
+  exitosa: false;
+  errores: unknown; // los errores de validación que devuelve Factus, campo por campo
+  data: unknown;
+}
+
 // Crea y valida una factura electrónica — Factus la firma y transmite a
-// la DIAN en esta misma llamada (no es un borrador, ver CLAUDE.md). La
-// forma de la respuesta cuando SÍ se valida con éxito todavía no está
-// confirmada (ver la nota al principio del archivo) — por eso esta
-// función devuelve el cuerpo completo de data tal cual lo entrega
-// Factus, en vez de extraer campos puntuales que todavía no se sabe si
-// existen con ese nombre.
+// la DIAN en esta misma llamada (no es un borrador, ver CLAUDE.md).
 export async function crearYValidarFacturaFactus(
   input: FacturaFactusInput,
-): Promise<{ exitosa: boolean; data: unknown; errores?: unknown }> {
+): Promise<FacturaFactusExitosa | FacturaFactusFallida> {
   const baseUrl = variableRequerida("FACTUS_BASE_URL");
   const token = await obtenerTokenFactus();
 
@@ -145,7 +180,11 @@ export async function crearYValidarFacturaFactus(
     body: JSON.stringify({
       numbering_range_id: input.numberingRangeId,
       reference_code: input.referenceCode,
-      payment_details: input.paymentDetails,
+      payment_details: input.paymentDetails.map((detalle) => ({
+        payment_form: detalle.paymentForm,
+        payment_method_code: detalle.paymentMethodCode,
+        amount: detalle.amount,
+      })),
       customer: {
         identification_document_code: input.customer.identificationDocumentCode,
         identification: input.customer.identification,
@@ -169,8 +208,53 @@ export async function crearYValidarFacturaFactus(
   });
 
   const cuerpo = await respuesta.json();
-  if (!respuesta.ok) {
-    return { exitosa: false, data: cuerpo.data, errores: cuerpo.data?.errors };
+  if (!respuesta.ok || !cuerpo.data?.is_validated) {
+    return { exitosa: false, errores: cuerpo.data?.errors ?? cuerpo.data, data: cuerpo.data };
   }
-  return { exitosa: true, data: cuerpo.data };
+  return {
+    exitosa: true,
+    numero: cuerpo.data.number,
+    cufe: cuerpo.data.cufe,
+    linkQr: cuerpo.data.links?.qr,
+    linkPublico: cuerpo.data.links?.public_url,
+    avisosDian: cuerpo.data.errors ?? {},
+    data: cuerpo.data,
+  };
+}
+
+// Descarga el PDF de una factura YA validada — Factus lo entrega como
+// texto en base64 dentro del JSON, no como un archivo binario directo
+// ni como una URL para descargar después; hay que decodificarlo del
+// lado de quien llame esta función. "numero" es el que asignó Factus
+// (ej. "SETP990037334"), no el reference_code propio de Datum.
+export async function descargarPdfFactura(
+  numero: string,
+): Promise<{ nombreArchivo: string; pdfBase64: string }> {
+  const baseUrl = variableRequerida("FACTUS_BASE_URL");
+  const token = await obtenerTokenFactus();
+  const respuesta = await fetch(`${baseUrl}/v2/bills/${numero}/download-pdf`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  const cuerpo = await respuesta.json();
+  if (!respuesta.ok) {
+    throw new Error(cuerpo.message ?? "No se pudo descargar el PDF de la factura.");
+  }
+  return { nombreArchivo: cuerpo.data.file_name, pdfBase64: cuerpo.data.pdf_base_64_encoded };
+}
+
+// Mismo patrón que descargarPdfFactura(), confirmado igual contra el
+// sandbox real.
+export async function descargarXmlFactura(
+  numero: string,
+): Promise<{ nombreArchivo: string; xmlBase64: string }> {
+  const baseUrl = variableRequerida("FACTUS_BASE_URL");
+  const token = await obtenerTokenFactus();
+  const respuesta = await fetch(`${baseUrl}/v2/bills/${numero}/download-xml`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  const cuerpo = await respuesta.json();
+  if (!respuesta.ok) {
+    throw new Error(cuerpo.message ?? "No se pudo descargar el XML de la factura.");
+  }
+  return { nombreArchivo: cuerpo.data.file_name, xmlBase64: cuerpo.data.xml_base_64_encoded };
 }

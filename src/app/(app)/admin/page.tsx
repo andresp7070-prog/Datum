@@ -263,6 +263,13 @@ export default async function AdminDashboardPage() {
                     >
                       Editar plan
                     </Link>
+                    <span className="mx-1.5 text-gray-300">·</span>
+                    <Link
+                      href={`/admin/clientes/${empresa.id}/factus`}
+                      className="text-xs font-medium text-accent hover:underline"
+                    >
+                      Facturación electrónica
+                    </Link>
                   </td>
                 </tr>
               ))}

@@ -4199,3 +4199,71 @@ create policy "ver mis facturas electronicas" on facturas_electronicas
     venta_id in (select id from ventas where empresa_id = mi_empresa_id())
     or es_admin()
   );
+
+-- ============================================================
+-- INTEGRACIÓN DE FACTURACIÓN ELECTRÓNICA POR EMPRESA (agregado
+-- 2026-11-19) — ver CLAUDE.md, "Facturación electrónica — Factus" y la
+-- Cláusula Décima Novena del contrato (src/app/aceptar-terminos/contrato.tsx).
+-- Una fila por empresa, nunca una sola fila global: cada empresa cliente
+-- necesita su propia cuenta de Factus (su propio NIT ante la DIAN y ante
+-- Factus) — confirmado contra la documentación oficial de Factus, ver
+-- CLAUDE.md. Flujo en dos pasos: (1) Andrés tramita la cuenta con Factus
+-- por fuera de la plataforma y entra acá las credenciales que le
+-- quedaron ('pendiente'); (2) el cliente ve el aviso, acepta la Cláusula
+-- Décima Novena y activa el servicio ('activa') — recién ahí aparece el
+-- check de "Facturación electrónica" en Agregar venta.
+-- ============================================================
+create table if not exists integraciones_factus (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid references empresas(id) not null unique,
+  -- Credenciales de la cuenta de Factus de ESTA empresa, nunca una
+  -- variable de entorno global — cada NIT es su propia cuenta en Factus.
+  -- Solo el admin puede leer esta tabla (ver política más abajo); el
+  -- cliente nunca ve estos cuatro campos, ni siquiera en su propia ficha.
+  factus_client_id text,
+  factus_client_secret text,
+  factus_username text,
+  factus_password text,
+  -- Id del rango de numeración que Factus le asignó a esta empresa
+  -- (ver GET /v2/numbering-ranges en src/lib/factus.ts).
+  numbering_range_id integer,
+  -- Mismo concepto que suscripciones.facturacion, pero para el cobro
+  -- anual del certificado digital ($150.000/año de una vez, o
+  -- $15.000/mes si prefiere mensual — ver CLAUDE.md, "Cobro variable por
+  -- uso"). Lo elige el cliente al activar.
+  certificado_facturacion text not null default 'anual'
+    check (certificado_facturacion in ('mensual','anual')),
+  -- Precio del certificado congelado al momento de activar — mismo
+  -- criterio que suscripciones.monto_mensual: si el precio cambia
+  -- después, esta empresa no cambia hasta que se renegocie.
+  certificado_monto numeric(12,2),
+  -- 'pendiente': Andrés ya cargó las credenciales, pero el cliente
+  -- todavía no activó ni aceptó la Cláusula Décima Novena. 'activa': el
+  -- cliente ya aceptó — recién ahí se muestra el check de "Facturación
+  -- electrónica" en Agregar venta. 'suspendida': para cuando el registro
+  -- del cliente ante Factus/la DIAN vence o se inhabilita (Cláusula
+  -- Décima Novena, numeral 7) — todavía no hay pantalla que la ponga en
+  -- este estado, queda lista para cuando se construya.
+  estado text not null default 'pendiente'
+    check (estado in ('pendiente','activa','suspendida')),
+  -- Fecha/hora exacta en que el cliente aceptó la Cláusula Décima Novena
+  -- al activar este servicio — aparte de empresas.terminos_aceptados_en
+  -- (el contrato general), porque ese no se vuelve a aceptar solo porque
+  -- el texto cambió (ver CLAUDE.md, "Pendientes" → Facturación
+  -- electrónica) — esta cláusula puntual necesita su propio registro.
+  terminos_aceptados_en timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table integraciones_factus enable row level security;
+
+create index if not exists integraciones_factus_empresa_id_idx
+  on integraciones_factus (empresa_id);
+
+-- Solo admin, igual criterio que datum_leads y similares: contiene
+-- credenciales de un proveedor externo, el cliente nunca debe leer esta
+-- tabla directamente. La pantalla del cliente para activar el servicio
+-- lee lo que necesita con la llave de servicio desde el servidor (ver
+-- src/lib/supabase/admin.ts), nunca con la sesión normal.
+create policy "solo admin ve integraciones de factus" on integraciones_factus
+  for all using (es_admin()) with check (es_admin());

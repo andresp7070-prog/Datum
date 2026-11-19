@@ -2,7 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 // Se salta Row Level Security a propósito — usarlo con cuidado, solo desde
 // código de servidor, y solo cuando de verdad no hay ninguna sesión con la
-// que autenticar la operación. Cinco usos legítimos hoy:
+// que autenticar la operación. Siete usos legítimos hoy:
 // 1. El formulario público de agendamiento de la landing (src/lib/agendar.ts):
 //    un visitante sin cuenta en Datum agenda una reunión, así que no hay
 //    sesión de usuario posible — se usa este cliente, con mucho cuidado, solo
@@ -35,6 +35,19 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 //    verificada con requerirAdmin()), pero igual que en el punto 3,
 //    "suscripciones" ya no acepta escritura desde ninguna sesión normal,
 //    ni siquiera la de un admin — solo lectura.
+// 6. (mismo caso que el 5, mencionado acá para que el número coincida con
+//    el comentario que ya tenía ese archivo) — no hace falta repetirlo.
+// 7. La pantalla donde un cliente activa Facturación Electrónica
+//    (src/app/facturacion-electronica/page.tsx y actions.ts): a
+//    diferencia del admin cargando las credenciales de Factus de ese
+//    cliente (src/app/(app)/admin/clientes/[id]/factus/, que sí puede
+//    usar la sesión normal porque integraciones_factus sigue la política
+//    "solo admin" de siempre), acá quien entra es el CLIENTE, sin permiso
+//    para leer ni escribir esa tabla bajo ningún RLS — ni siquiera su
+//    propia fila, porque guarda credenciales de un proveedor externo. Se
+//    usa solo para leer si tiene algo "pendiente" y, al aceptar, marcarlo
+//    "activa" — las credenciales nunca se le muestran ni se leen en esta
+//    pantalla.
 // Nunca importar esto desde un componente de cliente. Si se usa desde una
 // ruta pública que recibe peticiones de un usuario final sin sesión (como el
 // caso 2), esa ruta debe validar cuidadosamente su propia entrada — este

@@ -22,6 +22,18 @@ const TINTE: Record<"neutral" | "exito" | "alerta", string> = {
   alerta: "bg-red-50 text-red-600",
 };
 
+// Centra el contenido de la pantalla (horizontal y vertical) dentro del
+// área principal — antes quedaba pegado arriba a la izquierda, como
+// cualquier otra pantalla de la plataforma, pero esta se siente más como
+// un mensaje/estado puntual que como una tabla o formulario largo.
+export function CentroFactus({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-[70vh] items-center justify-center">
+      <div className="w-full max-w-xl">{children}</div>
+    </div>
+  );
+}
+
 export function EncabezadoFactus({
   tinte = "neutral",
 }: {

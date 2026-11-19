@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ActivarFactus } from "./activar-factus";
-import { EncabezadoFactus } from "./encabezado-factus";
+import { CentroFactus, EncabezadoFactus } from "./encabezado-factus";
 
 export default async function FacturacionElectronicaPage() {
   const perfil = await getPerfilActual();
@@ -25,7 +25,7 @@ export default async function FacturacionElectronicaPage() {
 
   if (!integracion) {
     return (
-      <div className="max-w-xl">
+      <CentroFactus>
         <EncabezadoFactus tinte="neutral" />
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
           <p className="text-sm text-gray-600">
@@ -40,13 +40,13 @@ export default async function FacturacionElectronicaPage() {
             Escríbenos para activarlo
           </a>
         </div>
-      </div>
+      </CentroFactus>
     );
   }
 
   if (integracion.estado === "activa") {
     return (
-      <div className="max-w-xl">
+      <CentroFactus>
         <EncabezadoFactus tinte="exito" />
         <div className="rounded-xl border border-amber-600/20 bg-amber-600/5 p-5">
           <span className="mb-3 inline-block rounded-full bg-amber-600 px-2.5 py-1 text-xs font-medium text-white">
@@ -57,13 +57,13 @@ export default async function FacturacionElectronicaPage() {
             a través de Factus, el proveedor tecnológico autorizado por la DIAN.
           </p>
         </div>
-      </div>
+      </CentroFactus>
     );
   }
 
   if (integracion.estado === "suspendida") {
     return (
-      <div className="max-w-xl">
+      <CentroFactus>
         <EncabezadoFactus tinte="alerta" />
         <div className="rounded-xl border border-red-500/20 bg-red-50 p-5">
           <p className="text-sm text-red-700">Este servicio está suspendido para tu empresa.</p>
@@ -74,13 +74,13 @@ export default async function FacturacionElectronicaPage() {
             Escríbenos para regularizarlo
           </a>
         </div>
-      </div>
+      </CentroFactus>
     );
   }
 
   return (
-    <div className="max-w-xl">
+    <CentroFactus>
       <ActivarFactus facturacionSugerida={integracion.certificado_facturacion} />
-    </div>
+    </CentroFactus>
   );
 }

@@ -26,7 +26,7 @@ export function ActivarFactus({ facturacionSugerida }: { facturacionSugerida: st
 
   return (
     <div>
-      <EncabezadoFactus tinte="neutral" />
+      <EncabezadoFactus />
       <p className="mb-6 text-sm text-gray-500">
         Servicio adicional y opcional, aparte de tu suscripción — no ocupa cupo de tu plan.
       </p>

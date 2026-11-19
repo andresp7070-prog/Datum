@@ -26,7 +26,7 @@ export default async function FacturacionElectronicaPage() {
   if (!integracion) {
     return (
       <CentroFactus>
-        <EncabezadoFactus tinte="neutral" />
+        <EncabezadoFactus />
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
           <p className="text-sm text-gray-600">
             Es un servicio adicional y opcional, aparte de tu suscripción: Datum conecta tus
@@ -47,7 +47,7 @@ export default async function FacturacionElectronicaPage() {
   if (integracion.estado === "activa") {
     return (
       <CentroFactus>
-        <EncabezadoFactus tinte="exito" />
+        <EncabezadoFactus />
         <div className="rounded-xl border border-amber-600/20 bg-amber-600/5 p-5">
           <span className="mb-3 inline-block rounded-full bg-amber-600 px-2.5 py-1 text-xs font-medium text-white">
             Activo
@@ -64,7 +64,7 @@ export default async function FacturacionElectronicaPage() {
   if (integracion.estado === "suspendida") {
     return (
       <CentroFactus>
-        <EncabezadoFactus tinte="alerta" />
+        <EncabezadoFactus />
         <div className="rounded-xl border border-red-500/20 bg-red-50 p-5">
           <p className="text-sm text-red-700">Este servicio está suspendido para tu empresa.</p>
           <a

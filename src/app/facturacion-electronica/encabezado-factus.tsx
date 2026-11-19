@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 // Mismo ícono de compás que src/app/(app)/sidebar.tsx — se duplica acá a
 // propósito (componente chico, un solo archivo lo usa de verdad), para que
 // esta pantalla se vea parte de la misma identidad visual de Datum en vez
@@ -16,12 +18,6 @@ function LogoCompass({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-const TINTE: Record<"neutral" | "exito" | "alerta", string> = {
-  neutral: "bg-accent/10 text-accent",
-  exito: "bg-amber-600/10 text-amber-600",
-  alerta: "bg-red-50 text-red-600",
-};
-
 // Centra el contenido de la pantalla (horizontal y vertical) dentro del
 // área principal — antes quedaba pegado arriba a la izquierda, como
 // cualquier otra pantalla de la plataforma, pero esta se siente más como
@@ -34,17 +30,24 @@ export function CentroFactus({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function EncabezadoFactus({
-  tinte = "neutral",
-}: {
-  tinte?: "neutral" | "exito" | "alerta";
-}) {
+// El color del logo no varía por estado a propósito — es la marca de
+// Datum, no un indicador (activa/suspendida/etc. ya se distingue por el
+// color de la caja debajo, no por el compás).
+export function EncabezadoFactus() {
   return (
-    <div className="mb-5 flex items-center gap-3">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${TINTE[tinte]}`}>
-        <LogoCompass />
+    <div className="mb-5">
+      <Link
+        href="/resumen"
+        className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-700"
+      >
+        ← Volver a Datum
+      </Link>
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+          <LogoCompass />
+        </div>
+        <h1 className="font-serif text-2xl font-semibold text-gray-900">Facturación electrónica</h1>
       </div>
-      <h1 className="font-serif text-2xl font-semibold text-gray-900">Facturación electrónica</h1>
     </div>
   );
 }

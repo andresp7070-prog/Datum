@@ -4,6 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ActivarFactus } from "./activar-factus";
 import { CentroFactus, EncabezadoFactus } from "./encabezado-factus";
 
+function formatoMoneda(valor: number) {
+  return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
+}
+
 export default async function FacturacionElectronicaPage() {
   const perfil = await getPerfilActual();
   if (!perfil?.empresa_id || esRolDePlataforma(perfil.rol)) {
@@ -19,7 +23,7 @@ export default async function FacturacionElectronicaPage() {
   const supabase = createAdminClient();
   const { data: integracion } = await supabase
     .from("integraciones_factus")
-    .select("estado, certificado_facturacion")
+    .select("estado, certificado_facturacion, certificado_monto, terminos_aceptados_en")
     .eq("empresa_id", perfil.empresa_id)
     .maybeSingle();
 
@@ -45,6 +49,10 @@ export default async function FacturacionElectronicaPage() {
   }
 
   if (integracion.estado === "activa") {
+    const facturacionCertificado =
+      integracion.certificado_facturacion === "anual" ? "Anual" : "Mensual";
+    const periodo = integracion.certificado_facturacion === "anual" ? "/año" : "/mes";
+
     return (
       <CentroFactus>
         <EncabezadoFactus />
@@ -56,6 +64,33 @@ export default async function FacturacionElectronicaPage() {
             Este servicio ya está activo para tu empresa — tus facturas electrónicas se emiten
             a través de Factus, el proveedor tecnológico autorizado por la DIAN.
           </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 p-5">
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">Tu configuración actual</h2>
+          <dl className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="text-gray-500">Por documento emitido</dt>
+              <dd className="font-medium text-gray-900">$99 COP</dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-gray-500">Certificado digital</dt>
+              <dd className="font-medium text-gray-900">
+                {facturacionCertificado}
+                {integracion.certificado_monto != null
+                  ? ` — ${formatoMoneda(Number(integracion.certificado_monto))}${periodo}`
+                  : ""}
+              </dd>
+            </div>
+            {integracion.terminos_aceptados_en && (
+              <div className="flex items-center justify-between">
+                <dt className="text-gray-500">Activo desde</dt>
+                <dd className="font-medium text-gray-900">
+                  {new Date(integracion.terminos_aceptados_en).toLocaleDateString("es-CO")}
+                </dd>
+              </div>
+            )}
+          </dl>
         </div>
       </CentroFactus>
     );

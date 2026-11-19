@@ -19,6 +19,17 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  const esDePlataforma = esRolDePlataforma(perfil.rol);
+
+  // Primer gate de todos — antes que cambiar contraseña, aceptar términos
+  // o cualquier otro paso: si Andrés desactivó esta empresa desde
+  // /admin/clientes/[id], no importa en qué paso se haya quedado, nadie
+  // de ahí entra hasta que la reactive. Nunca aplica a una cuenta de
+  // plataforma (la suya propia también tiene fila en empresas).
+  if (!esDePlataforma && perfil.empresas?.activa === false) {
+    redirect("/cuenta-desactivada");
+  }
+
   if (perfil.debe_cambiar_password) {
     redirect("/cambiar-password");
   }
@@ -29,8 +40,6 @@ export default async function AppLayout({
   if (perfil.punto_venta_id) {
     redirect(`/pedir/${perfil.punto_venta_id}`);
   }
-
-  const esDePlataforma = esRolDePlataforma(perfil.rol);
 
   // Reemplaza la firma física del contrato — ver schema.sql, sección
   // "ACEPTACIÓN DEL CONTRATO DENTRO DE LA PLATAFORMA". Toda cuenta cliente

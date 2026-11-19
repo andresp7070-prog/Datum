@@ -3220,9 +3220,17 @@ returns uuid language sql stable security definer set search_path = public as $$
   select empresa_id from perfiles where id = auth.uid();
 $$;
 
+-- Corregido 2026-11-19: antes solo reconocía rol = 'admin', pero la cuenta
+-- dueña de la plataforma usa 'super_admin' (ver el comentario en la
+-- columna perfiles.rol) — con eso, cualquier política que dependiera de
+-- es_admin() (empresas, datum_leads, integraciones_factus, etc.) no veía
+-- nada fuera de su propia empresa cuando el perfil tenía 'super_admin' en
+-- vez de 'admin'. requerirAdmin() en el código sigue siendo el candado
+-- real del panel (verifica el id exacto del usuario, no solo el rol);
+-- esto solo evita que las consultas normales queden vacías por RLS.
 create or replace function es_admin()
 returns boolean language sql stable security definer set search_path = public as $$
-  select rol = 'admin' from perfiles where id = auth.uid();
+  select rol in ('admin', 'super_admin') from perfiles where id = auth.uid();
 $$;
 
 -- A qué punto de venta está limitado el usuario actual. null = ve toda la
@@ -4267,3 +4275,12 @@ create index if not exists integraciones_factus_empresa_id_idx
 -- src/lib/supabase/admin.ts), nunca con la sesión normal.
 create policy "solo admin ve integraciones de factus" on integraciones_factus
   for all using (es_admin()) with check (es_admin());
+
+-- ============================================================
+-- ACTIVAR/DESACTIVAR UNA EMPRESA DESDE EL ADMIN (agregado 2026-11-19)
+-- ============================================================
+-- Bloquea el acceso por completo cuando está en false — ver el gate en
+-- (app)/layout.tsx, que redirige a /cuenta-desactivada. Se cambia desde
+-- /admin/clientes/[id] ("Activar"/"Desactivar"), nunca sola — por defecto
+-- true, así que ninguna empresa existente queda afectada por este cambio.
+alter table empresas add column if not exists activa boolean not null default true;

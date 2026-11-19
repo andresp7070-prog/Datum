@@ -193,6 +193,27 @@ export function Sidebar({
               </li>
             );
           })}
+          {/* No es un módulo (no cuenta contra modulos_activos ni el límite
+              del plan — ver CLAUDE.md) así que no pasa por estaHabilitado()
+              ni por "bloqueados": se ve siempre, igual para toda empresa. La
+              propia pantalla decide qué mostrar según si ya tiene fila en
+              integraciones_factus (invita a escribir, pendiente, activa o
+              suspendida) — agregado 2026-11-19 a pedido de Andrés. */}
+          {!esVendedor && (
+            <li>
+              <Link
+                href="/facturacion-electronica"
+                onClick={(e) => manejarClic(e, "/facturacion-electronica", navegar)}
+                className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                  pathname === "/facturacion-electronica"
+                    ? "bg-amber-600 text-white"
+                    : "text-[#c7c8dd] hover:bg-accent-hover"
+                }`}
+              >
+                Facturación electrónica
+              </Link>
+            </li>
+          )}
         </ul>
 
         {bloqueados.length > 0 && (

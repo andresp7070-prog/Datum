@@ -52,6 +52,13 @@ export default function TerminosPage() {
             genera reembolsos por periodos ya facturados, salvo que la ley aplicable indique lo
             contrario.
           </p>
+          <p>
+            Datum también puede ofrecerte, como servicio adicional y opcional, la conexión con un
+            proveedor externo autorizado por la DIAN para que emitas tus facturas electrónicas
+            desde la plataforma. Si decides activarlo, se cobra aparte de tu suscripción, según
+            cuántas facturas emitas, y sigue siendo tu responsabilidad mantener al día tu propio
+            registro ante ese proveedor y ante la DIAN.
+          </p>
 
           <h3>5. Propiedad intelectual</h3>
           <p>

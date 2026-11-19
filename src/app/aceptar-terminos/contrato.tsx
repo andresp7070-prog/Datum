@@ -13,7 +13,7 @@
 // edite el texto de este archivo — queda guardado en
 // empresas.terminos_version junto a la fecha de aceptación, para saber
 // exactamente qué versión aceptó cada cliente si el contrato cambia.
-export const VERSION_CONTRATO = "2026-10-26";
+export const VERSION_CONTRATO = "2026-11-19";
 
 export const PLANES_VIGENTES = [
   { value: "basic", nombre: "Basic", modulos: "1 módulo, a elección de EL CLIENTE", precio: 199000 },
@@ -191,11 +191,13 @@ export function ContratoCompleto({
         términos, alcance y condiciones descritos en este Contrato y en su Anexo No. 1.
       </p>
       <p>
-        Parágrafo. La Plataforma no incluye, en su versión actual, funcionalidad de facturación
-        electrónica ante la Dirección de Impuestos y Aduanas Nacionales (DIAN). EL CLIENTE
-        conserva la responsabilidad exclusiva e indelegable de dar cumplimiento a sus obligaciones
-        tributarias, contables y de facturación conforme a la normativa vigente, de manera
-        independiente a los servicios prestados bajo este Contrato.
+        Parágrafo. La Plataforma no incluye, dentro del Plan Contratado, la funcionalidad de
+        facturación electrónica ante la Dirección de Impuestos y Aduanas Nacionales (DIAN). EL
+        CLIENTE conserva la responsabilidad exclusiva e indelegable de dar cumplimiento a sus
+        obligaciones tributarias, contables y de facturación conforme a la normativa vigente, de
+        manera independiente a los servicios prestados bajo este Contrato — salvo que EL CLIENTE
+        haya contratado expresamente el Servicio Adicional de Facturación Electrónica previsto en
+        la Cláusula Décima Novena, en cuyo caso aplican además las condiciones allí establecidas.
       </p>
 
       <h3 className="font-semibold text-gray-900">CLÁUSULA TERCERA. METODOLOGÍA DEL SERVICIO.</h3>
@@ -537,6 +539,72 @@ export function ContratoCompleto({
           conformidad con la Ley 527 de 1999 y las normas que la desarrollan, la cual tendrá la
           misma validez y fuerza vinculante que una firma manuscrita. Las partes aceptan que el
           Contrato así suscrito conste en un mensaje de datos con plena validez jurídica.
+        </li>
+      </ol>
+
+      <h3 className="font-semibold text-gray-900">
+        CLÁUSULA DÉCIMA NOVENA. SERVICIO ADICIONAL DE FACTURACIÓN ELECTRÓNICA (OPCIONAL).
+      </h3>
+      <ol className="list-decimal space-y-2 pl-5">
+        <li>
+          EL PRESTADOR podrá ofrecer a EL CLIENTE, como servicio adicional y opcional, la
+          integración de la Plataforma con un proveedor tecnológico autorizado por la Dirección de
+          Impuestos y Aduanas Nacionales (DIAN) para la emisión de facturas electrónicas y demás
+          documentos electrónicos equivalentes (el &quot;Proveedor Tecnológico&quot;). En
+          desarrollo de este servicio, EL PRESTADOR actúa como intermediario tecnológico que
+          transmite al Proveedor Tecnológico los datos de cada venta que EL CLIENTE registre en la
+          Plataforma para tal fin; es el Proveedor Tecnológico quien firma, transmite y valida el
+          documento electrónico ante la DIAN.
+        </li>
+        <li>
+          Este servicio no hace parte del Plan Contratado ni de los Módulos Seleccionados
+          descritos en el Anexo No. 1, y no se activa de forma automática. Solo se presta si EL
+          CLIENTE lo solicita expresamente y cumple los requisitos del numeral siguiente.
+        </li>
+        <li>
+          Para acceder a este servicio, EL CLIENTE debe tramitar su propia cuenta ante el
+          Proveedor Tecnológico y ante la DIAN, a nombre de su propio Número de Identificación
+          Tributaria (NIT) — incluyendo su Cámara de Comercio, Registro Único Tributario (RUT), la
+          cédula de su representante legal, y su propio rango de numeración de facturación
+          autorizado por la DIAN — y mantener dicha documentación vigente durante el tiempo que
+          use el servicio. EL PRESTADOR podrá prestar apoyo operativo en dicho trámite, sin que
+          ello lo convierta en responsable de la activación, vigencia o exactitud de dicho
+          registro, los cuales son responsabilidad exclusiva de EL CLIENTE.
+        </li>
+        <li>
+          EL CLIENTE es responsable de la exactitud, veracidad y vigencia de los datos de cada
+          venta y de cada cliente que registre en la Plataforma para ser facturados
+          electrónicamente. EL PRESTADOR transmite dicha información al Proveedor Tecnológico tal
+          como fue ingresada por EL CLIENTE, sin verificarla ni corregirla de fondo.
+        </li>
+        <li>
+          El valor de este servicio es variable, adicional e independiente de la Cuota de
+          Suscripción prevista en la Cláusula Quinta: noventa y nueve pesos colombianos ($99 COP),
+          sin incluir IVA (bajo el mismo criterio tributario aplicable a la Cuota de Suscripción),
+          por cada documento electrónico efectivamente emitido en el período, conforme al valor
+          vigente informado a EL CLIENTE antes de activar el servicio. Se cobra mensualmente,
+          según el uso real del mes correspondiente, utilizando el mismo método de pago que EL
+          CLIENTE tenga registrado para el pago de la Cuota de Suscripción.
+        </li>
+        <li>
+          Este servicio depende de la disponibilidad, funcionamiento y validación del Proveedor
+          Tecnológico y de la propia DIAN, ajenos al control de EL PRESTADOR. Frente a cualquier
+          falla, interrupción, rechazo o indisponibilidad atribuible a dichos terceros, aplica
+          íntegramente lo previsto en la Cláusula Décima Tercera (Limitación de Responsabilidad).
+        </li>
+        <li>
+          Si el registro de EL CLIENTE ante el Proveedor Tecnológico o ante la DIAN vence, se
+          suspende o queda inhabilitado por cualquier causa no atribuible a EL PRESTADOR, este
+          podrá suspender la emisión de documentos electrónicos a través de este servicio hasta
+          que EL CLIENTE regularice su situación, sin que ello afecte la prestación del resto de
+          los servicios objeto de este Contrato.
+        </li>
+        <li>
+          EL CLIENTE podrá dejar de usar este servicio adicional en cualquier momento mediante
+          aviso escrito a EL PRESTADOR, sin que ello afecte la vigencia del resto del Contrato. EL
+          PRESTADOR podrá suspender o descontinuar este servicio, previo aviso razonable a EL
+          CLIENTE, si el Proveedor Tecnológico deja de prestarle el servicio correspondiente por
+          cualquier causa.
         </li>
       </ol>
 

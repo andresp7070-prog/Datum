@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getPerfilActual, esRolDePlataforma } from "@/lib/empresa";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ActivarFactus } from "./activar-factus";
+import { EncabezadoFactus } from "./encabezado-factus";
 
 export default async function FacturacionElectronicaPage() {
   const perfil = await getPerfilActual();
@@ -25,14 +26,20 @@ export default async function FacturacionElectronicaPage() {
   if (!integracion) {
     return (
       <div className="max-w-xl">
-        <h1 className="mb-2 text-lg font-semibold text-gray-900">Facturación electrónica</h1>
-        <p className="text-sm text-gray-500">
-          Todavía no tienes este servicio disponible para activar. Si te interesa, escríbenos a{" "}
-          <a href="mailto:andresp7070@gmail.com" className="underline">
-            andresp7070@gmail.com
+        <EncabezadoFactus tinte="neutral" />
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+          <p className="text-sm text-gray-600">
+            Es un servicio adicional y opcional, aparte de tu suscripción: Datum conecta tus
+            ventas con un proveedor autorizado por la DIAN para emitir tus facturas
+            electrónicas, cobrado por cada documento que emitas.
+          </p>
+          <a
+            href="mailto:andresp7070@gmail.com?subject=Quiero%20facturaci%C3%B3n%20electr%C3%B3nica"
+            className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+          >
+            Escríbenos para activarlo
           </a>
-          .
-        </p>
+        </div>
       </div>
     );
   }
@@ -40,10 +47,16 @@ export default async function FacturacionElectronicaPage() {
   if (integracion.estado === "activa") {
     return (
       <div className="max-w-xl">
-        <h1 className="mb-2 text-lg font-semibold text-gray-900">Facturación electrónica</h1>
-        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-          Este servicio ya está activo para tu empresa.
-        </p>
+        <EncabezadoFactus tinte="exito" />
+        <div className="rounded-xl border border-amber-600/20 bg-amber-600/5 p-5">
+          <span className="mb-3 inline-block rounded-full bg-amber-600 px-2.5 py-1 text-xs font-medium text-white">
+            Activo
+          </span>
+          <p className="text-sm text-gray-700">
+            Este servicio ya está activo para tu empresa — tus facturas electrónicas se emiten
+            a través de Factus, el proveedor tecnológico autorizado por la DIAN.
+          </p>
+        </div>
       </div>
     );
   }
@@ -51,14 +64,16 @@ export default async function FacturacionElectronicaPage() {
   if (integracion.estado === "suspendida") {
     return (
       <div className="max-w-xl">
-        <h1 className="mb-2 text-lg font-semibold text-gray-900">Facturación electrónica</h1>
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          Este servicio está suspendido. Escríbenos a{" "}
-          <a href="mailto:andresp7070@gmail.com" className="underline">
-            andresp7070@gmail.com
-          </a>{" "}
-          para regularizarlo.
-        </p>
+        <EncabezadoFactus tinte="alerta" />
+        <div className="rounded-xl border border-red-500/20 bg-red-50 p-5">
+          <p className="text-sm text-red-700">Este servicio está suspendido para tu empresa.</p>
+          <a
+            href="mailto:andresp7070@gmail.com?subject=Regularizar%20facturaci%C3%B3n%20electr%C3%B3nica"
+            className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+          >
+            Escríbenos para regularizarlo
+          </a>
+        </div>
       </div>
     );
   }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { activarFacturacionElectronica } from "./actions";
+import { EncabezadoFactus } from "./encabezado-factus";
 
 export function ActivarFactus({ facturacionSugerida }: { facturacionSugerida: string }) {
   const [facturacion, setFacturacion] = useState(facturacionSugerida);
@@ -25,7 +26,7 @@ export function ActivarFactus({ facturacionSugerida }: { facturacionSugerida: st
 
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold text-gray-900">Activar facturación electrónica</h1>
+      <EncabezadoFactus tinte="neutral" />
       <p className="mb-6 text-sm text-gray-500">
         Servicio adicional y opcional, aparte de tu suscripción — no ocupa cupo de tu plan.
       </p>
@@ -60,7 +61,7 @@ export function ActivarFactus({ facturacionSugerida }: { facturacionSugerida: st
               onClick={() => setFacturacion(f.value)}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 facturacion === f.value
-                  ? "border-gray-900 bg-gray-900 text-white"
+                  ? "border-accent bg-accent text-white"
                   : "border-gray-300 text-gray-600 hover:border-gray-400"
               }`}
             >

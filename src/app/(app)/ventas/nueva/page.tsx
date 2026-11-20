@@ -26,7 +26,7 @@ export default async function NuevaVentaPage() {
   }
 
   // Ninguna de las dos depende de la otra — ambas solo necesitan perfil.
-  const [{ puntoSeleccionado }, { data: empresa }] = await Promise.all([
+  const [{ puntoSeleccionado }, { data: empresa, error: errorEmpresa }] = await Promise.all([
     obtenerContextoPunto(supabase, perfil.empresa_id, perfil.punto_venta_id),
     supabase
       .from("empresas")
@@ -34,6 +34,20 @@ export default async function NuevaVentaPage() {
       .eq("id", perfil.empresa_id)
       .single(),
   ]);
+
+  // Si esta consulta falla (ej. una columna que todavía no existe en esta
+  // base de datos), antes quedaba en silencio: "empresa" caía en null y
+  // crmActivo/inventarioActivo/permiteApartados se iban todos a false sin
+  // ningún aviso, dejando la pantalla en un modo "normal" confuso. Mejor
+  // mostrar el error real.
+  if (errorEmpresa || !empresa) {
+    return (
+      <p className="text-red-600">
+        No se pudo cargar la configuración de tu empresa
+        {errorEmpresa?.message ? `: ${errorEmpresa.message}` : "."} Intenta de nuevo en un momento.
+      </p>
+    );
+  }
 
   const crmActivo = (empresa?.modulos_activos ?? []).includes("crm");
   const inventarioActivo = (empresa?.modulos_activos ?? []).includes("inventario");

@@ -208,7 +208,7 @@ export async function facturarVentaElectronicamente(
   clienteTelefono: string,
   clienteEmail: string,
 ): Promise<
-  { ok: true; numero: string; linkPublico: string } | { ok: false; error: string }
+  { ok: true; numero: string; linkPublico: string; linkQr: string } | { ok: false; error: string }
 > {
   const supabase = await createClient();
   const {
@@ -424,7 +424,7 @@ export async function facturarVentaElectronicamente(
       .eq("id", venta.contacto_id);
   }
 
-  return { ok: true, numero: resultado.numero, linkPublico: resultado.linkPublico };
+  return { ok: true, numero: resultado.numero, linkPublico: resultado.linkPublico, linkQr: resultado.linkQr };
 }
 
 export async function deshacerVenta(ventaId: string): Promise<{ error: string | null }> {

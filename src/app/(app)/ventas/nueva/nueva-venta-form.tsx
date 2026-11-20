@@ -176,7 +176,9 @@ export function NuevaVentaForm({
   const [tipoDocumento, setTipoDocumento] = useState(TIPOS_DOCUMENTO[0].value);
   const [numeroDocumento, setNumeroDocumento] = useState("");
   const [estadoFactura, setEstadoFactura] = useState<
-    { ok: true; numero: string; linkPublico: string } | { ok: false; error: string } | null
+    | { ok: true; numero: string; linkPublico: string; linkQr: string }
+    | { ok: false; error: string }
+    | null
   >(null);
 
   const [lineas, setLineas] = useState<LineaVenta[]>([nuevaLinea()]);
@@ -1211,6 +1213,10 @@ export function NuevaVentaForm({
               Factura electrónica #{estadoFactura.numero} generada.{" "}
               <a href={estadoFactura.linkPublico} target="_blank" rel="noopener noreferrer" className="underline">
                 Ver factura
+              </a>{" "}
+              ·{" "}
+              <a href={estadoFactura.linkQr} target="_blank" rel="noopener noreferrer" className="underline">
+                Verificar ante la DIAN
               </a>
             </>
           ) : (

@@ -175,6 +175,22 @@ export async function registrarApartado(input: {
   return { error: null, apartadoId: apartadoId as string };
 }
 
+// Factus devuelve sus errores de validación campo por campo (ej.
+// { identification: ["El número de documento no es válido"] }) — esto los
+// junta en un texto legible, en vez de mostrar el JSON crudo o un mensaje
+// genérico que no dice cuál fue el problema real.
+function formatearErroresFactus(errores: unknown): string {
+  if (typeof errores === "string") return errores;
+  if (errores && typeof errores === "object") {
+    const partes = Object.entries(errores as Record<string, unknown>).map(([campo, valor]) => {
+      const texto = Array.isArray(valor) ? valor.join(", ") : String(valor);
+      return `${campo}: ${texto}`;
+    });
+    if (partes.length > 0) return partes.join(" | ");
+  }
+  return JSON.stringify(errores);
+}
+
 export type DocumentoFacturaInput = {
   // Código de tipo de documento de la DIAN — "13" cédula de ciudadanía o
   // "31" NIT. Son los dos realistas para una pyme vendiéndole a personas
@@ -345,16 +361,14 @@ export async function facturarVentaElectronicamente(
   }
 
   if (!resultado.exitosa) {
+    const detalle = formatearErroresFactus(resultado.errores);
     if (facturaPendiente) {
       await supabaseAdmin
         .from("facturas_electronicas")
-        .update({ estado: "rechazada", mensaje_error: JSON.stringify(resultado.errores) })
+        .update({ estado: "rechazada", mensaje_error: detalle })
         .eq("id", facturaPendiente.id);
     }
-    return {
-      ok: false,
-      error: "Factus rechazó la factura — revisa el documento del cliente e intenta de nuevo.",
-    };
+    return { ok: false, error: `Factus rechazó la factura: ${detalle}` };
   }
 
   if (facturaPendiente) {

@@ -291,38 +291,13 @@ export async function descargarXmlFactura(
   return { nombreArchivo: cuerpo.data.file_name, xmlBase64: cuerpo.data.xml_base_64_encoded };
 }
 
-// Hace que Factus mismo le mande la factura por correo al cliente, con la
-// representación gráfica dentro de un ZIP — confirmado contra la
-// documentación real (developers.factus.com.co/facturas/enviar-correo,
-// 2026-11-20), no adivinado: POST, cuerpo { email }, el correo de destino
-// va explícito ahí, Factus no asume el que quedó guardado en el cliente de
-// la factura. La documentación no muestra la forma de una respuesta
-// exitosa (solo el cuerpo del request) — por eso esta función no intenta
-// leer nada de vuelta, solo confirma que la llamada no haya fallado.
-// "numero" es el que asignó Factus (ej. "SETP990037334"), no el
-// reference_code propio de Datum.
-export async function enviarFacturaPorCorreo(
-  credenciales: CredencialesFactus,
-  numero: string,
-  email: string,
-): Promise<void> {
-  const baseUrl = variableRequerida("FACTUS_BASE_URL");
-  const token = await obtenerTokenFactus(credenciales);
-  const respuesta = await fetch(`${baseUrl}/v2/bills/${numero}/send-email`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ email }),
-  });
-  if (!respuesta.ok) {
-    // Se muestra el texto crudo de la respuesta (en vez de adivinar en qué
-    // campo viene el mensaje, ej. .message) porque esta llamada todavía no
-    // se ha confirmado contra el sandbox real — así se ve el motivo
-    // exacto en el primer intento, sin tener que adivinar dos veces.
-    const textoCrudo = await respuesta.text();
-    throw new Error(`Factus respondió ${respuesta.status}: ${textoCrudo || "(sin detalle)"}`);
-  }
-}
+// Nota histórica (2026-11-20): se probó un enviarFacturaPorCorreo() que le
+// pedía a FACTUS mandar el correo directo al cliente (POST
+// /v2/bills/{numero}/send-email). Funcionaba, pero el sandbox de Factus
+// rechaza cualquier correo de destino que no esté "autorizado" para ese
+// ambiente (sin documentar en ningún lado), así que no se pudo confirmar
+// la entrega real. Se reemplazó por completo: ahora Datum manda ese correo
+// con su propio Resend (enviarCorreoFacturaElectronica() en
+// src/lib/email.ts), adjuntando el PDF que se descarga con
+// descargarPdfFactura() de acá mismo — así el correo también sale con la
+// marca del negocio que vendió, no con la de Factus. Ver CLAUDE.md.

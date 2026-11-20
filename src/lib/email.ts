@@ -23,7 +23,23 @@ const formatoCOP = (valor: number) =>
 // landing.tsx) en SVG inline — Outlook de escritorio no lo soporta, así que
 // los comentarios [if mso]/[if !mso] lo reemplazan por el texto "Datum"
 // solo ahí, nunca un espacio roto.
-function tarjetaCorreoV2({ titulo, filas }: { titulo: string; filas: string }) {
+function tarjetaCorreoV2({
+  titulo,
+  filas,
+  pieTexto = "Cualquier cosa que necesites, aquí estamos.<br />— El equipo de Datum",
+  pieMarca = "Datum · Ecosistema de soluciones empresariales",
+}: {
+  titulo: string;
+  filas: string;
+  // Los 11 correos a clientes de Datum dejan el pie por defecto. El único
+  // caso que lo cambia hoy es enviarCorreoFacturaElectronica(), que le
+  // llega al CLIENTE FINAL de un cliente de Datum (ej. quien le compró a
+  // "Aseo Total") — a esa persona le interesa el negocio al que le
+  // compró, no Datum, así que ahí "Datum" pasa a ser solo una nota chica
+  // de "con qué tecnología se generó" en vez del protagonista del correo.
+  pieTexto?: string;
+  pieMarca?: string;
+}) {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f2f1eb; margin:0; padding:0;">
       <tr>
@@ -64,7 +80,7 @@ function tarjetaCorreoV2({ titulo, filas }: { titulo: string; filas: string }) {
             ${filas}
             <tr>
               <td style="padding:24px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:13px; line-height:1.6; color:#5b5d6e;">
-                Cualquier cosa que necesites, aquí estamos.<br />— El equipo de Datum
+                ${pieTexto}
               </td>
             </tr>
             <tr>
@@ -72,7 +88,7 @@ function tarjetaCorreoV2({ titulo, filas }: { titulo: string; filas: string }) {
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   <tr>
                     <td style="border-top:1px solid #e4e1d8; padding-top:16px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:11px; color:#9092a3;">
-                      Datum · Ecosistema de soluciones empresariales
+                      ${pieMarca}
                     </td>
                   </tr>
                 </table>
@@ -141,10 +157,16 @@ async function enviar({
   correo,
   asunto,
   html,
+  adjuntos,
 }: {
   correo: string;
   asunto: string;
   html: string;
+  // content en base64 — mismo formato en el que ya entregan
+  // descargarPdfFactura()/descargarXmlFactura() de src/lib/factus.ts, así
+  // que no hace falta ninguna conversión entre las dos (confirmado contra
+  // la documentación real de Resend: resend.com/docs/dashboard/emails/attachments).
+  adjuntos?: { filename: string; content: string }[];
 }): Promise<{ error: string | null }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -157,6 +179,7 @@ async function enviar({
     to: correo,
     subject: asunto,
     html,
+    ...(adjuntos ? { attachments: adjuntos } : {}),
   });
 
   if (error) return { error: error.message };
@@ -652,6 +675,79 @@ export async function enviarCorreoCambioPlan({
     correo,
     asunto: "Tu plan de Datum cambió",
     html: tarjetaCorreoV2({ titulo: "Tu plan cambió", filas }),
+  });
+}
+
+// Distinto a los 11 correos de arriba: esos le llegan a un CLIENTE DE
+// DATUM (quien paga la suscripción); este le llega al CLIENTE FINAL de
+// un cliente de Datum — quien le compró algo a, por ejemplo, "Aseo
+// Total" — así que la marca protagonista es la del negocio que vendió,
+// no Datum (decidido explícitamente con Andrés, 2026-11-20). Reemplaza la
+// idea original de que Factus mandara este correo directo (ver
+// CLAUDE.md, "Facturación electrónica — Factus"): Datum lo manda con su
+// propio Resend, con el PDF adjunto, así se evita además la restricción
+// del sandbox de Factus sobre a qué correos puede enviar.
+export async function enviarCorreoFacturaElectronica({
+  correo,
+  nombreEmpresa,
+  clienteNombre,
+  numeroFactura,
+  monto,
+  linkPublico,
+  linkQr,
+  pdfBase64,
+  nombreArchivoPdf,
+}: {
+  correo: string;
+  nombreEmpresa: string;
+  clienteNombre: string;
+  numeroFactura: string;
+  monto: number;
+  linkPublico: string;
+  linkQr: string;
+  pdfBase64: string;
+  nombreArchivoPdf: string;
+}): Promise<{ error: string | null }> {
+  const filas = `
+    <tr>
+      <td style="padding:16px 32px 0 32px; font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:15px; line-height:1.6; color:#14151f;">
+        Hola ${clienteNombre}, gracias por tu compra en <strong>${nombreEmpresa}</strong>. Aquí tienes tu factura electrónica, adjunta a este correo en PDF.
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:20px 32px 0 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f6f0; border-left:4px solid #e3a748; border-radius:0 8px 8px 0;" bgcolor="#f8f6f0">
+          <tr>
+            <td style="padding:16px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif; font-size:14px; color:#14151f;">
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Factura</td>
+                  <td style="padding:4px 0; font-weight:700;">#${numeroFactura}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0; color:#5b5d6e; width:44%;">Total</td>
+                  <td style="padding:4px 0; font-weight:700;">${formatoCOP(monto)}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    ${botonV2("Ver factura", linkPublico)}
+    ${botonSecundarioV2("Verificar ante la DIAN", linkQr)}
+  `;
+
+  return enviar({
+    correo,
+    asunto: `Tu factura electrónica de ${nombreEmpresa}`,
+    html: tarjetaCorreoV2({
+      titulo: `Tu factura de ${nombreEmpresa}`,
+      filas,
+      pieTexto: `Gracias por tu compra.<br />— ${nombreEmpresa}`,
+      pieMarca: "Factura electrónica generada con tecnología de Datum",
+    }),
+    adjuntos: [{ filename: nombreArchivoPdf, content: pdfBase64 }],
   });
 }
 

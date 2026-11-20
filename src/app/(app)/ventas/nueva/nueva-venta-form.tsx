@@ -604,7 +604,15 @@ export function NuevaVentaForm({
       setFecha(ahoraFecha());
       setHora(ahoraHora());
       setGuardando(false);
-      router.refresh();
+      // Con un pequeño retraso: router.refresh() vuelve a montar este
+      // formulario con los datos frescos del servidor (stock actualizado),
+      // y eso borra de inmediato el banner de "Venta agregada"/factura
+      // electrónica antes de que la persona llegue a leerlo o hacer clic en
+      // los enlaces. Los enlaces abren en pestaña nueva, así que una vez
+      // abiertos sobreviven sin importar qué le pase después a esta
+      // pantalla — solo hace falta darle un respiro para alcanzar a hacer
+      // clic.
+      setTimeout(() => router.refresh(), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la venta.");
       setGuardando(false);

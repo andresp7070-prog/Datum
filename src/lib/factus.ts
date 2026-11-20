@@ -131,6 +131,12 @@ export interface ClienteFactura {
   // catálogo, pero sin confirmar todavía contra una factura real con NIT
   // que sí se haya validado.
   legalOrganizationCode?: string;
+  // Razón social — también obligatorio cuando el cliente se identifica
+  // con NIT (confirmado probando el sandbox real, 2026-11-20). En
+  // nuestro formulario de Ventas solo hay un nombre de cliente (no se
+  // distingue "nombre de contacto" de "razón social"), así que se manda
+  // el mismo valor que "names".
+  company?: string;
 }
 
 export interface DetallePagoFactura {
@@ -216,6 +222,7 @@ export async function crearYValidarFacturaFactus(
         ...(input.customer.legalOrganizationCode
           ? { legal_organization_code: input.customer.legalOrganizationCode }
           : {}),
+        ...(input.customer.company ? { company: input.customer.company } : {}),
       },
       items: input.items.map((item) => ({
         code_reference: item.codeReference,

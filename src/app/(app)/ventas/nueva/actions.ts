@@ -404,6 +404,11 @@ export async function facturarVentaElectronicamente(
           // src/lib/factus.ts. "1" = Persona Jurídica, el supuesto más
           // razonable para un cliente identificado por NIT.
           legalOrganizationCode: documento.tipoDocumento === "31" ? "1" : undefined,
+          // Razón social — también exigido para NIT. Acá solo hay un
+          // nombre de cliente (no se distingue "contacto" de "razón
+          // social" en el formulario), así que se manda el mismo valor.
+          company:
+            documento.tipoDocumento === "31" ? venta.cliente_nombre ?? "Consumidor final" : undefined,
         },
         items: itemsFactura,
       },

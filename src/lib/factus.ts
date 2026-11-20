@@ -318,7 +318,11 @@ export async function enviarFacturaPorCorreo(
     body: JSON.stringify({ email }),
   });
   if (!respuesta.ok) {
-    const cuerpo = await respuesta.json().catch(() => null);
-    throw new Error(cuerpo?.message ?? "No se pudo enviar la factura por correo.");
+    // Se muestra el texto crudo de la respuesta (en vez de adivinar en qué
+    // campo viene el mensaje, ej. .message) porque esta llamada todavía no
+    // se ha confirmado contra el sandbox real — así se ve el motivo
+    // exacto en el primer intento, sin tener que adivinar dos veces.
+    const textoCrudo = await respuesta.text();
+    throw new Error(`Factus respondió ${respuesta.status}: ${textoCrudo || "(sin detalle)"}`);
   }
 }

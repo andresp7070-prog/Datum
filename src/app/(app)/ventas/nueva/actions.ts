@@ -238,6 +238,11 @@ export async function facturarVentaElectronicamente(
       // "sin_correo" cuando el cliente no dejó correo en Ventas (es
       // opcional) — no es un error, simplemente no había a quién enviarle.
       estadoCorreo: "enviado" | "fallido" | "sin_correo";
+      // Motivo real de Factus cuando estadoCorreo es "fallido" — se
+      // muestra tal cual en vez de un mensaje genérico, mismo criterio que
+      // formatearErroresFactus() para la factura misma. Útil mientras este
+      // envío no esté confirmado contra el sandbox real.
+      detalleErrorCorreo?: string;
     }
   | { ok: false; error: string }
 > {
@@ -458,6 +463,7 @@ export async function facturarVentaElectronicamente(
   // se le avisa a quien registró que el correo no salió, para que lo
   // reenvíe por otro medio si hace falta.
   let estadoCorreo: "enviado" | "fallido" | "sin_correo" = "sin_correo";
+  let detalleErrorCorreo: string | undefined;
   if (clienteEmail) {
     try {
       await enviarFacturaPorCorreo(
@@ -471,8 +477,9 @@ export async function facturarVentaElectronicamente(
         clienteEmail,
       );
       estadoCorreo = "enviado";
-    } catch {
+    } catch (err) {
       estadoCorreo = "fallido";
+      detalleErrorCorreo = err instanceof Error ? err.message : "Error desconocido.";
     }
   }
 
@@ -505,6 +512,7 @@ export async function facturarVentaElectronicamente(
     linkPublico: resultado.linkPublico,
     linkQr: resultado.linkQr,
     estadoCorreo,
+    detalleErrorCorreo,
   };
 }
 

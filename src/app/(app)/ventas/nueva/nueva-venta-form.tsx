@@ -183,6 +183,7 @@ export function NuevaVentaForm({
         linkPublico: string;
         linkQr: string;
         estadoCorreo: "enviado" | "fallido" | "sin_correo";
+        detalleErrorCorreo?: string;
       }
     | { ok: false; error: string }
     | null
@@ -1240,7 +1241,7 @@ export function NuevaVentaForm({
               {estadoFactura.estadoCorreo === "enviado"
                 ? " y enviada por correo al cliente"
                 : estadoFactura.estadoCorreo === "fallido"
-                  ? " — no se pudo enviar por correo, inténtalo por otro medio"
+                  ? ` — no se pudo enviar por correo (${estadoFactura.detalleErrorCorreo ?? "motivo desconocido"})`
                   : ""}
               .{" "}
               <a href={estadoFactura.linkPublico} target="_blank" rel="noopener noreferrer" className="underline">

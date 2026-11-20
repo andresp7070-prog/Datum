@@ -359,7 +359,17 @@ export async function facturarVentaElectronicamente(
       },
       {
         numberingRangeId: integracion.numbering_range_id,
-        referenceCode: String(venta.numero_venta ?? ventaId),
+        // El id (UUID) de la venta, no numero_venta — ver el hallazgo real
+        // en CLAUDE.md: numero_venta es un entero chiquito (1, 2, 3...) por
+        // empresa, y esta cuenta de sandbox la comparten desarrolladores de
+        // todo el mundo. Si Factus usa reference_code para evitar facturas
+        // duplicadas, un número tan simple choca fácil con el de cualquier
+        // otra prueba ajena, y Factus devuelve LA FACTURA QUE YA EXISTÍA con
+        // ese código en vez de crear una nueva — exactamente lo que
+        // explicaba por qué las facturas de prueba salían con datos de otra
+        // persona. El UUID de la venta es, en la práctica, único a nivel
+        // global, así que no corre ese riesgo.
+        referenceCode: ventaId,
         paymentDetails: [{ paymentForm: "1", paymentMethodCode: "10", amount: montoFactura }],
         customer: {
           identificationDocumentCode: documento.tipoDocumento,

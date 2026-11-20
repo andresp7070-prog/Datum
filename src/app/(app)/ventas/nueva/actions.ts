@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { crearYValidarFacturaFactus } from "@/lib/factus";
+import { crearYValidarFacturaFactus, enviarFacturaPorCorreo } from "@/lib/factus";
 
 export type ClienteEncontrado = {
   id: string;
@@ -230,7 +230,16 @@ export async function facturarVentaElectronicamente(
   clienteTelefono: string,
   clienteEmail: string,
 ): Promise<
-  { ok: true; numero: string; linkPublico: string; linkQr: string } | { ok: false; error: string }
+  | {
+      ok: true;
+      numero: string;
+      linkPublico: string;
+      linkQr: string;
+      // "sin_correo" cuando el cliente no dejó correo en Ventas (es
+      // opcional) — no es un error, simplemente no había a quién enviarle.
+      estadoCorreo: "enviado" | "fallido" | "sin_correo";
+    }
+  | { ok: false; error: string }
 > {
   const supabase = await createClient();
   const {
@@ -442,6 +451,31 @@ export async function facturarVentaElectronicamente(
       .eq("id", facturaPendiente.id);
   }
 
+  // Factus puede mandarle la factura por correo al cliente directamente —
+  // automático, solo si quedó un correo (es opcional en "Agregar venta").
+  // Si este paso falla, no se revierte nada de lo anterior: la factura YA
+  // quedó validada ante la DIAN, que es lo que importa legalmente — solo
+  // se le avisa a quien registró que el correo no salió, para que lo
+  // reenvíe por otro medio si hace falta.
+  let estadoCorreo: "enviado" | "fallido" | "sin_correo" = "sin_correo";
+  if (clienteEmail) {
+    try {
+      await enviarFacturaPorCorreo(
+        {
+          clientId: integracion.factus_client_id,
+          clientSecret: integracion.factus_client_secret,
+          username: integracion.factus_username,
+          password: integracion.factus_password,
+        },
+        resultado.numero,
+        clienteEmail,
+      );
+      estadoCorreo = "enviado";
+    } catch {
+      estadoCorreo = "fallido";
+    }
+  }
+
   // Guarda el documento en el contacto, para no volver a pedirlo la
   // próxima vez que compre y facture — todavía no hay ninguna pantalla
   // que lo PRELLENE sola (queda para un paso siguiente), pero el dato ya
@@ -465,7 +499,13 @@ export async function facturarVentaElectronicamente(
       .eq("id", venta.contacto_id);
   }
 
-  return { ok: true, numero: resultado.numero, linkPublico: resultado.linkPublico, linkQr: resultado.linkQr };
+  return {
+    ok: true,
+    numero: resultado.numero,
+    linkPublico: resultado.linkPublico,
+    linkQr: resultado.linkQr,
+    estadoCorreo,
+  };
 }
 
 export async function deshacerVenta(ventaId: string): Promise<{ error: string | null }> {

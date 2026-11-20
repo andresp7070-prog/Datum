@@ -290,3 +290,35 @@ export async function descargarXmlFactura(
   }
   return { nombreArchivo: cuerpo.data.file_name, xmlBase64: cuerpo.data.xml_base_64_encoded };
 }
+
+// Hace que Factus mismo le mande la factura por correo al cliente, con la
+// representación gráfica dentro de un ZIP — confirmado contra la
+// documentación real (developers.factus.com.co/facturas/enviar-correo,
+// 2026-11-20), no adivinado: POST, cuerpo { email }, el correo de destino
+// va explícito ahí, Factus no asume el que quedó guardado en el cliente de
+// la factura. La documentación no muestra la forma de una respuesta
+// exitosa (solo el cuerpo del request) — por eso esta función no intenta
+// leer nada de vuelta, solo confirma que la llamada no haya fallado.
+// "numero" es el que asignó Factus (ej. "SETP990037334"), no el
+// reference_code propio de Datum.
+export async function enviarFacturaPorCorreo(
+  credenciales: CredencialesFactus,
+  numero: string,
+  email: string,
+): Promise<void> {
+  const baseUrl = variableRequerida("FACTUS_BASE_URL");
+  const token = await obtenerTokenFactus(credenciales);
+  const respuesta = await fetch(`${baseUrl}/v2/bills/${numero}/send-email`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+  if (!respuesta.ok) {
+    const cuerpo = await respuesta.json().catch(() => null);
+    throw new Error(cuerpo?.message ?? "No se pudo enviar la factura por correo.");
+  }
+}

@@ -177,7 +177,13 @@ export function NuevaVentaForm({
   const [tipoDocumento, setTipoDocumento] = useState(TIPOS_DOCUMENTO[0].value);
   const [numeroDocumento, setNumeroDocumento] = useState("");
   const [estadoFactura, setEstadoFactura] = useState<
-    | { ok: true; numero: string; linkPublico: string; linkQr: string }
+    | {
+        ok: true;
+        numero: string;
+        linkPublico: string;
+        linkQr: string;
+        estadoCorreo: "enviado" | "fallido" | "sin_correo";
+      }
     | { ok: false; error: string }
     | null
   >(null);
@@ -1230,7 +1236,13 @@ export function NuevaVentaForm({
         >
           {estadoFactura.ok ? (
             <>
-              Factura electrónica #{estadoFactura.numero} generada.{" "}
+              Factura electrónica #{estadoFactura.numero} generada
+              {estadoFactura.estadoCorreo === "enviado"
+                ? " y enviada por correo al cliente"
+                : estadoFactura.estadoCorreo === "fallido"
+                  ? " — no se pudo enviar por correo, inténtalo por otro medio"
+                  : ""}
+              .{" "}
               <a href={estadoFactura.linkPublico} target="_blank" rel="noopener noreferrer" className="underline">
                 Ver factura
               </a>{" "}

@@ -49,5 +49,13 @@ export async function activarFacturacionElectronica(
     return { ok: false, error: `No se pudo activar: ${error.message}` };
   }
 
+  // Copia de estado = 'activa' en empresas, para que "Agregar venta" (la
+  // pantalla más visitada) pueda mostrar el check sin leer esta tabla —
+  // ver schema.sql, "CHECK DE 'FACTURAR ELECTRÓNICAMENTE' EN AGREGAR VENTA".
+  await supabase
+    .from("empresas")
+    .update({ factura_electronica_activa: true })
+    .eq("id", perfil.empresa_id);
+
   redirect("/facturacion-electronica");
 }

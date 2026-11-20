@@ -3,20 +3,22 @@
 // contra la API REST de Factus (fetch directo, sin SDK), mismo criterio
 // que src/lib/wompi.ts y src/lib/google.ts.
 //
-// Cinco variables de entorno, todavía sin poner en Vercel (ver
-// CLAUDE.md, "Pendientes" — el siguiente paso es ponerlas ahí cuando se
-// empiece a conectar esto a una pantalla real):
-// - FACTUS_BASE_URL — distinta por ambiente, mismo criterio que
-//   NEXT_PUBLIC_SUPABASE_URL: en Preview, la de sandbox
+// Corregido 2026-11-20: este archivo se escribió antes de confirmar que
+// Factus es una cuenta por NIT (ver CLAUDE.md) — por eso originalmente
+// leía client_id/client_secret/username/password de variables de entorno
+// globales. Eso ya no aplica: esas cuatro credenciales son por EMPRESA
+// (viven en integraciones_factus), así que ahora las recibe como
+// parámetro quien llame estas funciones — nunca las lee de process.env.
+//
+// Solo una variable de entorno de verdad global, porque sí es un dato de
+// AMBIENTE (igual que NEXT_PUBLIC_SUPABASE_URL), no de una empresa en
+// particular:
+// - FACTUS_BASE_URL — en Preview, la de sandbox
 //   (https://api-sandbox.factus.com.co); en producción, la real
-//   (https://api.factus.com.co). A diferencia de Wompi, las
-//   credenciales de Factus no traen ningún prefijo que permita adivinar
-//   el ambiente solo mirándolas, así que acá sí hace falta leer el host
-//   de una variable aparte, en vez de calcularlo.
-// - FACTUS_CLIENT_ID
-// - FACTUS_CLIENT_SECRET
-// - FACTUS_USERNAME — el correo de la cuenta de Factus
-// - FACTUS_PASSWORD
+//   (https://api.factus.com.co). A diferencia de Wompi, las credenciales
+//   de Factus no traen ningún prefijo que permita adivinar el ambiente
+//   solo mirándolas, así que acá sí hace falta leer el host de una
+//   variable aparte, en vez de calcularlo.
 //
 // Todo lo de este archivo quedó confirmado contra el sandbox real
 // (2026-11-17) creando y validando una factura completa de punta a
@@ -50,22 +52,32 @@ function variableRequerida(nombre: string): string {
   return valor;
 }
 
+// Las 4 credenciales de la cuenta de Factus de UNA empresa — vienen de
+// integraciones_factus, nunca de una variable de entorno (ver el
+// comentario de cabecera de este archivo).
+export interface CredencialesFactus {
+  clientId: string;
+  clientSecret: string;
+  username: string;
+  password: string;
+}
+
 // Pide un token nuevo cada vez que se llama, sin cachearlo entre
 // llamadas — mismo criterio que obtenerTokensAceptacionWompi() en
 // wompi.ts: más simple que mantener un caché, y el token dura 1 hora
 // (confirmado contra el sandbox real, 2026-11-17), tiempo de sobra para
 // cualquier operación puntual de este archivo.
-async function obtenerTokenFactus(): Promise<string> {
+async function obtenerTokenFactus(credenciales: CredencialesFactus): Promise<string> {
   const baseUrl = variableRequerida("FACTUS_BASE_URL");
   const respuesta = await fetch(`${baseUrl}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "password",
-      client_id: variableRequerida("FACTUS_CLIENT_ID"),
-      client_secret: variableRequerida("FACTUS_CLIENT_SECRET"),
-      username: variableRequerida("FACTUS_USERNAME"),
-      password: variableRequerida("FACTUS_PASSWORD"),
+      client_id: credenciales.clientId,
+      client_secret: credenciales.clientSecret,
+      username: credenciales.username,
+      password: credenciales.password,
     }),
   });
   const cuerpo = await respuesta.json();
@@ -165,10 +177,11 @@ export interface FacturaFactusFallida {
 // Crea y valida una factura electrónica — Factus la firma y transmite a
 // la DIAN en esta misma llamada (no es un borrador, ver CLAUDE.md).
 export async function crearYValidarFacturaFactus(
+  credenciales: CredencialesFactus,
   input: FacturaFactusInput,
 ): Promise<FacturaFactusExitosa | FacturaFactusFallida> {
   const baseUrl = variableRequerida("FACTUS_BASE_URL");
-  const token = await obtenerTokenFactus();
+  const token = await obtenerTokenFactus(credenciales);
 
   const respuesta = await fetch(`${baseUrl}/v2/bills/validate`, {
     method: "POST",
@@ -228,10 +241,11 @@ export async function crearYValidarFacturaFactus(
 // lado de quien llame esta función. "numero" es el que asignó Factus
 // (ej. "SETP990037334"), no el reference_code propio de Datum.
 export async function descargarPdfFactura(
+  credenciales: CredencialesFactus,
   numero: string,
 ): Promise<{ nombreArchivo: string; pdfBase64: string }> {
   const baseUrl = variableRequerida("FACTUS_BASE_URL");
-  const token = await obtenerTokenFactus();
+  const token = await obtenerTokenFactus(credenciales);
   const respuesta = await fetch(`${baseUrl}/v2/bills/${numero}/download-pdf`, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   });
@@ -245,10 +259,11 @@ export async function descargarPdfFactura(
 // Mismo patrón que descargarPdfFactura(), confirmado igual contra el
 // sandbox real.
 export async function descargarXmlFactura(
+  credenciales: CredencialesFactus,
   numero: string,
 ): Promise<{ nombreArchivo: string; xmlBase64: string }> {
   const baseUrl = variableRequerida("FACTUS_BASE_URL");
-  const token = await obtenerTokenFactus();
+  const token = await obtenerTokenFactus(credenciales);
   const respuesta = await fetch(`${baseUrl}/v2/bills/${numero}/download-xml`, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   });

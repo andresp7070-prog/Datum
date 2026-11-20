@@ -13,8 +13,14 @@ import {
   deshacerVenta,
   registrarApartado,
   obtenerProgresoFidelidad,
+  facturarVentaElectronicamente,
   type ClienteEncontrado,
 } from "./actions";
+
+const TIPOS_DOCUMENTO = [
+  { value: "13", label: "Cédula de ciudadanía" },
+  { value: "31", label: "NIT" },
+];
 
 const SEGUNDOS_PARA_DESHACER = 60;
 
@@ -136,6 +142,7 @@ export function NuevaVentaForm({
   crmActivo,
   puntoVentaId = null,
   permiteApartados = false,
+  facturaElectronicaActiva = false,
 }: {
   items: ItemCatalogo[];
   sugerenciasProductos: string[];
@@ -145,6 +152,7 @@ export function NuevaVentaForm({
   crmActivo: boolean;
   puntoVentaId?: string | null;
   permiteApartados?: boolean;
+  facturaElectronicaActiva?: boolean;
 }) {
   const router = useRouter();
 
@@ -163,6 +171,13 @@ export function NuevaVentaForm({
   const [sugerencias, setSugerencias] = useState<ClienteEncontrado[]>([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   const [busquedaClienteLista, setBusquedaClienteLista] = useState(false);
+
+  const [facturarElectronicamente, setFacturarElectronicamente] = useState(false);
+  const [tipoDocumento, setTipoDocumento] = useState(TIPOS_DOCUMENTO[0].value);
+  const [numeroDocumento, setNumeroDocumento] = useState("");
+  const [estadoFactura, setEstadoFactura] = useState<
+    { ok: true; numero: string; linkPublico: string } | { ok: false; error: string } | null
+  >(null);
 
   const [lineas, setLineas] = useState<LineaVenta[]>([nuevaLinea()]);
 
@@ -363,6 +378,7 @@ export function NuevaVentaForm({
   async function guardar() {
     setError(null);
     setUltimaVenta(null);
+    setEstadoFactura(null);
 
     const lineasValidas = lineas.filter(
       (linea): linea is LineaVenta & { cantidad: number } =>
@@ -410,6 +426,10 @@ export function NuevaVentaForm({
         setError("El correo es obligatorio y debe ser válido.");
         return;
       }
+    }
+    if (facturaElectronicaActiva && facturarElectronicamente && !numeroDocumento.trim()) {
+      setError("El número de documento del cliente es obligatorio para facturar electrónicamente.");
+      return;
     }
     if (esApartado) {
       const abonoNum = Number(abonoInicial) || 0;
@@ -549,6 +569,26 @@ export function NuevaVentaForm({
           id: resultado.ventaId,
           venceEn: Date.now() + SEGUNDOS_PARA_DESHACER * 1000,
         });
+
+        // Segundo paso, aparte de guardar la venta de siempre — si esto
+        // falla, la venta ya quedó guardada igual, nunca se revierte por
+        // esto (ver CLAUDE.md).
+        if (facturaElectronicaActiva && facturarElectronicamente) {
+          try {
+            const resultadoFactura = await facturarVentaElectronicamente(
+              resultado.ventaId,
+              { tipoDocumento, numeroDocumento: numeroDocumento.trim() },
+              telefono.trim(),
+              email.trim(),
+            );
+            setEstadoFactura(resultadoFactura);
+          } catch (err) {
+            setEstadoFactura({
+              ok: false,
+              error: err instanceof Error ? err.message : "No se pudo facturar electrónicamente.",
+            });
+          }
+        }
       }
       setLineas([nuevaLinea()]);
       setNombre("");
@@ -557,6 +597,8 @@ export function NuevaVentaForm({
       setContactoId(null);
       setSugerencias([]);
       setBusquedaClienteLista(false);
+      setFacturarElectronicamente(false);
+      setNumeroDocumento("");
       setFecha(ahoraFecha());
       setHora(ahoraHora());
       setGuardando(false);
@@ -632,6 +674,51 @@ export function NuevaVentaForm({
           />
         </div>
       </div>
+
+      {facturaElectronicaActiva && (
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={facturarElectronicamente}
+              onChange={(e) => setFacturarElectronicamente(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>Facturar electrónicamente (DIAN) — $99 COP por esta venta.</span>
+          </label>
+          {facturarElectronicamente && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Tipo de documento *
+                </label>
+                <select
+                  value={tipoDocumento}
+                  onChange={(e) => setTipoDocumento(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                >
+                  {TIPOS_DOCUMENTO.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Número de documento *
+                </label>
+                <input
+                  value={numeroDocumento}
+                  onChange={(e) => setNumeroDocumento(e.target.value.replace(/\D/g, ""))}
+                  inputMode="numeric"
+                  className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 
@@ -1109,6 +1196,25 @@ export function NuevaVentaForm({
             >
               {deshaciendo ? "Deshaciendo..." : `Deshacer (${segundosRestantes}s)`}
             </button>
+          )}
+        </div>
+      )}
+
+      {estadoFactura && (
+        <div
+          className={`mb-4 rounded-lg px-3 py-2 text-sm ${
+            estadoFactura.ok ? "bg-amber-600/10 text-amber-700" : "bg-red-50 text-red-700"
+          }`}
+        >
+          {estadoFactura.ok ? (
+            <>
+              Factura electrónica #{estadoFactura.numero} generada.{" "}
+              <a href={estadoFactura.linkPublico} target="_blank" rel="noopener noreferrer" className="underline">
+                Ver factura
+              </a>
+            </>
+          ) : (
+            <>No se pudo facturar electrónicamente: {estadoFactura.error}</>
           )}
         </div>
       )}

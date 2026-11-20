@@ -30,13 +30,18 @@ export default async function NuevaVentaPage() {
     obtenerContextoPunto(supabase, perfil.empresa_id, perfil.punto_venta_id),
     supabase
       .from("empresas")
-      .select("metodos_pago_disponibles, modulos_activos, permite_apartados")
+      .select("metodos_pago_disponibles, modulos_activos, permite_apartados, factura_electronica_activa")
       .eq("id", perfil.empresa_id)
       .single(),
   ]);
 
   const crmActivo = (empresa?.modulos_activos ?? []).includes("crm");
   const inventarioActivo = (empresa?.modulos_activos ?? []).includes("inventario");
+  // El check de "Facturar electrónicamente" solo tiene sentido si además
+  // hay CRM activo — es ahí donde se piden los datos del cliente que
+  // Factus exige (nombre, y el documento que se agrega junto al check).
+  // Ver CLAUDE.md para el detalle de este alcance.
+  const facturaElectronicaActiva = Boolean(empresa?.factura_electronica_activa) && crmActivo;
   // permite_apartados no depende de tener el módulo de Inventario contratado
   // — son cosas aparte. Una empresa sin Inventario (ej. Manantial) arma un
   // apartado exactamente igual que una venta normal sin catálogo: nombre y
@@ -69,6 +74,7 @@ export default async function NuevaVentaPage() {
         crmActivo={crmActivo}
         puntoVentaId={puntoSeleccionado}
         permiteApartados={permiteApartados}
+        facturaElectronicaActiva={facturaElectronicaActiva}
       />
     );
   }
@@ -165,6 +171,7 @@ export default async function NuevaVentaPage() {
       crmActivo={crmActivo}
       puntoVentaId={puntoSeleccionado}
       permiteApartados={permiteApartados}
+      facturaElectronicaActiva={facturaElectronicaActiva}
     />
   );
 }

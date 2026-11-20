@@ -4284,3 +4284,14 @@ create policy "solo admin ve integraciones de factus" on integraciones_factus
 -- /admin/clientes/[id] ("Activar"/"Desactivar"), nunca sola — por defecto
 -- true, así que ninguna empresa existente queda afectada por este cambio.
 alter table empresas add column if not exists activa boolean not null default true;
+
+-- ============================================================
+-- CHECK DE "FACTURAR ELECTRÓNICAMENTE" EN AGREGAR VENTA (agregado 2026-11-20)
+-- ============================================================
+-- Copia de integraciones_factus.estado = 'activa', puesta aquí a propósito
+-- (en vez de consultar esa tabla directamente) porque "Agregar venta" es
+-- la pantalla más visitada de toda la app — así el check se decide leyendo
+-- empresas (ya se lee siempre, con RLS normal), sin una consulta extra ni
+-- la llave de servicio en cada carga de esa pantalla. Se prende sola en
+-- activarFacturacionElectronica() cuando el cliente activa el servicio.
+alter table empresas add column if not exists factura_electronica_activa boolean not null default false;

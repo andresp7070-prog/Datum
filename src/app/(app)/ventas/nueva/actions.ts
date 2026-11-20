@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { crearYValidarFacturaFactus } from "@/lib/factus";
 
 export type ClienteEncontrado = {
   id: string;
@@ -171,6 +173,200 @@ export async function registrarApartado(input: {
 
   if (error) return { error: error.message };
   return { error: null, apartadoId: apartadoId as string };
+}
+
+export type DocumentoFacturaInput = {
+  // Código de tipo de documento de la DIAN — "13" cédula de ciudadanía o
+  // "31" NIT. Son los dos realistas para una pyme vendiéndole a personas
+  // o a otras empresas; si hace falta otro, se agrega cuando se presente.
+  tipoDocumento: string;
+  numeroDocumento: string;
+};
+
+// Factura electrónicamente una venta YA guardada — segundo paso, aparte
+// de guardarVenta(), nunca mezclado con ese: si esto falla, la venta ya
+// quedada guardada igual, nunca se revierte por esto (ver CLAUDE.md).
+export async function facturarVentaElectronicamente(
+  ventaId: string,
+  documento: DocumentoFacturaInput,
+  clienteTelefono: string,
+  clienteEmail: string,
+): Promise<
+  { ok: true; numero: string; linkPublico: string } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No hay sesión activa." };
+
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("empresa_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!perfil?.empresa_id) {
+    return { ok: false, error: "Tu usuario no tiene una empresa asignada." };
+  }
+
+  // Nunca confiar solo en que el check se mostró en el formulario — se
+  // vuelve a confirmar del lado del servidor, mismo criterio que
+  // requerirModulo() en src/lib/empresa.ts.
+  const [{ data: empresa }, { data: venta }, { data: itemsVenta }] = await Promise.all([
+    supabase
+      .from("empresas")
+      .select("factura_electronica_activa")
+      .eq("id", perfil.empresa_id)
+      .single(),
+    supabase
+      .from("ventas")
+      .select("numero_venta, monto, cliente_nombre, contacto_id")
+      .eq("id", ventaId)
+      .eq("empresa_id", perfil.empresa_id)
+      .single(),
+    supabase
+      .from("ventas_items")
+      .select("id, item_id, nombre_libre, cantidad, precio_unitario")
+      .eq("venta_id", ventaId),
+  ]);
+
+  if (!empresa?.factura_electronica_activa) {
+    return { ok: false, error: "Facturación electrónica no está activa para tu empresa." };
+  }
+  if (!venta) {
+    return { ok: false, error: "No se encontró la venta." };
+  }
+  if (!itemsVenta || itemsVenta.length === 0) {
+    return { ok: false, error: "La venta no tiene productos para facturar." };
+  }
+
+  // Los nombres de los productos del catálogo no viven en ventas_items
+  // (solo precio/costo quedan congelados ahí) — se resuelven aparte, para
+  // no depender de cómo tipe Supabase una relación anidada.
+  const idsCatalogo = itemsVenta
+    .map((item) => item.item_id)
+    .filter((id): id is string => Boolean(id));
+  const { data: catalogo } =
+    idsCatalogo.length > 0
+      ? await supabase.from("inventario_items").select("id, nombre").in("id", idsCatalogo)
+      : { data: [] as { id: string; nombre: string }[] };
+  const nombrePorItem = new Map((catalogo ?? []).map((c) => [c.id, c.nombre]));
+
+  // integraciones_factus guarda las credenciales de la cuenta de Factus de
+  // ESTA empresa — RLS "solo admin", la sesión normal del cliente no puede
+  // leerla. Octavo uso legítimo de la llave de servicio (ver
+  // src/lib/supabase/admin.ts).
+  const supabaseAdmin = createAdminClient();
+  const { data: integracion } = await supabaseAdmin
+    .from("integraciones_factus")
+    .select(
+      "estado, numbering_range_id, factus_client_id, factus_client_secret, factus_username, factus_password",
+    )
+    .eq("empresa_id", perfil.empresa_id)
+    .maybeSingle();
+
+  if (
+    !integracion ||
+    integracion.estado !== "activa" ||
+    !integracion.numbering_range_id ||
+    !integracion.factus_client_id ||
+    !integracion.factus_client_secret ||
+    !integracion.factus_username ||
+    !integracion.factus_password
+  ) {
+    return { ok: false, error: "Facturación electrónica no está configurada correctamente." };
+  }
+
+  // Fila 'pendiente' puesta ANTES de llamar a Factus — si la función se
+  // cae a mitad de camino, queda el registro de que se intentó (ver
+  // schema.sql, tabla facturas_electronicas).
+  const { data: facturaPendiente } = await supabaseAdmin
+    .from("facturas_electronicas")
+    .insert({ venta_id: ventaId, estado: "pendiente" })
+    .select("id")
+    .single();
+
+  // Valores genéricos del catálogo de la DIAN, confirmados contra el
+  // sandbox real de Factus (ver src/lib/factus.ts) — pendiente confirmar
+  // con Andrés antes de facturarle a un cliente real que pague con algo
+  // distinto a efectivo, o que sea una empresa (NIT) en vez de una
+  // persona natural.
+  const resultado = await crearYValidarFacturaFactus(
+    {
+      clientId: integracion.factus_client_id,
+      clientSecret: integracion.factus_client_secret,
+      username: integracion.factus_username,
+      password: integracion.factus_password,
+    },
+    {
+      numberingRangeId: integracion.numbering_range_id,
+      referenceCode: String(venta.numero_venta ?? ventaId),
+      paymentDetails: [{ paymentForm: "1", paymentMethodCode: "10", amount: Number(venta.monto) }],
+      customer: {
+        identificationDocumentCode: documento.tipoDocumento,
+        identification: documento.numeroDocumento,
+        names: venta.cliente_nombre ?? "Consumidor final",
+        responsibilities: ["R-99-PN"],
+        email: clienteEmail || undefined,
+        phone: clienteTelefono || undefined,
+      },
+      items: itemsVenta.map((item) => ({
+        codeReference: item.id,
+        name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
+        quantity: Number(item.cantidad),
+        price: Number(item.precio_unitario),
+        unitMeasureCode: "94",
+        standardCode: "1",
+        taxes: [{ code: "01", rate: 19 }],
+      })),
+    },
+  );
+
+  if (!resultado.exitosa) {
+    if (facturaPendiente) {
+      await supabaseAdmin
+        .from("facturas_electronicas")
+        .update({ estado: "rechazada", mensaje_error: JSON.stringify(resultado.errores) })
+        .eq("id", facturaPendiente.id);
+    }
+    return {
+      ok: false,
+      error: "Factus rechazó la factura — revisa el documento del cliente e intenta de nuevo.",
+    };
+  }
+
+  if (facturaPendiente) {
+    await supabaseAdmin
+      .from("facturas_electronicas")
+      .update({ estado: "validada", numero_factus: resultado.numero, cufe: resultado.cufe })
+      .eq("id", facturaPendiente.id);
+  }
+
+  // Guarda el documento en el contacto, para no volver a pedirlo la
+  // próxima vez que compre y facture — todavía no hay ninguna pantalla
+  // que lo PRELLENE sola (queda para un paso siguiente), pero el dato ya
+  // queda disponible desde ahora. Sesión normal: RLS ya limita esto a la
+  // propia empresa.
+  if (venta.contacto_id) {
+    const { data: contacto } = await supabase
+      .from("crm_contactos")
+      .select("atributos")
+      .eq("id", venta.contacto_id)
+      .single();
+    await supabase
+      .from("crm_contactos")
+      .update({
+        atributos: {
+          ...(contacto?.atributos ?? {}),
+          tipo_documento: documento.tipoDocumento,
+          numero_documento: documento.numeroDocumento,
+        },
+      })
+      .eq("id", venta.contacto_id);
+  }
+
+  return { ok: true, numero: resultado.numero, linkPublico: resultado.linkPublico };
 }
 
 export async function deshacerVenta(ventaId: string): Promise<{ error: string | null }> {

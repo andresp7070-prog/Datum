@@ -292,36 +292,57 @@ export async function facturarVentaElectronicamente(
   // con Andrés antes de facturarle a un cliente real que pague con algo
   // distinto a efectivo, o que sea una empresa (NIT) en vez de una
   // persona natural.
-  const resultado = await crearYValidarFacturaFactus(
-    {
-      clientId: integracion.factus_client_id,
-      clientSecret: integracion.factus_client_secret,
-      username: integracion.factus_username,
-      password: integracion.factus_password,
-    },
-    {
-      numberingRangeId: integracion.numbering_range_id,
-      referenceCode: String(venta.numero_venta ?? ventaId),
-      paymentDetails: [{ paymentForm: "1", paymentMethodCode: "10", amount: Number(venta.monto) }],
-      customer: {
-        identificationDocumentCode: documento.tipoDocumento,
-        identification: documento.numeroDocumento,
-        names: venta.cliente_nombre ?? "Consumidor final",
-        responsibilities: ["R-99-PN"],
-        email: clienteEmail || undefined,
-        phone: clienteTelefono || undefined,
+  //
+  // Esta llamada sí puede LANZAR una excepción (no solo devolver
+  // "exitosa: false") — ej. si falta la variable de entorno
+  // FACTUS_BASE_URL, o si las credenciales de esta empresa en
+  // integraciones_factus no sirven para conectar con Factus
+  // (obtenerTokenFactus() en src/lib/factus.ts lanza en ambos casos). Sin
+  // este try/catch, esa excepción se escapaba del Server Action y Next.js
+  // la mostraba como un mensaje genérico ("Server Components render...",
+  // sin detalle) — nunca decía cuál de las dos cosas había fallado.
+  let resultado: Awaited<ReturnType<typeof crearYValidarFacturaFactus>>;
+  try {
+    resultado = await crearYValidarFacturaFactus(
+      {
+        clientId: integracion.factus_client_id,
+        clientSecret: integracion.factus_client_secret,
+        username: integracion.factus_username,
+        password: integracion.factus_password,
       },
-      items: itemsVenta.map((item) => ({
-        codeReference: item.id,
-        name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
-        quantity: Number(item.cantidad),
-        price: Number(item.precio_unitario),
-        unitMeasureCode: "94",
-        standardCode: "1",
-        taxes: [{ code: "01", rate: 19 }],
-      })),
-    },
-  );
+      {
+        numberingRangeId: integracion.numbering_range_id,
+        referenceCode: String(venta.numero_venta ?? ventaId),
+        paymentDetails: [{ paymentForm: "1", paymentMethodCode: "10", amount: Number(venta.monto) }],
+        customer: {
+          identificationDocumentCode: documento.tipoDocumento,
+          identification: documento.numeroDocumento,
+          names: venta.cliente_nombre ?? "Consumidor final",
+          responsibilities: ["R-99-PN"],
+          email: clienteEmail || undefined,
+          phone: clienteTelefono || undefined,
+        },
+        items: itemsVenta.map((item) => ({
+          codeReference: item.id,
+          name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
+          quantity: Number(item.cantidad),
+          price: Number(item.precio_unitario),
+          unitMeasureCode: "94",
+          standardCode: "1",
+          taxes: [{ code: "01", rate: 19 }],
+        })),
+      },
+    );
+  } catch (err) {
+    const mensaje = err instanceof Error ? err.message : "No se pudo conectar con Factus.";
+    if (facturaPendiente) {
+      await supabaseAdmin
+        .from("facturas_electronicas")
+        .update({ estado: "rechazada", mensaje_error: mensaje })
+        .eq("id", facturaPendiente.id);
+    }
+    return { ok: false, error: mensaje };
+  }
 
   if (!resultado.exitosa) {
     if (facturaPendiente) {

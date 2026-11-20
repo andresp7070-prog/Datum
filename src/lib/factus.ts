@@ -124,6 +124,13 @@ export interface ClienteFactura {
   email?: string;
   phone?: string;
   address?: string;
+  // Código de "tipo de organización jurídica" del catálogo de la DIAN —
+  // obligatorio cuando el cliente se identifica con NIT (confirmado
+  // probando el sandbox real, 2026-11-20: Factus lo rechaza sin esto).
+  // "1" = Persona Jurídica, "2" = Persona Natural — valores estándar del
+  // catálogo, pero sin confirmar todavía contra una factura real con NIT
+  // que sí se haya validado.
+  legalOrganizationCode?: string;
 }
 
 export interface DetallePagoFactura {
@@ -206,6 +213,9 @@ export async function crearYValidarFacturaFactus(
         ...(input.customer.email ? { email: input.customer.email } : {}),
         ...(input.customer.phone ? { phone: input.customer.phone } : {}),
         ...(input.customer.address ? { address: input.customer.address } : {}),
+        ...(input.customer.legalOrganizationCode
+          ? { legal_organization_code: input.customer.legalOrganizationCode }
+          : {}),
       },
       items: input.items.map((item) => ({
         code_reference: item.codeReference,

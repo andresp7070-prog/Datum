@@ -400,6 +400,10 @@ export async function facturarVentaElectronicamente(
           responsibilities: ["R-99-PN"],
           email: clienteEmail || undefined,
           phone: clienteTelefono || undefined,
+          // Factus lo exige cuando el documento es NIT ("31") — ver
+          // src/lib/factus.ts. "1" = Persona Jurídica, el supuesto más
+          // razonable para un cliente identificado por NIT.
+          legalOrganizationCode: documento.tipoDocumento === "31" ? "1" : undefined,
         },
         items: itemsFactura,
       },

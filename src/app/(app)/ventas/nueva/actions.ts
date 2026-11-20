@@ -268,7 +268,7 @@ export async function facturarVentaElectronicamente(
   const [{ data: empresa }, { data: venta }, { data: itemsVenta }] = await Promise.all([
     supabase
       .from("empresas")
-      .select("factura_electronica_activa")
+      .select("factura_electronica_activa, responsable_iva")
       .eq("id", perfil.empresa_id)
       .single(),
     supabase
@@ -285,6 +285,17 @@ export async function facturarVentaElectronicamente(
 
   if (!empresa?.factura_electronica_activa) {
     return { ok: false, error: "Facturación electrónica no está activa para tu empresa." };
+  }
+  // Nunca se asume ni true ni false por defecto — si nadie lo configuró
+  // todavía (null), no se deja facturar. Ver CLAUDE.md: activarlo con el
+  // valor equivocado no sería solo un número mal calculado, sería una
+  // factura electrónica ante la DIAN con un impuesto que no le
+  // corresponde a esa empresa.
+  if (empresa.responsable_iva === null) {
+    return {
+      ok: false,
+      error: "Esta empresa todavía no tiene configurado si es responsable de IVA — contáctanos para activarlo.",
+    };
   }
   if (!venta) {
     return { ok: false, error: "No se encontró la venta." };
@@ -342,32 +353,43 @@ export async function facturarVentaElectronicamente(
   // El precio cargado en Datum (ventas_items.precio_unitario) ya incluye
   // el IVA — confirmado con Andrés, 2026-11-20, es el precio final que de
   // verdad cobra el negocio, como es lo normal en Colombia para
-  // consumidor final. Factus, en cambio, espera el precio SIN IVA y él
-  // mismo suma el 19% declarado en "taxes" para calcular el total — sin
-  // este ajuste, Factus termina sumando IVA encima de un precio que ya lo
-  // tenía, y el total que calcula no cuadra con lo que de verdad se cobró
-  // (lo descubrimos probando: $70 cargados → Factus esperaba $83,30).
+  // consumidor final — PERO solo si la empresa es responsable de IVA. Si
+  // no lo es (empresa.responsable_iva === false, ya validado arriba que
+  // no es null), nunca hubo IVA que restar, y la factura se manda
+  // marcada como excluida en vez de con el impuesto 01 al 19% (ver
+  // isExcluded en src/lib/factus.ts). Para una responsable, Factus espera
+  // el precio SIN IVA y él mismo suma el 19% declarado en "taxes" para
+  // calcular el total — sin ese ajuste, Factus termina sumando IVA
+  // encima de un precio que ya lo tenía (lo descubrimos probando: $70
+  // cargados → Factus esperaba $83,30).
   const IVA_FACTURA = 0.19;
+  const responsableIva = empresa.responsable_iva === true;
   const itemsFactura = itemsVenta.map((item) => {
     const precioConIva = Number(item.precio_unitario);
-    const precioSinIva = Math.round((precioConIva / (1 + IVA_FACTURA)) * 100) / 100;
+    const price = responsableIva
+      ? Math.round((precioConIva / (1 + IVA_FACTURA)) * 100) / 100
+      : precioConIva;
     return {
       codeReference: item.id,
       name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
       quantity: Number(item.cantidad),
-      price: precioSinIva,
+      price,
       unitMeasureCode: "94",
       standardCode: "1",
-      taxes: [{ code: "01", rate: 19 }],
+      taxes: responsableIva ? [{ code: "01", rate: 19 }] : [{ isExcluded: true }],
     };
   });
   // El monto de payment_details tiene que cuadrar EXACTO con lo que Factus
-  // calcula a partir de estos mismos items (base + IVA) — no alcanza con
-  // reusar venta.monto directo, porque redondear el precio sin IVA a 2
-  // decimales por ítem puede desviarlo unos centavos del total original.
+  // calcula a partir de estos mismos items (base + IVA si aplica) — no
+  // alcanza con reusar venta.monto directo, porque redondear el precio
+  // sin IVA a 2 decimales por ítem puede desviarlo unos centavos del
+  // total original.
   const montoFactura =
     Math.round(
-      itemsFactura.reduce((suma, item) => suma + item.price * item.quantity * (1 + IVA_FACTURA), 0) * 100,
+      itemsFactura.reduce(
+        (suma, item) => suma + item.price * item.quantity * (responsableIva ? 1 + IVA_FACTURA : 1),
+        0,
+      ) * 100,
     ) / 100;
 
   // Valores genéricos del catálogo de la DIAN, confirmados contra el

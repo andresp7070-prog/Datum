@@ -15,7 +15,7 @@ export default async function FactusClientePage({
   const supabase = await createClient();
 
   const [{ data: empresa }, { data: integracion }] = await Promise.all([
-    supabase.from("empresas").select("id, nombre").eq("id", id).maybeSingle(),
+    supabase.from("empresas").select("id, nombre, responsable_iva").eq("id", id).maybeSingle(),
     supabase
       .from("integraciones_factus")
       .select(
@@ -44,6 +44,7 @@ export default async function FactusClientePage({
         }
         certificadoFacturacion={integracion?.certificado_facturacion ?? "anual"}
         estado={integracion?.estado ?? null}
+        responsableIvaInicial={empresa.responsable_iva}
       />
     </div>
   );

@@ -90,9 +90,19 @@ async function obtenerTokenFactus(credenciales: CredencialesFactus): Promise<str
 export interface ImpuestoItemFactura {
   // Código del impuesto en el catálogo de Factus/la DIAN (ej. "01" =
   // IVA, el que se usó en la prueba real) — viene de ese catálogo,
-  // nunca se inventa acá.
-  code: string;
-  rate: number; // tarifa, ej. 19 para 19%
+  // nunca se inventa acá. Se omite junto con "rate" cuando el ítem va
+  // excluido (ver isExcluded) — Factus no los acepta juntos con
+  // isExcluded en su único ejemplo real documentado.
+  code?: string;
+  rate?: number; // tarifa, ej. 19 para 19%
+  // Para una empresa No responsable de IVA — confirmado contra la
+  // documentación real de Factus (FAQ "¿Cómo funcionan los productos
+  // excluidos o exentos de IVA?": "Si la empresa no es responsable de
+  // IVA, los productos deben ir excluidos" + el ejemplo real "Impuesto
+  // excluido", que manda solo { is_excluded: true }, sin code ni rate).
+  // Sin confirmar todavía contra una venta real de una empresa marcada
+  // como No responsable — ver CLAUDE.md.
+  isExcluded?: boolean;
 }
 
 export interface ItemFactura {
@@ -231,7 +241,13 @@ export async function crearYValidarFacturaFactus(
         price: item.price,
         unit_measure_code: item.unitMeasureCode,
         standard_code: item.standardCode,
-        taxes: item.taxes,
+        // Nunca code/rate junto con is_excluded — mismo criterio que el
+        // único ejemplo real de Factus para un ítem excluido de IVA.
+        taxes: item.taxes.map((impuesto) => ({
+          ...(impuesto.code ? { code: impuesto.code } : {}),
+          ...(impuesto.rate !== undefined ? { rate: impuesto.rate } : {}),
+          ...(impuesto.isExcluded ? { is_excluded: impuesto.isExcluded } : {}),
+        })),
         ...(item.discount ? { discount: item.discount } : {}),
       })),
     }),

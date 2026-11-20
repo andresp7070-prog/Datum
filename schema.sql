@@ -4295,3 +4295,43 @@ alter table empresas add column if not exists activa boolean not null default tr
 -- la llave de servicio en cada carga de esa pantalla. Se prende sola en
 -- activarFacturacionElectronica() cuando el cliente activa el servicio.
 alter table empresas add column if not exists factura_electronica_activa boolean not null default false;
+
+-- ============================================================
+-- RESPONSABLE DE IVA POR EMPRESA (agregado 2026-11-20)
+-- ============================================================
+-- Decide qué impuesto se le manda a Factus al facturar electrónicamente
+-- (ver src/app/(app)/ventas/nueva/actions.ts) — sin valor por defecto a
+-- propósito: queda en null hasta que alguien lo configure a mano. Si se
+-- asumiera mal (true o false por defecto), no sería solo un número mal
+-- calculado — serían facturas electrónicas ante la DIAN con un impuesto
+-- que no le corresponde a esa empresa, un problema legal/tributario (ver
+-- CLAUDE.md).
+alter table empresas add column if not exists responsable_iva boolean;
+
+-- Se configura desde /admin/clientes/[id]/factus, nunca por el cliente
+-- mismo (decidido explícitamente con Andrés, 2026-11-20) — pero la
+-- política "actualizar mi propia empresa" (más arriba en este archivo) de
+-- por sí deja que la sesión normal de cualquier empresa actualice su
+-- propia fila completa (ya se usa así, ej. terminos_aceptados_en), así
+-- que sin esto, nada impediría que una empresa escribiera su propio
+-- responsable_iva directo contra la tabla. Este trigger cierra ese hueco:
+-- solo deja cambiar la columna si quien hace el update es admin.
+create or replace function proteger_responsable_iva()
+returns trigger language plpgsql as $$
+begin
+  if new.responsable_iva is distinct from old.responsable_iva and not es_admin() then
+    raise exception 'Solo un administrador puede cambiar si una empresa es responsable de IVA.';
+  end if;
+  return new;
+end;
+$$;
+
+-- drop/create (en vez de solo create) para que, si este bloque se vuelve
+-- a correr por error, el "ya existe" sea del trigger y no interrumpa nada
+-- más del archivo — mismo problema que ya dio create policy sin este
+-- resguardo (ver CLAUDE.md, catch-up de producción de Facturación
+-- electrónica).
+drop trigger if exists trig_proteger_responsable_iva on empresas;
+create trigger trig_proteger_responsable_iva
+  before update on empresas
+  for each row execute function proteger_responsable_iva();

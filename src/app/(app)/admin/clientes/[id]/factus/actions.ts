@@ -17,6 +17,7 @@ export async function guardarIntegracionFactus(input: {
   factusPassword: string;
   numberingRangeId: string;
   certificadoFacturacion: string;
+  responsableIva: boolean | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   await requerirAdmin();
 
@@ -34,6 +35,9 @@ export async function guardarIntegracionFactus(input: {
   }
   if (input.certificadoFacturacion !== "mensual" && input.certificadoFacturacion !== "anual") {
     return { ok: false, error: "Elige una frecuencia de facturación válida para el certificado." };
+  }
+  if (input.responsableIva === null) {
+    return { ok: false, error: "Elige si esta empresa es responsable de IVA." };
   }
 
   const supabase = await createClient();
@@ -64,5 +68,24 @@ export async function guardarIntegracionFactus(input: {
   if (error) {
     return { ok: false, error: `No se pudo guardar: ${error.message}` };
   }
+
+  // responsable_iva vive en empresas, no en integraciones_factus — es un
+  // dato del régimen tributario de la empresa, no de la cuenta de Factus
+  // en sí (mismo criterio que arl_clase_riesgo/exonerado_ley_1607 en
+  // Nómina). Un trigger en schema.sql (proteger_responsable_iva()) exige
+  // que quien escriba esto sea admin — esta función ya lo es, por
+  // requerirAdmin() arriba, así que la sesión normal del admin basta.
+  const { error: errorEmpresa } = await supabase
+    .from("empresas")
+    .update({ responsable_iva: input.responsableIva })
+    .eq("id", input.empresaId);
+
+  if (errorEmpresa) {
+    return {
+      ok: false,
+      error: `Se guardaron las credenciales de Factus, pero no se pudo guardar si es responsable de IVA: ${errorEmpresa.message}`,
+    };
+  }
+
   return { ok: true };
 }

@@ -19,6 +19,7 @@ export function FactusClienteForm({
   numberingRangeId: numberingRangeIdInicial,
   certificadoFacturacion: certificadoFacturacionInicial,
   estado,
+  responsableIvaInicial,
 }: {
   empresaId: string;
   nombreEmpresa: string;
@@ -29,6 +30,7 @@ export function FactusClienteForm({
   numberingRangeId: string;
   certificadoFacturacion: string;
   estado: string | null;
+  responsableIvaInicial: boolean | null;
 }) {
   const [factusClientId, setFactusClientId] = useState(clientIdInicial);
   const [factusClientSecret, setFactusClientSecret] = useState(clientSecretInicial);
@@ -36,6 +38,9 @@ export function FactusClienteForm({
   const [factusPassword, setFactusPassword] = useState(passwordInicial);
   const [numberingRangeId, setNumberingRangeId] = useState(numberingRangeIdInicial);
   const [certificadoFacturacion, setCertificadoFacturacion] = useState(certificadoFacturacionInicial);
+  // null = todavía sin decidir — no hay un valor por defecto a propósito
+  // (ver schema.sql). Esto lo decide Datum, nunca el cliente.
+  const [responsableIva, setResponsableIva] = useState<boolean | null>(responsableIvaInicial);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardado, setGuardado] = useState(false);
@@ -53,6 +58,7 @@ export function FactusClienteForm({
         factusPassword,
         numberingRangeId,
         certificadoFacturacion,
+        responsableIva,
       });
       if (!res.ok) {
         setError(res.error);
@@ -158,6 +164,34 @@ export function FactusClienteForm({
           </div>
           <p className="mt-1 text-xs text-gray-400">
             El cliente puede confirmar o cambiar esto cuando active el servicio.
+          </p>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            ¿Es responsable de IVA?
+          </label>
+          <div className="flex gap-2">
+            {[
+              { value: true, label: "Sí" },
+              { value: false, label: "No" },
+            ].map((opcion) => (
+              <button
+                key={String(opcion.value)}
+                type="button"
+                onClick={() => setResponsableIva(opcion.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  responsableIva === opcion.value
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                {opcion.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-gray-400">
+            Decide si sus facturas llevan 19% de IVA o van excluidas ante la DIAN. Esto lo
+            configuras solo tú — el cliente no lo ve ni lo puede cambiar.
           </p>
         </div>
       </div>

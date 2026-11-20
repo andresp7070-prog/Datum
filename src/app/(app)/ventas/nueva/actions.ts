@@ -2,8 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { crearYValidarFacturaFactus, descargarPdfFactura } from "@/lib/factus";
-import { enviarCorreoFacturaElectronica } from "@/lib/email";
+import { crearYValidarFacturaFactus, enviarFacturaPorCorreo } from "@/lib/factus";
 
 export type ClienteEncontrado = {
   id: string;
@@ -269,7 +268,7 @@ export async function facturarVentaElectronicamente(
   const [{ data: empresa }, { data: venta }, { data: itemsVenta }] = await Promise.all([
     supabase
       .from("empresas")
-      .select("nombre, factura_electronica_activa")
+      .select("factura_electronica_activa")
       .eq("id", perfil.empresa_id)
       .single(),
     supabase
@@ -457,19 +456,17 @@ export async function facturarVentaElectronicamente(
       .eq("id", facturaPendiente.id);
   }
 
-  // Datum le manda la factura por correo al cliente — automático, solo si
-  // quedó un correo (es opcional en "Agregar venta"). Con la marca del
-  // negocio que vendió, no la de Factus ni la de Datum (decidido con
-  // Andrés, 2026-11-20) — ver enviarCorreoFacturaElectronica() en
-  // src/lib/email.ts. Si este paso falla, no se revierte nada de lo
-  // anterior: la factura YA quedó validada ante la DIAN, que es lo que
-  // importa legalmente — solo se le avisa a quien registró que el correo
-  // no salió, para que lo reenvíe por otro medio si hace falta.
+  // Factus puede mandarle la factura por correo al cliente directamente —
+  // automático, solo si quedó un correo (es opcional en "Agregar venta").
+  // Si este paso falla, no se revierte nada de lo anterior: la factura YA
+  // quedó validada ante la DIAN, que es lo que importa legalmente — solo
+  // se le avisa a quien registró que el correo no salió, para que lo
+  // reenvíe por otro medio si hace falta.
   let estadoCorreo: "enviado" | "fallido" | "sin_correo" = "sin_correo";
   let detalleErrorCorreo: string | undefined;
   if (clienteEmail) {
     try {
-      const pdf = await descargarPdfFactura(
+      await enviarFacturaPorCorreo(
         {
           clientId: integracion.factus_client_id,
           clientSecret: integracion.factus_client_secret,
@@ -477,24 +474,9 @@ export async function facturarVentaElectronicamente(
           password: integracion.factus_password,
         },
         resultado.numero,
+        clienteEmail,
       );
-      const envio = await enviarCorreoFacturaElectronica({
-        correo: clienteEmail,
-        nombreEmpresa: empresa.nombre,
-        clienteNombre: venta.cliente_nombre ?? "Cliente",
-        numeroFactura: resultado.numero,
-        monto: Number(venta.monto),
-        linkPublico: resultado.linkPublico,
-        linkQr: resultado.linkQr,
-        pdfBase64: pdf.pdfBase64,
-        nombreArchivoPdf: pdf.nombreArchivo,
-      });
-      if (envio.error) {
-        estadoCorreo = "fallido";
-        detalleErrorCorreo = envio.error;
-      } else {
-        estadoCorreo = "enviado";
-      }
+      estadoCorreo = "enviado";
     } catch (err) {
       estadoCorreo = "fallido";
       detalleErrorCorreo = err instanceof Error ? err.message : "Error desconocido.";

@@ -303,6 +303,37 @@ export async function facturarVentaElectronicamente(
     .select("id")
     .single();
 
+  // El precio cargado en Datum (ventas_items.precio_unitario) ya incluye
+  // el IVA — confirmado con Andrés, 2026-11-20, es el precio final que de
+  // verdad cobra el negocio, como es lo normal en Colombia para
+  // consumidor final. Factus, en cambio, espera el precio SIN IVA y él
+  // mismo suma el 19% declarado en "taxes" para calcular el total — sin
+  // este ajuste, Factus termina sumando IVA encima de un precio que ya lo
+  // tenía, y el total que calcula no cuadra con lo que de verdad se cobró
+  // (lo descubrimos probando: $70 cargados → Factus esperaba $83,30).
+  const IVA_FACTURA = 0.19;
+  const itemsFactura = itemsVenta.map((item) => {
+    const precioConIva = Number(item.precio_unitario);
+    const precioSinIva = Math.round((precioConIva / (1 + IVA_FACTURA)) * 100) / 100;
+    return {
+      codeReference: item.id,
+      name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
+      quantity: Number(item.cantidad),
+      price: precioSinIva,
+      unitMeasureCode: "94",
+      standardCode: "1",
+      taxes: [{ code: "01", rate: 19 }],
+    };
+  });
+  // El monto de payment_details tiene que cuadrar EXACTO con lo que Factus
+  // calcula a partir de estos mismos items (base + IVA) — no alcanza con
+  // reusar venta.monto directo, porque redondear el precio sin IVA a 2
+  // decimales por ítem puede desviarlo unos centavos del total original.
+  const montoFactura =
+    Math.round(
+      itemsFactura.reduce((suma, item) => suma + item.price * item.quantity * (1 + IVA_FACTURA), 0) * 100,
+    ) / 100;
+
   // Valores genéricos del catálogo de la DIAN, confirmados contra el
   // sandbox real de Factus (ver src/lib/factus.ts) — pendiente confirmar
   // con Andrés antes de facturarle a un cliente real que pague con algo
@@ -329,7 +360,7 @@ export async function facturarVentaElectronicamente(
       {
         numberingRangeId: integracion.numbering_range_id,
         referenceCode: String(venta.numero_venta ?? ventaId),
-        paymentDetails: [{ paymentForm: "1", paymentMethodCode: "10", amount: Number(venta.monto) }],
+        paymentDetails: [{ paymentForm: "1", paymentMethodCode: "10", amount: montoFactura }],
         customer: {
           identificationDocumentCode: documento.tipoDocumento,
           identification: documento.numeroDocumento,
@@ -338,15 +369,7 @@ export async function facturarVentaElectronicamente(
           email: clienteEmail || undefined,
           phone: clienteTelefono || undefined,
         },
-        items: itemsVenta.map((item) => ({
-          codeReference: item.id,
-          name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
-          quantity: Number(item.cantidad),
-          price: Number(item.precio_unitario),
-          unitMeasureCode: "94",
-          standardCode: "1",
-          taxes: [{ code: "01", rate: 19 }],
-        })),
+        items: itemsFactura,
       },
     );
   } catch (err) {

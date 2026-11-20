@@ -13,6 +13,7 @@ import {
   deshacerVenta,
   registrarApartado,
   obtenerProgresoFidelidad,
+  obtenerDocumentoCliente,
   facturarVentaElectronicamente,
   type ClienteEncontrado,
 } from "./actions";
@@ -241,6 +242,17 @@ export function NuevaVentaForm({
     setEmail(cliente.email ?? "");
     setContactoId(cliente.id);
     setMostrarSugerencias(false);
+
+    // Si este cliente ya facturó electrónicamente antes, prellena su
+    // documento en vez de pedirlo de nuevo — sigue siendo editable por si
+    // cambió. Solo tiene sentido pedirlo si el check de Factus está
+    // disponible en esta pantalla.
+    if (facturaElectronicaActiva) {
+      obtenerDocumentoCliente(cliente.id).then((doc) => {
+        if (doc.tipoDocumento) setTipoDocumento(doc.tipoDocumento);
+        if (doc.numeroDocumento) setNumeroDocumento(doc.numeroDocumento);
+      });
+    }
   }
 
   function actualizarNombre(valor: string) {

@@ -37,6 +37,28 @@ export async function buscarClientes(query: string): Promise<ClienteEncontrado[]
   return data ?? [];
 }
 
+// Documento guardado de un cliente que ya facturó electrónicamente antes
+// (ver facturarVentaElectronicamente() más abajo, que es quien lo guarda
+// en crm_contactos.atributos) — así "Agregar venta" puede prellenarlo en
+// vez de pedirlo de nuevo cada vez. Sesión normal: RLS ya limita esto a
+// los contactos de la propia empresa, no hace falta la llave de servicio.
+export async function obtenerDocumentoCliente(
+  contactoId: string,
+): Promise<{ tipoDocumento: string | null; numeroDocumento: string | null }> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("crm_contactos")
+    .select("atributos")
+    .eq("id", contactoId)
+    .single();
+
+  const atributos = (data?.atributos ?? {}) as Record<string, unknown>;
+  return {
+    tipoDocumento: typeof atributos.tipo_documento === "string" ? atributos.tipo_documento : null,
+    numeroDocumento: typeof atributos.numero_documento === "string" ? atributos.numero_documento : null,
+  };
+}
+
 // Cuántas unidades del producto de una promoción de fidelidad lleva
 // compradas este cliente desde su último regalo — se calcula desde el
 // historial real de ventas cada vez que se pide, nunca se guarda aparte.

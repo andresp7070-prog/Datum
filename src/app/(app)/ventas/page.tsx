@@ -11,6 +11,13 @@ type ItemLinea = {
   inventario_items: { nombre: string } | null;
 };
 
+type FacturaElectronica = {
+  estado: string;
+  link_publico: string | null;
+  link_qr: string | null;
+  created_at: string;
+};
+
 type Venta = {
   id: string;
   numero_venta: number | null;
@@ -19,6 +26,7 @@ type Venta = {
   cliente_nombre: string | null;
   metodo_pago: string | null;
   ventas_items: ItemLinea[];
+  facturas_electronicas: FacturaElectronica[];
 };
 
 const etiquetaMetodoPago: Record<string, string> = {
@@ -76,7 +84,7 @@ export default async function VentasPage({
   let query = supabase
     .from("ventas")
     .select(
-      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) )",
+      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) ), facturas_electronicas ( estado, link_publico, link_qr, created_at )",
     )
     .eq("empresa_id", perfil.empresa_id)
     .gte("fecha", haceUnMes.toISOString())
@@ -204,6 +212,16 @@ export default async function VentasPage({
               )
               .join(", ");
 
+            // Si se facturó más de una vez (ej. un rechazo y luego un
+            // reintento exitoso), se muestra la validada más reciente —
+            // mismo criterio que facturas_electronicas no sobrescribe
+            // intentos anteriores (ver schema.sql).
+            const facturaValidada = venta.facturas_electronicas
+              .filter((f) => f.estado === "validada" && f.link_publico)
+              .sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+              )[0];
+
             return (
               <li key={venta.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
@@ -227,6 +245,16 @@ export default async function VentasPage({
                     <p className="text-xs text-gray-400">
                       {etiquetaMetodoPago[venta.metodo_pago] ?? venta.metodo_pago}
                     </p>
+                  )}
+                  {facturaValidada && (
+                    <a
+                      href={facturaValidada.link_publico!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"
+                    >
+                      Ver factura
+                    </a>
                   )}
                   <Link
                     href={`/ventas/devoluciones/nueva?ventaId=${venta.id}`}

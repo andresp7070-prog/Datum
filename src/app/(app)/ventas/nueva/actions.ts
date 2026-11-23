@@ -474,7 +474,17 @@ export async function facturarVentaElectronicamente(
   if (facturaPendiente) {
     await supabaseAdmin
       .from("facturas_electronicas")
-      .update({ estado: "validada", numero_factus: resultado.numero, cufe: resultado.cufe })
+      .update({
+        estado: "validada",
+        numero_factus: resultado.numero,
+        cufe: resultado.cufe,
+        // Enlaces ya gratuitos y permanentes de Factus y la DIAN — se
+        // guardan para poder revisar la factura más adelante (ver "Ver
+        // factura" en el historial de Ventas) sin que Datum tenga que
+        // guardar ningún PDF/XML propio.
+        link_publico: resultado.linkPublico,
+        link_qr: resultado.linkQr,
+      })
       .eq("id", facturaPendiente.id);
   }
 

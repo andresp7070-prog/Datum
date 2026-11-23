@@ -4335,3 +4335,15 @@ drop trigger if exists trig_proteger_responsable_iva on empresas;
 create trigger trig_proteger_responsable_iva
   before update on empresas
   for each row execute function proteger_responsable_iva();
+
+-- ============================================================
+-- ENLACES DE UNA FACTURA YA VALIDADA (agregado 2026-11-23)
+-- ============================================================
+-- Para poder revisarla después sin que Datum guarde ningún archivo propio
+-- (ni PDF ni XML) — Factus y la DIAN ya dan sus propios enlaces
+-- permanentes y gratuitos para ver el documento, así que basta con
+-- guardarlos. Se llenan en facturarVentaElectronicamente() (ver
+-- src/app/(app)/ventas/nueva/actions.ts) solo cuando la factura queda
+-- 'validada'.
+alter table facturas_electronicas add column if not exists link_publico text;
+alter table facturas_electronicas add column if not exists link_qr text;

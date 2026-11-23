@@ -256,6 +256,16 @@ export default async function VentasPage({
                       Ver factura
                     </a>
                   )}
+                  {facturaValidada?.link_qr && (
+                    <a
+                      href={facturaValidada.link_qr}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"
+                    >
+                      Verificar ante la DIAN
+                    </a>
+                  )}
                   <Link
                     href={`/ventas/devoluciones/nueva?ventaId=${venta.id}`}
                     className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"

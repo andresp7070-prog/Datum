@@ -76,9 +76,9 @@ export default async function AdminDashboardPage() {
       .from("empresas")
       .select("id, nombre, tipo_negocio, modulos_activos, monto_mensual, activa, created_at")
       .order("created_at", { ascending: false }),
-    supabase.from("ventas").select("monto").gte("fecha", inicioMesIso),
-    supabase.from("ventas").select("monto").gte("fecha", inicioAnioIso),
-    supabase.from("ventas").select("empresa_id").gte("fecha", hace30DiasIso),
+    supabase.from("ventas").select("monto").gte("fecha", inicioMesIso).eq("anulada", false),
+    supabase.from("ventas").select("monto").gte("fecha", inicioAnioIso).eq("anulada", false),
+    supabase.from("ventas").select("empresa_id").gte("fecha", hace30DiasIso).eq("anulada", false),
     supabase.rpc("tamano_base_datos"),
   ]);
 

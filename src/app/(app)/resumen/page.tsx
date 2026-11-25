@@ -64,7 +64,11 @@ export default async function ResumenPage() {
   const tieneInventario = modulosActivos.includes("inventario");
   const tienePromociones = modulosActivos.includes("promociones");
 
-  let ventasQuery = supabase.from("ventas").select("fecha, monto").eq("empresa_id", perfil.empresa_id);
+  let ventasQuery = supabase
+    .from("ventas")
+    .select("fecha, monto")
+    .eq("empresa_id", perfil.empresa_id)
+    .eq("anulada", false);
   let resultadosQuery = supabase
     .from("vista_estado_resultados")
     .select("mes, punto_venta_id, utilidad_neta")

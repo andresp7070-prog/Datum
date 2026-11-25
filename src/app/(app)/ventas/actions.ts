@@ -221,6 +221,21 @@ export async function anularFacturaConNotaCredito(
       .eq("id", notaPendiente.id);
   }
 
+  // La nota crédito ya quedó validada ante la DIAN — eso ya no se puede
+  // deshacer. Esto marca la venta como anulada en Datum (devuelve
+  // inventario, y la saca de todos los reportes — ver anular_venta() en
+  // schema.sql) para que lo que Datum muestra quede consistente con lo
+  // que de verdad pasó. Sesión normal (no la llave de servicio): RLS en
+  // "ventas" ya limita esto a la propia empresa, mismo criterio que
+  // deshacer_venta().
+  const { error: errorAnular } = await supabase.rpc("anular_venta", { p_venta_id: ventaId });
+  if (errorAnular) {
+    return {
+      ok: false,
+      error: `La nota crédito se generó correctamente ante la DIAN (número ${resultado.numero}), pero no se pudo marcar la venta como anulada en Datum: ${errorAnular.message}. Avísanos para corregirlo a mano.`,
+    };
+  }
+
   return {
     ok: true,
     numero: resultado.numero,
@@ -435,6 +450,22 @@ export async function agregarNotaDebito(
         link_qr: resultado.linkQr,
       })
       .eq("id", notaPendiente.id);
+  }
+
+  // La nota débito ya quedó validada ante la DIAN por el monto completo
+  // escrito (input.monto, no el "monto" ya ajustado por IVA que se le
+  // mandó a Factus) — se le suma a ventas.monto para que esa venta (y
+  // todos los reportes que ya la suman) reflejen el cargo extra. Sesión
+  // normal: RLS en "ventas" ya limita esto a la propia empresa.
+  const { error: errorIncrementar } = await supabase.rpc("incrementar_monto_venta", {
+    p_venta_id: ventaId,
+    p_monto: input.monto,
+  });
+  if (errorIncrementar) {
+    return {
+      ok: false,
+      error: `La nota débito se generó correctamente ante la DIAN (número ${resultado.numero}), pero no se pudo sumar el monto a la venta en Datum: ${errorIncrementar.message}. Avísanos para corregirlo a mano.`,
+    };
   }
 
   return {

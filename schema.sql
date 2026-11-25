@@ -1685,19 +1685,20 @@ for each row execute function registrar_gasto_compra();
 -- rompe el cálculo de nadie que no use puntos de venta.
 create or replace view vista_estado_resultados as
 with periodos as (
-  select empresa_id, punto_venta_id, date_trunc('month', fecha) as mes from ventas
+  select empresa_id, punto_venta_id, date_trunc('month', fecha) as mes from ventas where not anulada
   union
   select empresa_id, punto_venta_id, date_trunc('month', fecha) as mes from finanzas_movimientos
 ),
 ventas_mes as (
   select empresa_id, punto_venta_id, date_trunc('month', fecha) as mes, sum(monto) as ingresos
-  from ventas group by 1, 2, 3
+  from ventas where not anulada group by 1, 2, 3
 ),
 costo_ventas_mes as (
   select v.empresa_id, v.punto_venta_id, date_trunc('month', v.fecha) as mes,
     sum(vi.cantidad * coalesce(vi.costo_unitario, 0)) as costo_ventas
   from ventas v
   join ventas_items vi on vi.venta_id = v.id
+  where not v.anulada
   group by 1, 2, 3
 ),
 otros_mes as (
@@ -1821,6 +1822,8 @@ select
   end as margen_porcentaje
 from ventas_items vi
 join inventario_items i on i.id = vi.item_id
+join ventas v on v.id = vi.venta_id
+where not v.anulada
 group by i.empresa_id, i.id, i.nombre, i.categoria, i.tipo;
 
 create or replace view vista_utilidad_por_categoria as
@@ -1850,6 +1853,7 @@ select
   coalesce(sum(vi.cantidad), 0) as unidades_totales
 from ventas v
 left join ventas_items vi on vi.venta_id = v.id
+where not v.anulada
 group by v.id, v.empresa_id, v.fecha, v.monto, v.contacto_id;
 
 -- ------------------------------------------------------------
@@ -1866,7 +1870,7 @@ select
 from ventas_items vi
 join ventas v on v.id = vi.venta_id
 join inventario_items i on i.id = vi.item_id
-where v.fecha >= now() - interval '30 days'
+where v.fecha >= now() - interval '30 days' and not v.anulada
 group by i.empresa_id, vi.item_id;
 
 -- ------------------------------------------------------------
@@ -2005,6 +2009,7 @@ select
   sum(v.monto) as total_vendido
 from ventas v
 left join festivos f on f.fecha = (v.fecha at time zone 'America/Bogota')::date
+where not v.anulada
 group by v.empresa_id, (v.fecha at time zone 'America/Bogota')::date, f.fecha, f.nombre;
 
 -- ------------------------------------------------------------
@@ -2031,6 +2036,7 @@ with agregados as (
     end as dias_promedio_entre_compras
   from crm_contactos c
   join ventas v on v.contacto_id = c.id
+  where not v.anulada
   group by c.id, c.empresa_id
 ),
 items_cliente as (
@@ -2043,7 +2049,7 @@ items_cliente as (
   from ventas v
   join ventas_items vi on vi.venta_id = v.id
   join inventario_items i on i.id = vi.item_id
-  where v.contacto_id is not null
+  where v.contacto_id is not null and not v.anulada
 ),
 items_frecuentes as (
   select
@@ -2056,7 +2062,7 @@ items_frecuentes as (
     from ventas v
     join ventas_items vi on vi.venta_id = v.id
     join inventario_items i on i.id = vi.item_id
-    where v.contacto_id is not null
+    where v.contacto_id is not null and not v.anulada
     group by v.contacto_id, i.nombre
   ) sub
 ),
@@ -2067,7 +2073,7 @@ unidades_totales as (
   select v.contacto_id, sum(vi.cantidad) as unidades_totales
   from ventas v
   join ventas_items vi on vi.venta_id = v.id
-  where v.contacto_id is not null
+  where v.contacto_id is not null and not v.anulada
   group by v.contacto_id
 )
 select
@@ -2200,6 +2206,7 @@ as $$
     join ventas v on v.id = vi.venta_id
     where vi.promocion_id = p_promocion_id
       and v.contacto_id = p_contacto_id
+      and not v.anulada
   )
   select coalesce(sum(vi.cantidad), 0)::integer
   from ventas_items vi
@@ -2208,6 +2215,7 @@ as $$
   where v.contacto_id = p_contacto_id
     and vi.item_id = p.item_regalo_id
     and (vi.promocion_id is null or vi.promocion_id <> p_promocion_id)
+    and not v.anulada
     and v.fecha > coalesce((select fecha from ultimo_canje), '-infinity'::timestamptz);
 $$;
 
@@ -2219,7 +2227,7 @@ with ventas_con_promo as (
   select distinct v.id as venta_id, v.monto, vi.promocion_id
   from ventas v
   join ventas_items vi on vi.venta_id = v.id
-  where vi.promocion_id is not null
+  where vi.promocion_id is not null and not v.anulada
 )
 select
   p.id as promocion_id,
@@ -2238,7 +2246,8 @@ select
   (select coalesce(sum(vi2.cantidad), 0) from ventas_items vi2 where vi2.promocion_id = p.id) as unidades_con_descuento,
   (select coalesce(sum(vi2.descuento_aplicado), 0) from ventas_items vi2 where vi2.promocion_id = p.id) as descuento_total_otorgado,
   (select coalesce(sum(v2.monto), 0) from ventas v2
-     where v2.empresa_id = p.empresa_id and v2.fecha::date between p.fecha_inicio and p.fecha_fin) as ventas_totales_del_periodo
+     where v2.empresa_id = p.empresa_id and v2.fecha::date between p.fecha_inicio and p.fecha_fin
+       and not v2.anulada) as ventas_totales_del_periodo
 from promociones p
 left join ventas_con_promo vc on vc.promocion_id = p.id
 group by p.id, p.empresa_id, p.nombre, p.tipo_promocion, p.codigo, p.fecha_inicio, p.fecha_fin;
@@ -4445,3 +4454,78 @@ create policy "ver mis notas debito electronicas" on notas_debito_electronicas
     )
     or es_admin()
   );
+
+-- ============================================================
+-- VENTAS ANULADAS POR NOTA CRÉDITO (agregado 2026-11-25)
+-- ============================================================
+-- Hasta ahora, anular una factura con nota crédito (o agregarle una nota
+-- débito) no cambiaba nada en lo que Datum considera vendido — la venta
+-- seguía contando completa en todos los reportes. Esto lo corrige:
+-- 'anulada' marca que esa venta ya no cuenta, sin borrar nada (el
+-- historial, la factura electrónica y la nota crédito que ya se le
+-- mandaron a la DIAN quedan intactos). Todas las vistas que suman ventas
+-- se actualizan más abajo para excluir las anuladas.
+alter table ventas add column if not exists anulada boolean not null default false;
+
+-- Anula una venta ya facturada electrónicamente — llamada por
+-- anularFacturaConNotaCredito() justo después de que Factus confirma la
+-- nota crédito (src/app/(app)/ventas/actions.ts). A diferencia de
+-- deshacer_venta() (pensada para un error de tipeo recién cometido, con
+-- límite de 2 minutos y que borra la venta): acá no hay límite de tiempo
+-- (una nota crédito casi nunca se emite a los 2 minutos de la venta), y
+-- la venta NUNCA se borra — queda como registro permanente enlazado a la
+-- factura electrónica y a la nota crédito ya emitidas. El inventario que
+-- se había descontado se devuelve (mismo criterio que deshacer_venta,
+-- solo para productos, nunca servicios).
+create or replace function anular_venta(p_venta_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_anulada boolean;
+  v_item record;
+begin
+  select anulada into v_anulada from ventas where id = p_venta_id;
+  if v_anulada is null then
+    raise exception 'Venta no encontrada';
+  end if;
+  if v_anulada then
+    raise exception 'Esta venta ya estaba anulada';
+  end if;
+
+  for v_item in
+    select vi.item_id, vi.cantidad, vi.costo_unitario, ii.tipo
+    from ventas_items vi
+    join inventario_items ii on ii.id = vi.item_id
+    where vi.venta_id = p_venta_id and vi.item_id is not null
+  loop
+    if v_item.tipo = 'producto' then
+      insert into inventario_lotes (item_id, cantidad_disponible, costo_unitario)
+      values (v_item.item_id, v_item.cantidad, coalesce(v_item.costo_unitario, 0));
+
+      insert into inventario_movimientos (item_id, tipo, motivo, cantidad, nota)
+      values (v_item.item_id, 'entrada', 'devolucion', v_item.cantidad, 'Venta anulada con nota crédito');
+
+      update inventario_items
+      set cantidad = cantidad + v_item.cantidad
+      where id = v_item.item_id;
+    end if;
+  end loop;
+
+  update ventas set anulada = true where id = p_venta_id;
+end;
+$$;
+
+-- Suma (o resta) un monto a ventas.monto de forma atómica — usada por
+-- agregarNotaDebito() justo después de que Factus confirma la nota
+-- débito, para que el cargo extra quede reflejado en lo que esa venta
+-- vale (y, por lo tanto, en todos los reportes que ya suman
+-- ventas.monto, sin tocar nada más).
+create or replace function incrementar_monto_venta(p_venta_id uuid, p_monto numeric)
+returns void
+language plpgsql
+as $$
+begin
+  update ventas set monto = monto + p_monto where id = p_venta_id;
+end;
+$$;

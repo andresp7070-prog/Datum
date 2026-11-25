@@ -39,6 +39,7 @@ type Venta = {
   numero_venta: number | null;
   fecha: string;
   monto: number;
+  anulada: boolean;
   cliente_nombre: string | null;
   metodo_pago: string | null;
   ventas_items: ItemLinea[];
@@ -100,7 +101,7 @@ export default async function VentasPage({
   let query = supabase
     .from("ventas")
     .select(
-      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) ), facturas_electronicas ( estado, link_publico, link_qr, created_at, notas_credito_electronicas ( estado, created_at ), notas_debito_electronicas ( estado, numero_factus, link_publico, created_at ) )",
+      "id, numero_venta, fecha, monto, anulada, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) ), facturas_electronicas ( estado, link_publico, link_qr, created_at, notas_credito_electronicas ( estado, created_at ), notas_debito_electronicas ( estado, numero_factus, link_publico, created_at ) )",
     )
     .eq("empresa_id", perfil.empresa_id)
     .gte("fecha", haceUnMes.toISOString())
@@ -117,12 +118,16 @@ export default async function VentasPage({
 
   const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
 
-  const ventasHoy = ventas.filter((venta) => diaColombia(venta.fecha) === hoy);
+  // Una venta anulada (nota crédito) no cuenta en ninguna de estas cifras —
+  // esa plata ya no entró de verdad — pero sigue viéndose en la lista de
+  // abajo, marcada "Factura anulada", para no perder el rastro.
+  const ventasHoy = ventas.filter((venta) => diaColombia(venta.fecha) === hoy && !venta.anulada);
   const totalVentasHoy = ventasHoy.length;
   const totalVendidoHoy = ventasHoy.reduce((suma, venta) => suma + Number(venta.monto), 0);
 
   const vendidoPorDia: Record<string, number> = {};
   for (const venta of ventas) {
+    if (venta.anulada) continue;
     const dia = diaColombia(venta.fecha);
     vendidoPorDia[dia] = (vendidoPorDia[dia] ?? 0) + Number(venta.monto);
   }

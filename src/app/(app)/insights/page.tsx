@@ -460,7 +460,7 @@ async function ContenidoInsights({
         .select("item_id, nombre, ingresos, utilidad, margen_porcentaje")
         .eq("empresa_id", empresaId),
       supabase.from("vista_utilidad_por_categoria").select("categoria, ingresos").eq("empresa_id", empresaId),
-      supabase.from("ventas").select("fecha, monto").eq("empresa_id", empresaId),
+      supabase.from("ventas").select("fecha, monto").eq("empresa_id", empresaId).eq("anulada", false),
     ]);
 
     ventasPorDia = (ventasPorDiaData ?? []) as FilaVentaDia[];

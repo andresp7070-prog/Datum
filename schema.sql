@@ -4347,3 +4347,51 @@ create trigger trig_proteger_responsable_iva
 -- 'validada'.
 alter table facturas_electronicas add column if not exists link_publico text;
 alter table facturas_electronicas add column if not exists link_qr text;
+
+-- ============================================================
+-- NOTAS CRÉDITO ELECTRÓNICAS (agregado 2026-11-25)
+-- ============================================================
+-- Para anular una factura electrónica ya validada ante la DIAN — ver
+-- CLAUDE.md, "Facturación electrónica — Factus". Una nota crédito es su
+-- propio documento ante la DIAN (número y CUDE propios, no el mismo CUFE
+-- de la factura) que queda enlazada a la factura original sin borrarla —
+-- la factura sigue existiendo, la nota crédito es lo que reversa su
+-- efecto. No es única por factura_electronica_id, mismo criterio que
+-- facturas_electronicas: si un intento queda 'rechazada', el reintento
+-- siguiente es una fila nueva.
+--
+-- Confirmado probando el sandbox real (2026-11-25): las notas crédito
+-- necesitan su PROPIO rango de numeración ante la DIAN, distinto al de
+-- facturas — nunca se puede reusar el numbering_range_id de la factura.
+alter table integraciones_factus add column if not exists numbering_range_id_notas_credito integer;
+
+create table if not exists notas_credito_electronicas (
+  id uuid primary key default gen_random_uuid(),
+  factura_electronica_id uuid references facturas_electronicas(id) not null,
+  numero_factus text,
+  -- Código Único de Documento Electrónico — el equivalente al CUFE de una
+  -- factura, pero para otros tipos de documento como este (confirmado
+  -- contra la respuesta real de Factus, 2026-11-25: el campo se llama
+  -- "cude", no "cufe").
+  cude text,
+  estado text not null default 'pendiente' check (estado in ('pendiente','validada','rechazada')),
+  link_publico text,
+  link_qr text,
+  mensaje_error text,
+  created_at timestamptz not null default now()
+);
+
+alter table notas_credito_electronicas enable row level security;
+
+create index if not exists notas_credito_electronicas_factura_id_idx
+  on notas_credito_electronicas (factura_electronica_id);
+
+create policy "ver mis notas credito electronicas" on notas_credito_electronicas
+  for all using (
+    factura_electronica_id in (
+      select fe.id from facturas_electronicas fe
+      join ventas v on v.id = fe.venta_id
+      where v.empresa_id = mi_empresa_id()
+    )
+    or es_admin()
+  );

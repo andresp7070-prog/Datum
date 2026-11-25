@@ -2,7 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { crearYValidarFacturaFactus, enviarFacturaPorCorreo } from "@/lib/factus";
+import {
+  crearYValidarFacturaFactus,
+  enviarFacturaPorCorreo,
+  construirItemsFactura,
+  formatearErroresFactus,
+} from "@/lib/factus";
 
 export type ClienteEncontrado = {
   id: string;
@@ -197,22 +202,6 @@ export async function registrarApartado(input: {
   return { error: null, apartadoId: apartadoId as string };
 }
 
-// Factus devuelve sus errores de validación campo por campo (ej.
-// { identification: ["El número de documento no es válido"] }) — esto los
-// junta en un texto legible, en vez de mostrar el JSON crudo o un mensaje
-// genérico que no dice cuál fue el problema real.
-function formatearErroresFactus(errores: unknown): string {
-  if (typeof errores === "string") return errores;
-  if (errores && typeof errores === "object") {
-    const partes = Object.entries(errores as Record<string, unknown>).map(([campo, valor]) => {
-      const texto = Array.isArray(valor) ? valor.join(", ") : String(valor);
-      return `${campo}: ${texto}`;
-    });
-    if (partes.length > 0) return partes.join(" | ");
-  }
-  return JSON.stringify(errores);
-}
-
 export type DocumentoFacturaInput = {
   // Código de tipo de documento de la DIAN — "13" cédula de ciudadanía o
   // "31" NIT. Son los dos realistas para una pyme vendiéndole a personas
@@ -362,35 +351,12 @@ export async function facturarVentaElectronicamente(
   // calcular el total — sin ese ajuste, Factus termina sumando IVA
   // encima de un precio que ya lo tenía (lo descubrimos probando: $70
   // cargados → Factus esperaba $83,30).
-  const IVA_FACTURA = 0.19;
   const responsableIva = empresa.responsable_iva === true;
-  const itemsFactura = itemsVenta.map((item) => {
-    const precioConIva = Number(item.precio_unitario);
-    const price = responsableIva
-      ? Math.round((precioConIva / (1 + IVA_FACTURA)) * 100) / 100
-      : precioConIva;
-    return {
-      codeReference: item.id,
-      name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
-      quantity: Number(item.cantidad),
-      price,
-      unitMeasureCode: "94",
-      standardCode: "1",
-      taxes: responsableIva ? [{ code: "01", rate: 19 }] : [{ isExcluded: true }],
-    };
-  });
-  // El monto de payment_details tiene que cuadrar EXACTO con lo que Factus
-  // calcula a partir de estos mismos items (base + IVA si aplica) — no
-  // alcanza con reusar venta.monto directo, porque redondear el precio
-  // sin IVA a 2 decimales por ítem puede desviarlo unos centavos del
-  // total original.
-  const montoFactura =
-    Math.round(
-      itemsFactura.reduce(
-        (suma, item) => suma + item.price * item.quantity * (responsableIva ? 1 + IVA_FACTURA : 1),
-        0,
-      ) * 100,
-    ) / 100;
+  const { items: itemsFactura, monto: montoFactura } = construirItemsFactura(
+    itemsVenta,
+    nombrePorItem,
+    responsableIva,
+  );
 
   // Valores genéricos del catálogo de la DIAN, confirmados contra el
   // sandbox real de Factus (ver src/lib/factus.ts) — pendiente confirmar

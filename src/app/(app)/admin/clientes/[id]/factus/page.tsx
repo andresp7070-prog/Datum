@@ -19,7 +19,7 @@ export default async function FactusClientePage({
     supabase
       .from("integraciones_factus")
       .select(
-        "factus_client_id, factus_client_secret, factus_username, factus_password, numbering_range_id, certificado_facturacion, estado",
+        "factus_client_id, factus_client_secret, factus_username, factus_password, numbering_range_id, numbering_range_id_notas_credito, certificado_facturacion, estado",
       )
       .eq("empresa_id", id)
       .maybeSingle(),
@@ -41,6 +41,11 @@ export default async function FactusClientePage({
         factusPassword={integracion?.factus_password ?? ""}
         numberingRangeId={
           integracion?.numbering_range_id != null ? String(integracion.numbering_range_id) : ""
+        }
+        numberingRangeIdNotasCredito={
+          integracion?.numbering_range_id_notas_credito != null
+            ? String(integracion.numbering_range_id_notas_credito)
+            : ""
         }
         certificadoFacturacion={integracion?.certificado_facturacion ?? "anual"}
         estado={integracion?.estado ?? null}

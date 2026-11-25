@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { obtenerContextoPunto } from "@/lib/puntos";
 import { VentasTabs } from "./ventas-tabs";
 import { DescargarCsv } from "@/components/descargar-csv";
+import { BotonAnularNotaCredito } from "./boton-anular-nota-credito";
 
 type ItemLinea = {
   cantidad: number;
@@ -11,11 +12,17 @@ type ItemLinea = {
   inventario_items: { nombre: string } | null;
 };
 
+type NotaCreditoElectronica = {
+  estado: string;
+  created_at: string;
+};
+
 type FacturaElectronica = {
   estado: string;
   link_publico: string | null;
   link_qr: string | null;
   created_at: string;
+  notas_credito_electronicas: NotaCreditoElectronica[];
 };
 
 type Venta = {
@@ -84,7 +91,7 @@ export default async function VentasPage({
   let query = supabase
     .from("ventas")
     .select(
-      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) ), facturas_electronicas ( estado, link_publico, link_qr, created_at )",
+      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) ), facturas_electronicas ( estado, link_publico, link_qr, created_at, notas_credito_electronicas ( estado, created_at ) )",
     )
     .eq("empresa_id", perfil.empresa_id)
     .gte("fecha", haceUnMes.toISOString())
@@ -222,6 +229,10 @@ export default async function VentasPage({
                 (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
               )[0];
 
+            const yaAnulada = facturaValidada?.notas_credito_electronicas.some(
+              (n) => n.estado === "validada",
+            );
+
             return (
               <li key={venta.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
@@ -266,6 +277,8 @@ export default async function VentasPage({
                       Verificar ante la DIAN
                     </a>
                   )}
+                  {facturaValidada && !yaAnulada && <BotonAnularNotaCredito ventaId={venta.id} />}
+                  {yaAnulada && <p className="mt-1 text-xs text-gray-400">Factura anulada</p>}
                   <Link
                     href={`/ventas/devoluciones/nueva?ventaId=${venta.id}`}
                     className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"

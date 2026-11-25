@@ -16,6 +16,7 @@ export async function guardarIntegracionFactus(input: {
   factusUsername: string;
   factusPassword: string;
   numberingRangeId: string;
+  numberingRangeIdNotasCredito: string;
   certificadoFacturacion: string;
   responsableIva: boolean | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -32,6 +33,14 @@ export async function guardarIntegracionFactus(input: {
   const numberingRangeId = Number(input.numberingRangeId);
   if (!Number.isFinite(numberingRangeId) || numberingRangeId <= 0) {
     return { ok: false, error: "El id del rango de numeración no es válido." };
+  }
+  // Opcional a propósito — ver el texto de ayuda en factus-cliente-form.tsx.
+  let numberingRangeIdNotasCredito: number | null = null;
+  if (input.numberingRangeIdNotasCredito.trim()) {
+    numberingRangeIdNotasCredito = Number(input.numberingRangeIdNotasCredito);
+    if (!Number.isFinite(numberingRangeIdNotasCredito) || numberingRangeIdNotasCredito <= 0) {
+      return { ok: false, error: "El id del rango de numeración de notas crédito no es válido." };
+    }
   }
   if (input.certificadoFacturacion !== "mensual" && input.certificadoFacturacion !== "anual") {
     return { ok: false, error: "Elige una frecuencia de facturación válida para el certificado." };
@@ -54,6 +63,7 @@ export async function guardarIntegracionFactus(input: {
     factus_username: input.factusUsername.trim(),
     factus_password: input.factusPassword.trim(),
     numbering_range_id: numberingRangeId,
+    numbering_range_id_notas_credito: numberingRangeIdNotasCredito,
     certificado_facturacion: input.certificadoFacturacion,
   };
 

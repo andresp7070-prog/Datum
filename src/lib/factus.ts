@@ -198,7 +198,10 @@ export interface FacturaFactusExitosa {
   // validada (ej. que el documento de identidad no coincide con el RUT)
   // — no significan que la factura haya fallado, is_validated es la
   // señal real de éxito. Quedan acá para poder mostrarlos si hace falta.
-  avisosDian: Record<string, string>;
+  // Corregido 2026-11-25: es un arreglo de texto, no un objeto — se tenía
+  // mal tipado (nunca se había inspeccionado la forma real hasta probar
+  // notas crédito, que devuelve este mismo campo).
+  avisosDian: string[];
   data: unknown; // la respuesta completa de Factus, por si se necesita algo no extraído acá
 }
 
@@ -274,7 +277,188 @@ export async function crearYValidarFacturaFactus(
     cufe: cuerpo.data.cufe,
     linkQr: cuerpo.data.links?.qr,
     linkPublico: cuerpo.data.links?.public_url,
-    avisosDian: cuerpo.data.errors ?? {},
+    avisosDian: cuerpo.data.errors ?? [],
+    data: cuerpo.data,
+  };
+}
+
+// Construye los items y el monto total para mandarle a Factus (factura o
+// nota crédito, misma fórmula en los dos casos — se comparte acá para
+// que nunca queden desincronizados entre sí). ventas_items.precio_unitario
+// ya incluye el IVA si la empresa es responsable (confirmado con Andrés,
+// 2026-11-20) — Factus espera el precio SIN IVA y él mismo suma el 19%
+// declarado en "taxes", así que hay que restarlo antes de mandarlo. Si no
+// es responsable de IVA, el precio se manda tal cual (nunca tuvo IVA que
+// restar) y el ítem va marcado como excluido.
+const IVA_FACTURA = 0.19;
+
+export function construirItemsFactura(
+  itemsVenta: {
+    id: string;
+    item_id: string | null;
+    nombre_libre: string | null;
+    cantidad: number;
+    precio_unitario: number;
+  }[],
+  nombrePorItem: Map<string, string>,
+  responsableIva: boolean,
+): { items: ItemFactura[]; monto: number } {
+  const items = itemsVenta.map((item) => {
+    const precioConIva = Number(item.precio_unitario);
+    const price = responsableIva
+      ? Math.round((precioConIva / (1 + IVA_FACTURA)) * 100) / 100
+      : precioConIva;
+    return {
+      codeReference: item.id,
+      name: item.nombre_libre ?? nombrePorItem.get(item.item_id ?? "") ?? "Producto",
+      quantity: Number(item.cantidad),
+      price,
+      unitMeasureCode: "94",
+      standardCode: "1",
+      taxes: responsableIva ? [{ code: "01", rate: 19 }] : [{ isExcluded: true }],
+    };
+  });
+  // El monto tiene que cuadrar EXACTO con lo que Factus calcula a partir
+  // de estos mismos items (base + IVA si aplica) — no alcanza con un
+  // total ya redondeado aparte, porque redondear el precio sin IVA a 2
+  // decimales por ítem puede desviarlo unos centavos del total original.
+  const monto =
+    Math.round(
+      items.reduce(
+        (suma, item) => suma + item.price * item.quantity * (responsableIva ? 1 + IVA_FACTURA : 1),
+        0,
+      ) * 100,
+    ) / 100;
+  return { items, monto };
+}
+
+// Factus devuelve sus errores de validación campo por campo (ej.
+// { identification: ["El número de documento no es válido"] }) — esto los
+// junta en un texto legible, en vez de mostrar el JSON crudo o un mensaje
+// genérico que no dice cuál fue el problema real. Compartida entre crear
+// facturas y notas crédito.
+export function formatearErroresFactus(errores: unknown): string {
+  if (typeof errores === "string") return errores;
+  if (errores && typeof errores === "object") {
+    const partes = Object.entries(errores as Record<string, unknown>).map(([campo, valor]) => {
+      const texto = Array.isArray(valor) ? valor.join(", ") : String(valor);
+      return `${campo}: ${texto}`;
+    });
+    if (partes.length > 0) return partes.join(" | ");
+  }
+  return JSON.stringify(errores);
+}
+
+export interface NotaCreditoFactusInput {
+  // El número que asignó Factus a la factura que se está anulando (ej.
+  // "SETP990037334") — no el reference_code propio de Datum.
+  billNumber: string;
+  // El rango de numeración PROPIO de notas crédito — nunca el mismo que
+  // usan las facturas. Confirmado probando el sandbox real (2026-11-25):
+  // Factus devuelve "El campo id rango de numeración es inválido" si se
+  // reusa el de facturas.
+  numberingRangeId: number;
+  referenceCode: string;
+  // Código de concepto de corrección del catálogo de la DIAN — "2" =
+  // Anulación de factura electrónica, el único caso que este botón cubre
+  // por ahora (ver CLAUDE.md). Otros códigos existen (devolución parcial,
+  // descuento, ajuste de precio, etc.) pero no se exponen todavía.
+  correctionConceptCode: string;
+  paymentDetails: DetallePagoFactura[];
+  customer: ClienteFactura;
+  items: ItemFactura[];
+}
+
+export interface NotaCreditoFactusExitosa {
+  exitosa: true;
+  // El número propio de la nota crédito (ej. "NC2645") — distinto al de
+  // la factura que anula.
+  numero: string;
+  // Código Único de Documento Electrónico — el equivalente al CUFE para
+  // este tipo de documento (confirmado contra la respuesta real de
+  // Factus: el campo se llama "cude", no "cufe").
+  cude: string;
+  linkQr: string;
+  linkPublico: string;
+  avisosDian: string[];
+  data: unknown;
+}
+
+export interface NotaCreditoFactusFallida {
+  exitosa: false;
+  errores: unknown;
+  data: unknown;
+}
+
+// Anula una factura electrónica ya validada — Factus la valida y
+// transmite a la DIAN en esta misma llamada, igual que una factura. La
+// factura original nunca se borra ni cambia; esta nota crédito queda
+// como un documento aparte, enlazado a ella.
+export async function crearNotaCreditoFactus(
+  credenciales: CredencialesFactus,
+  input: NotaCreditoFactusInput,
+): Promise<NotaCreditoFactusExitosa | NotaCreditoFactusFallida> {
+  const baseUrl = variableRequerida("FACTUS_BASE_URL");
+  const token = await obtenerTokenFactus(credenciales);
+
+  const respuesta = await fetch(`${baseUrl}/v2/credit-notes/validate`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      bill_number: input.billNumber,
+      numbering_range_id: input.numberingRangeId,
+      reference_code: input.referenceCode,
+      correction_concept_code: input.correctionConceptCode,
+      payment_details: input.paymentDetails.map((detalle) => ({
+        payment_form: detalle.paymentForm,
+        payment_method_code: detalle.paymentMethodCode,
+        amount: detalle.amount,
+      })),
+      customer: {
+        identification_document_code: input.customer.identificationDocumentCode,
+        identification: input.customer.identification,
+        names: input.customer.names,
+        responsibilities: input.customer.responsibilities,
+        ...(input.customer.email ? { email: input.customer.email } : {}),
+        ...(input.customer.phone ? { phone: input.customer.phone } : {}),
+        ...(input.customer.address ? { address: input.customer.address } : {}),
+        ...(input.customer.legalOrganizationCode
+          ? { legal_organization_code: input.customer.legalOrganizationCode }
+          : {}),
+        ...(input.customer.company ? { company: input.customer.company } : {}),
+      },
+      items: input.items.map((item) => ({
+        code_reference: item.codeReference,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        unit_measure_code: item.unitMeasureCode,
+        standard_code: item.standardCode,
+        taxes: item.taxes.map((impuesto) => ({
+          ...(impuesto.code ? { code: impuesto.code } : {}),
+          ...(impuesto.rate !== undefined ? { rate: impuesto.rate } : {}),
+          ...(impuesto.isExcluded ? { is_excluded: impuesto.isExcluded } : {}),
+        })),
+        ...(item.discount ? { discount: item.discount } : {}),
+      })),
+    }),
+  });
+
+  const cuerpo = await respuesta.json();
+  if (!respuesta.ok || !cuerpo.data?.is_validated) {
+    return { exitosa: false, errores: cuerpo.data?.errors ?? cuerpo.data, data: cuerpo.data };
+  }
+  return {
+    exitosa: true,
+    numero: cuerpo.data.number,
+    cude: cuerpo.data.cude,
+    linkQr: cuerpo.data.links?.qr,
+    linkPublico: cuerpo.data.links?.public_url,
+    avisosDian: cuerpo.data.errors ?? [],
     data: cuerpo.data,
   };
 }

@@ -4395,3 +4395,53 @@ create policy "ver mis notas credito electronicas" on notas_credito_electronicas
     )
     or es_admin()
   );
+
+-- ============================================================
+-- NOTAS DÉBITO ELECTRÓNICAS (agregado 2026-11-25)
+-- ============================================================
+-- Para agregarle un cobro extra a una factura ya validada (ej. un
+-- interés por mora, un ajuste de precio) — lo contrario de una nota
+-- crédito. Confirmado contra el sandbox real (POST /v2/debit-notes/validate,
+-- número de prueba "ND635") que usa exactamente la misma forma de
+-- respuesta que una nota crédito (cude, links.qr/public_url) — ver
+-- crearNotaAjusteFactus() en src/lib/factus.ts, compartida entre las dos.
+--
+-- A diferencia de una nota crédito (que siempre reversa el 100% de la
+-- factura, un solo intento posible por factura), una venta puede
+-- necesitar varias notas débito en momentos distintos — por eso esta
+-- tabla no se revisa para "ya existe una" antes de dejar crear otra,
+-- solo se listan todas para esa factura.
+alter table integraciones_factus add column if not exists numbering_range_id_notas_debito integer;
+
+create table if not exists notas_debito_electronicas (
+  id uuid primary key default gen_random_uuid(),
+  factura_electronica_id uuid references facturas_electronicas(id) not null,
+  numero_factus text,
+  cude text,
+  estado text not null default 'pendiente' check (estado in ('pendiente','validada','rechazada')),
+  -- Motivo del catálogo de la DIAN para notas débito (1 Intereses, 2
+  -- Gastos por cobrar, 3 Cambio del valor, 4 Otros) — distinto del
+  -- catálogo de notas crédito, nunca intercambiables.
+  concepto_code text,
+  descripcion text,
+  monto numeric,
+  link_publico text,
+  link_qr text,
+  mensaje_error text,
+  created_at timestamptz not null default now()
+);
+
+alter table notas_debito_electronicas enable row level security;
+
+create index if not exists notas_debito_electronicas_factura_id_idx
+  on notas_debito_electronicas (factura_electronica_id);
+
+create policy "ver mis notas debito electronicas" on notas_debito_electronicas
+  for all using (
+    factura_electronica_id in (
+      select fe.id from facturas_electronicas fe
+      join ventas v on v.id = fe.venta_id
+      where v.empresa_id = mi_empresa_id()
+    )
+    or es_admin()
+  );

@@ -5,6 +5,7 @@ import { obtenerContextoPunto } from "@/lib/puntos";
 import { VentasTabs } from "./ventas-tabs";
 import { DescargarCsv } from "@/components/descargar-csv";
 import { BotonAnularNotaCredito } from "./boton-anular-nota-credito";
+import { BotonAgregarNotaDebito } from "./boton-agregar-nota-debito";
 
 type ItemLinea = {
   cantidad: number;
@@ -17,12 +18,20 @@ type NotaCreditoElectronica = {
   created_at: string;
 };
 
+type NotaDebitoElectronica = {
+  estado: string;
+  numero_factus: string | null;
+  link_publico: string | null;
+  created_at: string;
+};
+
 type FacturaElectronica = {
   estado: string;
   link_publico: string | null;
   link_qr: string | null;
   created_at: string;
   notas_credito_electronicas: NotaCreditoElectronica[];
+  notas_debito_electronicas: NotaDebitoElectronica[];
 };
 
 type Venta = {
@@ -91,7 +100,7 @@ export default async function VentasPage({
   let query = supabase
     .from("ventas")
     .select(
-      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) ), facturas_electronicas ( estado, link_publico, link_qr, created_at, notas_credito_electronicas ( estado, created_at ) )",
+      "id, numero_venta, fecha, monto, cliente_nombre, metodo_pago, ventas_items ( cantidad, nombre_libre, inventario_items ( nombre ) ), facturas_electronicas ( estado, link_publico, link_qr, created_at, notas_credito_electronicas ( estado, created_at ), notas_debito_electronicas ( estado, numero_factus, link_publico, created_at ) )",
     )
     .eq("empresa_id", perfil.empresa_id)
     .gte("fecha", haceUnMes.toISOString())
@@ -233,6 +242,13 @@ export default async function VentasPage({
               (n) => n.estado === "validada",
             );
 
+            // A diferencia de la nota crédito, una venta puede tener
+            // varias notas débito a lo largo del tiempo — se listan
+            // todas, más reciente primero, en vez de solo la última.
+            const notasDebitoValidadas = (facturaValidada?.notas_debito_electronicas ?? [])
+              .filter((n) => n.estado === "validada")
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
             return (
               <li key={venta.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
@@ -279,6 +295,18 @@ export default async function VentasPage({
                   )}
                   {facturaValidada && !yaAnulada && <BotonAnularNotaCredito ventaId={venta.id} />}
                   {yaAnulada && <p className="mt-1 text-xs text-gray-400">Factura anulada</p>}
+                  {facturaValidada && !yaAnulada && <BotonAgregarNotaDebito ventaId={venta.id} />}
+                  {notasDebitoValidadas.map((nota) => (
+                    <a
+                      key={nota.created_at}
+                      href={nota.link_publico ?? undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"
+                    >
+                      Ver nota débito {nota.numero_factus}
+                    </a>
+                  ))}
                   <Link
                     href={`/ventas/devoluciones/nueva?ventaId=${venta.id}`}
                     className="mt-1 block text-xs text-gray-400 underline hover:text-gray-600"

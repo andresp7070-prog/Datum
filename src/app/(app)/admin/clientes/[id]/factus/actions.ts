@@ -17,6 +17,7 @@ export async function guardarIntegracionFactus(input: {
   factusPassword: string;
   numberingRangeId: string;
   numberingRangeIdNotasCredito: string;
+  numberingRangeIdNotasDebito: string;
   certificadoFacturacion: string;
   responsableIva: boolean | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -34,12 +35,19 @@ export async function guardarIntegracionFactus(input: {
   if (!Number.isFinite(numberingRangeId) || numberingRangeId <= 0) {
     return { ok: false, error: "El id del rango de numeración no es válido." };
   }
-  // Opcional a propósito — ver el texto de ayuda en factus-cliente-form.tsx.
+  // Opcionales a propósito — ver el texto de ayuda en factus-cliente-form.tsx.
   let numberingRangeIdNotasCredito: number | null = null;
   if (input.numberingRangeIdNotasCredito.trim()) {
     numberingRangeIdNotasCredito = Number(input.numberingRangeIdNotasCredito);
     if (!Number.isFinite(numberingRangeIdNotasCredito) || numberingRangeIdNotasCredito <= 0) {
       return { ok: false, error: "El id del rango de numeración de notas crédito no es válido." };
+    }
+  }
+  let numberingRangeIdNotasDebito: number | null = null;
+  if (input.numberingRangeIdNotasDebito.trim()) {
+    numberingRangeIdNotasDebito = Number(input.numberingRangeIdNotasDebito);
+    if (!Number.isFinite(numberingRangeIdNotasDebito) || numberingRangeIdNotasDebito <= 0) {
+      return { ok: false, error: "El id del rango de numeración de notas débito no es válido." };
     }
   }
   if (input.certificadoFacturacion !== "mensual" && input.certificadoFacturacion !== "anual") {
@@ -64,6 +72,7 @@ export async function guardarIntegracionFactus(input: {
     factus_password: input.factusPassword.trim(),
     numbering_range_id: numberingRangeId,
     numbering_range_id_notas_credito: numberingRangeIdNotasCredito,
+    numbering_range_id_notas_debito: numberingRangeIdNotasDebito,
     certificado_facturacion: input.certificadoFacturacion,
   };
 

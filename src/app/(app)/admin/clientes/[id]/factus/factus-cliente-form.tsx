@@ -18,6 +18,7 @@ export function FactusClienteForm({
   factusPassword: passwordInicial,
   numberingRangeId: numberingRangeIdInicial,
   numberingRangeIdNotasCredito: numberingRangeIdNotasCreditoInicial,
+  numberingRangeIdNotasDebito: numberingRangeIdNotasDebitoInicial,
   certificadoFacturacion: certificadoFacturacionInicial,
   estado,
   responsableIvaInicial,
@@ -30,6 +31,7 @@ export function FactusClienteForm({
   factusPassword: string;
   numberingRangeId: string;
   numberingRangeIdNotasCredito: string;
+  numberingRangeIdNotasDebito: string;
   certificadoFacturacion: string;
   estado: string | null;
   responsableIvaInicial: boolean | null;
@@ -41,6 +43,9 @@ export function FactusClienteForm({
   const [numberingRangeId, setNumberingRangeId] = useState(numberingRangeIdInicial);
   const [numberingRangeIdNotasCredito, setNumberingRangeIdNotasCredito] = useState(
     numberingRangeIdNotasCreditoInicial,
+  );
+  const [numberingRangeIdNotasDebito, setNumberingRangeIdNotasDebito] = useState(
+    numberingRangeIdNotasDebitoInicial,
   );
   const [certificadoFacturacion, setCertificadoFacturacion] = useState(certificadoFacturacionInicial);
   // null = todavía sin decidir — no hay un valor por defecto a propósito
@@ -63,6 +68,7 @@ export function FactusClienteForm({
         factusPassword,
         numberingRangeId,
         numberingRangeIdNotasCredito,
+        numberingRangeIdNotasDebito,
         certificadoFacturacion,
         responsableIva,
       });
@@ -160,6 +166,23 @@ export function FactusClienteForm({
             Un rango distinto al de facturas (GET /v2/numbering-ranges, document = &quot;Nota
             Crédito&quot;). Opcional: sin esto, el cliente puede facturar igual, solo no va a
             poder anular una factura ya emitida desde Ventas.
+          </p>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Id del rango de numeración para notas débito
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={numberingRangeIdNotasDebito}
+            onChange={(e) => setNumberingRangeIdNotasDebito(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            Un rango distinto a los de arriba (document = &quot;Nota Débito&quot;). Opcional: sin
+            esto, el cliente puede facturar igual, solo no va a poder agregarle un cobro extra a
+            una factura ya emitida desde Ventas.
           </p>
         </div>
         <div>

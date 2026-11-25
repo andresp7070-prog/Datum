@@ -349,30 +349,36 @@ export function formatearErroresFactus(errores: unknown): string {
   return JSON.stringify(errores);
 }
 
-export interface NotaCreditoFactusInput {
-  // El número que asignó Factus a la factura que se está anulando (ej.
+// Tipos compartidos entre nota crédito y nota débito — Factus usa
+// exactamente la misma forma de cuerpo y de respuesta para las dos
+// (confirmado contra el sandbox real, 2026-11-25: notas crédito con
+// "/v2/credit-notes/validate" y notas débito con "/v2/debit-notes/validate",
+// mismos campos, misma respuesta con "cude" y "links"). Solo cambia el
+// endpoint y el catálogo de valores válidos de correction_concept_code
+// (nunca intercambiables entre las dos).
+export interface NotaAjusteFactusInput {
+  // El número que asignó Factus a la factura que se está ajustando (ej.
   // "SETP990037334") — no el reference_code propio de Datum.
   billNumber: string;
-  // El rango de numeración PROPIO de notas crédito — nunca el mismo que
-  // usan las facturas. Confirmado probando el sandbox real (2026-11-25):
+  // El rango de numeración PROPIO de este tipo de documento — nunca el
+  // mismo que usan las facturas, ni el de notas crédito para una nota
+  // débito o viceversa. Confirmado probando el sandbox real (2026-11-25):
   // Factus devuelve "El campo id rango de numeración es inválido" si se
-  // reusa el de facturas.
+  // reusa el de otro tipo de documento.
   numberingRangeId: number;
   referenceCode: string;
-  // Código de concepto de corrección del catálogo de la DIAN — "2" =
-  // Anulación de factura electrónica, el único caso que este botón cubre
-  // por ahora (ver CLAUDE.md). Otros códigos existen (devolución parcial,
-  // descuento, ajuste de precio, etc.) pero no se exponen todavía.
+  // Código de concepto de corrección del catálogo de la DIAN — el
+  // catálogo válido depende de si es nota crédito o nota débito.
   correctionConceptCode: string;
   paymentDetails: DetallePagoFactura[];
   customer: ClienteFactura;
   items: ItemFactura[];
 }
 
-export interface NotaCreditoFactusExitosa {
+export interface NotaAjusteFactusExitosa {
   exitosa: true;
-  // El número propio de la nota crédito (ej. "NC2645") — distinto al de
-  // la factura que anula.
+  // El número propio de la nota (ej. "NC2645" o "ND635") — distinto al
+  // de la factura que ajusta.
   numero: string;
   // Código Único de Documento Electrónico — el equivalente al CUFE para
   // este tipo de documento (confirmado contra la respuesta real de
@@ -384,24 +390,25 @@ export interface NotaCreditoFactusExitosa {
   data: unknown;
 }
 
-export interface NotaCreditoFactusFallida {
+export interface NotaAjusteFactusFallida {
   exitosa: false;
   errores: unknown;
   data: unknown;
 }
 
-// Anula una factura electrónica ya validada — Factus la valida y
-// transmite a la DIAN en esta misma llamada, igual que una factura. La
-// factura original nunca se borra ni cambia; esta nota crédito queda
-// como un documento aparte, enlazado a ella.
-export async function crearNotaCreditoFactus(
+// Implementación compartida — arma el mismo cuerpo de nota crédito/débito
+// y lo manda al endpoint que corresponda. No se exporta directamente:
+// crearNotaCreditoFactus()/crearNotaDebitoFactus() son los puntos de
+// entrada reales, cada uno fijando su propio endpoint.
+async function crearNotaAjusteFactus(
+  endpoint: "/v2/credit-notes/validate" | "/v2/debit-notes/validate",
   credenciales: CredencialesFactus,
-  input: NotaCreditoFactusInput,
-): Promise<NotaCreditoFactusExitosa | NotaCreditoFactusFallida> {
+  input: NotaAjusteFactusInput,
+): Promise<NotaAjusteFactusExitosa | NotaAjusteFactusFallida> {
   const baseUrl = variableRequerida("FACTUS_BASE_URL");
   const token = await obtenerTokenFactus(credenciales);
 
-  const respuesta = await fetch(`${baseUrl}/v2/credit-notes/validate`, {
+  const respuesta = await fetch(`${baseUrl}${endpoint}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -461,6 +468,26 @@ export async function crearNotaCreditoFactus(
     avisosDian: cuerpo.data.errors ?? [],
     data: cuerpo.data,
   };
+}
+
+// Anula una factura electrónica ya validada — Factus la valida y
+// transmite a la DIAN en esta misma llamada, igual que una factura. La
+// factura original nunca se borra ni cambia; esta nota crédito queda
+// como un documento aparte, enlazado a ella.
+export async function crearNotaCreditoFactus(
+  credenciales: CredencialesFactus,
+  input: NotaAjusteFactusInput,
+): Promise<NotaAjusteFactusExitosa | NotaAjusteFactusFallida> {
+  return crearNotaAjusteFactus("/v2/credit-notes/validate", credenciales, input);
+}
+
+// Agrega un cobro extra sobre una factura ya validada (ej. un interés
+// por mora, un ajuste de precio) — lo contrario de una nota crédito.
+export async function crearNotaDebitoFactus(
+  credenciales: CredencialesFactus,
+  input: NotaAjusteFactusInput,
+): Promise<NotaAjusteFactusExitosa | NotaAjusteFactusFallida> {
+  return crearNotaAjusteFactus("/v2/debit-notes/validate", credenciales, input);
 }
 
 // Descarga el PDF de una factura YA validada — Factus lo entrega como

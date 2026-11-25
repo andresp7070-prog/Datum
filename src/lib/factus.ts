@@ -82,7 +82,18 @@ async function obtenerTokenFactus(credenciales: CredencialesFactus): Promise<str
   });
   const cuerpo = await respuesta.json();
   if (!respuesta.ok || !cuerpo.access_token) {
-    throw new Error(cuerpo.error_description ?? "No se pudo conectar con Factus.");
+    // Antes solo se mostraba error_description ("Client authentication
+    // failed") — verdadero, pero sin decir CONTRA QUÉ host se probó ni el
+    // código exacto de Factus, así que un error de credenciales (ej.
+    // usar las de sandbox contra producción) quedaba indistinguible de
+    // cualquier otro. Ahora el mensaje trae los tres datos juntos, para
+    // no tener que adivinar ni volver a preguntar de dónde salieron las
+    // credenciales.
+    throw new Error(
+      `Factus rechazó la conexión contra ${baseUrl} (${respuesta.status}` +
+        (cuerpo.error ? ` ${cuerpo.error}` : "") +
+        `): ${cuerpo.error_description ?? "sin más detalle."}`,
+    );
   }
   return cuerpo.access_token as string;
 }

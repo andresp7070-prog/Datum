@@ -108,6 +108,7 @@ export default async function ProyeccionesVentasPage() {
     .from("ventas_items")
     .select("cantidad, item_id, inventario_items ( nombre ), ventas!inner ( fecha, empresa_id )")
     .eq("ventas.empresa_id", perfil.empresa_id)
+    .eq("ventas.anulada", false)
     .gte("ventas.fecha", `${sumarDiasIso(hoyIso, -60)}T00:00:00`);
 
   if (puntoSeleccionado) itemsQuery = itemsQuery.eq("ventas.punto_venta_id", puntoSeleccionado);

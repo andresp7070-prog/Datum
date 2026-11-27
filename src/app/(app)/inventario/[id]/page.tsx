@@ -99,7 +99,11 @@ export default async function FichaProductoPage({
       firmarFotoUrl(supabase, item.foto_path),
       item.es_insumo
         ? Promise.resolve({ data: null })
-        : supabase.from("ventas_items").select("venta_id, ventas!inner(fecha)").eq("item_id", id),
+        : supabase
+            .from("ventas_items")
+            .select("venta_id, ventas!inner(fecha)")
+            .eq("item_id", id)
+            .eq("ventas.anulada", false),
       supabase
         .from("empleados")
         .select("id, nombre")

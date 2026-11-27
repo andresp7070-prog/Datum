@@ -39,6 +39,7 @@ const modulos = [
 // de cliente) primero, "Probar correos" al final.
 const enlacesAdmin = [
   { nombre: "Panel", href: "/admin" },
+  { nombre: "Empresas", href: "/admin/empresas" },
   { nombre: "Crear cliente", href: "/admin/clientes/nuevo" },
   { nombre: "Ventas", href: "/ventas" },
   { nombre: "CRM", href: "/admin/leads" },

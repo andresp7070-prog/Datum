@@ -103,11 +103,27 @@ export default async function PygPage({
   // El estado de resultados se calcula directo de las tablas crudas para el
   // rango de fechas exacto elegido (con día, no solo mes) — la vista
   // vista_estado_resultados solo agrupa por mes completo, así que no sirve
-  // para un rango arbitrario.
+  // para un rango arbitrario. "Ingresos por ventas" sale de ventas.monto
+  // directo (no de sumar los ítems) para que una nota débito — que suma a
+  // monto sin agregar ningún ítem — también se refleje acá, igual que ya
+  // hace vista_estado_resultados a nivel mensual. "Costo de ventas" sigue
+  // saliendo de los ítems, que es lo único que lo sabe. Ambas excluyen las
+  // ventas anuladas por nota crédito (anulada = true) — esas ya no cuentan.
+  let ventasQuery = supabase
+    .from("ventas")
+    .select("monto")
+    .eq("empresa_id", perfil.empresa_id)
+    .eq("anulada", false)
+    .gte("fecha", `${desde}T00:00:00`)
+    .lt("fecha", `${sumarUnDiaIso(hasta)}T00:00:00`);
+
+  if (puntoSeleccionado) ventasQuery = ventasQuery.eq("punto_venta_id", puntoSeleccionado);
+
   let itemsQuery = supabase
     .from("ventas_items")
-    .select("cantidad, precio_unitario, costo_unitario, ventas!inner ( fecha, empresa_id, punto_venta_id )")
+    .select("cantidad, costo_unitario, ventas!inner ( fecha, empresa_id, punto_venta_id, anulada )")
     .eq("ventas.empresa_id", perfil.empresa_id)
+    .eq("ventas.anulada", false)
     .gte("ventas.fecha", `${desde}T00:00:00`)
     .lt("ventas.fecha", `${sumarUnDiaIso(hasta)}T00:00:00`);
 
@@ -124,20 +140,25 @@ export default async function PygPage({
 
   // pasivosData no depende del rango de fechas ni del punto — sale con las
   // otras dos.
-  const [{ data: itemsData }, { data: finanzasData }, { data: pasivosData }] = await Promise.all([
-    itemsQuery,
-    finanzasQuery,
-    supabase
-      .from("pasivos")
-      .select("id, descripcion, tipo, monto_total, monto_pagado, fecha_vencimiento, estado")
-      .eq("empresa_id", perfil.empresa_id)
-      .order("fecha_vencimiento", { ascending: true, nullsFirst: false }),
-  ]);
+  const [{ data: ventasData }, { data: itemsData }, { data: finanzasData }, { data: pasivosData }] =
+    await Promise.all([
+      ventasQuery,
+      itemsQuery,
+      finanzasQuery,
+      supabase
+        .from("pasivos")
+        .select("id, descripcion, tipo, monto_total, monto_pagado, fecha_vencimiento, estado")
+        .eq("empresa_id", perfil.empresa_id)
+        .order("fecha_vencimiento", { ascending: true, nullsFirst: false }),
+    ]);
 
   let ingresos_por_ventas = 0;
+  for (const venta of ventasData ?? []) {
+    ingresos_por_ventas += Number(venta.monto);
+  }
+
   let costo_de_ventas = 0;
   for (const item of itemsData ?? []) {
-    ingresos_por_ventas += Number(item.cantidad) * Number(item.precio_unitario);
     costo_de_ventas += Number(item.cantidad) * Number(item.costo_unitario ?? 0);
   }
 

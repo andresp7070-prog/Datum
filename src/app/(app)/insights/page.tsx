@@ -480,9 +480,10 @@ async function ContenidoInsights({
     let query = supabase
       .from("ventas_items")
       .select(
-        "cantidad, precio_unitario, costo_unitario, item_id, nombre_libre, inventario_items ( nombre, categoria ), ventas!inner ( fecha, empresa_id )",
+        "cantidad, precio_unitario, costo_unitario, item_id, nombre_libre, inventario_items ( nombre, categoria ), ventas!inner ( fecha, empresa_id, anulada )",
       )
       .eq("ventas.empresa_id", empresaId)
+      .eq("ventas.anulada", false)
       .gte("ventas.fecha", `${desdeAmplio}T00:00:00`)
       .lt("ventas.fecha", `${sumarDiasIso(hastaAmplio, 1)}T00:00:00`);
 
